@@ -9,7 +9,15 @@ Cliente movil de Solventa: Android nativo en Kotlin con Jetpack Compose.
 ./gradlew testDebugUnitTest    # reglas de negocio, JUnit 5
 ./gradlew connectedAndroidTest # interfaz instrumentada, Espresso y Compose
 ./gradlew detekt               # estilo
+./gradlew koverVerifyDebug     # pruebas + umbral de cobertura del 80 %
+./gradlew koverHtmlReportDebug # reporte de cobertura navegable
 ```
+
+El umbral del **80 %** es el que declara la Estrategia de Pruebas y al que
+apunta el criterio `CP-4` de cada historia. Se mide sobre lo que las pruebas
+unitarias pueden cubrir: reglas de negocio. La interfaz de Compose se
+verifica con Espresso en pruebas instrumentadas, que corren en un emulador y
+no entran en este conteo, asi que queda excluida del calculo.
 
 ### El JDK
 

@@ -2,6 +2,37 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kover)
+}
+
+// Cobertura de pruebas automatizadas. El umbral es el 80 % que declara la
+// Estrategia de Pruebas y al que apunta el criterio CP-4 de cada historia.
+//
+// Se mide sobre lo que las pruebas unitarias pueden cubrir: reglas de
+// negocio. La interfaz de Compose se verifica con Espresso en pruebas
+// instrumentadas, que corren en un emulador y no entran en este conteo, asi
+// que queda fuera del calculo en vez de hundir el porcentaje.
+kover {
+    reports {
+        filters {
+            excludes {
+                // Punto de entrada de Android y arboles de interfaz.
+                classes(
+                    "com.solventa4bits.movil.MainActivity*",
+                    "com.solventa4bits.movil.MainActivityKt*",
+                    "com.solventa4bits.movil.ui.tema.TemaKt",
+                )
+                // Clases que genera el compilador de Compose.
+                classes("*ComposableSingletons*", "*_Factory*", "*Hilt*")
+                annotatedBy("androidx.compose.runtime.Composable")
+            }
+        }
+        verify {
+            rule("Cobertura minima del 80 %") {
+                bound { minValue.set(80) }
+            }
+        }
+    }
 }
 
 android {

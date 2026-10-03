@@ -50,15 +50,24 @@ jobs:
       - name: detekt
         run: ./gradlew detekt
 
-      - name: Pruebas unitarias
-        run: ./gradlew testDebugUnitTest
+      # koverVerifyDebug corre las pruebas y despues comprueba el umbral del
+      # 80 % que declara la Estrategia de Pruebas. Si la cobertura baja, el
+      # paso falla y el APK no se construye.
+      - name: Pruebas unitarias y cobertura (umbral 80%)
+        run: ./gradlew koverVerifyDebug
 
-      - name: Subir el reporte de pruebas
+      - name: Generar el reporte de cobertura
+        if: always()
+        run: ./gradlew koverXmlReportDebug koverHtmlReportDebug
+
+      - name: Subir los reportes
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: reporte-pruebas
-          path: app/build/reports/tests/
+          name: reportes-pruebas
+          path: |
+            app/build/reports/tests/
+            app/build/reports/kover/
           retention-days: 7
 
   # El APK de depuracion, para poder instalarlo desde la corrida.
