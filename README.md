@@ -11,8 +11,29 @@ Cliente movil de Solventa: Android nativo en Kotlin con Jetpack Compose.
 ./gradlew detekt               # estilo
 ```
 
-Requiere **JDK 21**. Gradle 8.13 no soporta el JDK 25 que trae Android Studio,
-asi que hay que apuntar `JAVA_HOME` a un Temurin 21 o configurarlo en el IDE.
+### El JDK
+
+Requiere **JDK 21**. Gradle 8.13 **no soporta el JDK 25** que viene dentro de
+Android Studio: la compilacion falla con el numero de version como unico
+mensaje de error.
+
+Android Studio resuelve esto solo. Al abrir el proyecto descarga un JDK 21 y
+lo deja en:
+
+```
+C:\Users\<usuario>\.jdks\jbr-21.0.11
+```
+
+**Ese es el JDK del proyecto.** Conviene que todos usemos el mismo, en el IDE
+y en la consola, para no levantar un daemon de Gradle por cada version:
+
+- **En Android Studio:** Settings, Build, Execution, Deployment, Build Tools,
+  Gradle, campo *Gradle JDK*.
+- **En la consola:** `JAVA_HOME` apuntando a esa misma ruta.
+
+Si Android Studio avisa que `JAVA_HOME` y el JDK de Gradle son distintos, la
+solucion es apuntar `JAVA_HOME` al JDK 21, **nunca al reves**: igualar hacia
+el JDK que trae el IDE rompe la compilacion.
 
 El SDK se declara en `local.properties`, que no se versiona:
 
