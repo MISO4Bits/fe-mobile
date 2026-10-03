@@ -1,0 +1,29 @@
+# Reglas de estilo del cliente movil. Se apoya en las de por defecto
+# (buildUponDefaultConfig) y solo ajusta lo que el proyecto necesita.
+build:
+  maxIssues: 0
+
+style:
+  UnusedPrivateMember:
+    # Una funcion @Preview no la llama nadie: la invoca el renderizador de
+    # Android Studio. Son el equivalente a una prueba visual.
+    ignoreAnnotated: ['Preview']
+  MagicNumber:
+    # Los valores de los tokens del Design System son literales por
+    # naturaleza: vienen del archivo de Figma, no son numeros magicos.
+    ignorePropertyDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+
+complexity:
+  LongMethod:
+    # Una funcion @Composable describe un arbol de interfaz; partirla por
+    # numero de lineas no la hace mas legible.
+    ignoreAnnotated: ['Composable']
+  LongParameterList:
+    ignoreAnnotated: ['Composable']
+
+naming:
+  FunctionNaming:
+    # Las funciones @Composable se nombran en PascalCase por convencion
+    # de Compose.
+    ignoreAnnotated: ['Composable']
