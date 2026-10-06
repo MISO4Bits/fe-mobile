@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tema de arranque. El tema real lo aplica Compose en TemaSolventa;
+         este solo cubre el instante antes de que arranque la actividad. -->
+    <style name="Theme.Solventa" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/surface</item>
+        <item name="android:navigationBarColor">@color/surface</item>
+    </style>
+</resources>

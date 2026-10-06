@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Solo los dos colores que el sistema necesita antes de que Compose tome
+     el control. El resto del esquema vive en ui/tema/Color.kt, generado. -->
+<resources>
+    <color name="surface">#F5FAFB</color>
+    <color name="primary">#006971</color>
+</resources>
