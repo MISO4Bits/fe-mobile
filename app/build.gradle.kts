@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kover)
 }
 
@@ -50,6 +51,10 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         resourceConfigurations += listOf("es")
+
+        // Por ahora el movil habla con el BFF Web: bff-mobile aun no tiene
+        // contrato. Retrofit exige que la URL base termine en "/".
+        buildConfigField("String", "URL_BASE_BFF", "\"https://dev.solventa4bits.com/web/\"")
     }
 
     buildTypes {
@@ -76,6 +81,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     sourceSets {
@@ -112,9 +118,23 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
 
+    // Estado de pantalla y navegacion entre pantallas.
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.navigation.compose)
+
+    // Red: Retrofit sobre OkHttp, con JSON de kotlinx.serialization.
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.kotlinx.serialization)
+    implementation(libs.okhttp)
+
     // Reglas de negocio: JUnit 5, como declara la Estrategia de Pruebas.
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
+    // Dobles de prueba para la red y control de corrutinas.
+    testImplementation(libs.okhttp.mockwebserver)
+    testImplementation(libs.kotlinx.coroutines.test)
 
     // Interfaz instrumentada: Espresso y las pruebas de Compose.
     androidTestImplementation(libs.androidx.junit)
