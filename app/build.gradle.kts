@@ -55,12 +55,16 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         resourceConfigurations += listOf("es")
 
-        // Por ahora el movil habla con el BFF Web: bff-mobile aun no tiene
-        // contrato. Retrofit exige que la URL base termine en "/".
-        buildConfigField("String", "URL_BASE_BFF", "\"https://dev.solventa4bits.com/web/\"")
+        // URL del BFF del canal movil. Retrofit exige que termine en "/".
+        buildConfigField("String", "URL_BASE_BFF", "\"https://dev.solventa4bits.com/mobile/\"")
     }
 
     buildTypes {
+        debug {
+            // BFF levantado en el computador de quien desarrolla. Desde el
+            // emulador, 10.0.2.2 es el localhost de ese computador.
+            buildConfigField("String", "URL_BASE_BFF", "\"http://10.0.2.2:8081/\"")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
