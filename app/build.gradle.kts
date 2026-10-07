@@ -23,6 +23,9 @@ kover {
                     "com.solventa4bits.movil.MainActivityKt*",
                     "com.solventa4bits.movil.ui.tema.TemaKt",
                 )
+                // Depende del Keystore del dispositivo: se verifica con una
+                // prueba instrumentada (BovedaKeystoreTest).
+                classes("com.solventa4bits.movil.sesion.datos.BovedaKeystore*")
                 // Clases que genera el compilador de Compose.
                 classes("*ComposableSingletons*", "*_Factory*", "*Hilt*")
                 annotatedBy("androidx.compose.runtime.Composable")
