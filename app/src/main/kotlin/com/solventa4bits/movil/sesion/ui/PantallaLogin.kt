@@ -67,18 +67,12 @@ fun PantallaLogin(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             modifier = Modifier.fillMaxWidth(),
         )
-        val contrasenaConError = estado.error == ErrorLogin.CREDENCIALES_INVALIDAS
+        // El error no senala ningun campo: no se revela cual de los dos fallo.
         OutlinedTextField(
             value = estado.contrasena,
             onValueChange = alCambiarContrasena,
             label = { Text(stringResource(R.string.login_contrasena)) },
             singleLine = true,
-            isError = contrasenaConError,
-            supportingText = if (contrasenaConError) {
-                { Text(stringResource(R.string.login_revisa_contrasena)) }
-            } else {
-                null
-            },
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier.fillMaxWidth(),

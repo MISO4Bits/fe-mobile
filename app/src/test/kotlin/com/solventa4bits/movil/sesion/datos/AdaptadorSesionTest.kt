@@ -93,6 +93,17 @@ class AdaptadorSesionTest {
     }
 
     @Test
+    @DisplayName("si Identity Platform falla (503) responde controlado y deja traza con el codigo")
+    fun fallaDeIdentityPlatform() = runTest {
+        servidor.enqueue(MockResponse().setResponseCode(503))
+
+        val resultado = adaptador.iniciarSesion(CORREO, CONTRASENA)
+
+        assertEquals(ResultadoInicioSesion.Fallo, resultado)
+        assertTrue(traza.errores.single().mensaje.contains("503"))
+    }
+
+    @Test
     @DisplayName("refresca la sesion con POST /v1/sesiones/refresco y devuelve la nueva")
     fun refrescoCorrecto() = runTest {
         servidor.enqueue(MockResponse().setResponseCode(200).setBody(SESION_VALIDA))
