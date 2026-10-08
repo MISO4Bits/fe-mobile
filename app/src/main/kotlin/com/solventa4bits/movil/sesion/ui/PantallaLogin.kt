@@ -1,5 +1,6 @@
 package com.solventa4bits.movil.sesion.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -45,10 +47,10 @@ fun PantallaLogin(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Spacer(Modifier.height(96.dp))
-        Text(
-            text = stringResource(R.string.app_name),
-            style = MaterialTheme.typography.displaySmall,
-            color = MaterialTheme.colorScheme.primary,
+        Image(
+            painter = painterResource(R.drawable.logo_solventa),
+            contentDescription = stringResource(R.string.app_name),
+            modifier = Modifier.height(56.dp),
         )
         Spacer(Modifier.height(32.dp))
         Text(
