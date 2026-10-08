@@ -6,4 +6,10 @@ package com.solventa4bits.movil.sesion.dominio
  */
 interface ServicioDeSesion {
     suspend fun iniciarSesion(correo: String, contrasena: String): ResultadoInicioSesion
+
+    /**
+     * Cambia el token de refresco por una sesion nueva, sin pedir contrasena.
+     * Si el token ya vencio responde [ResultadoInicioSesion.CredencialesInvalidas].
+     */
+    suspend fun refrescar(tokenDeRefresco: String): ResultadoInicioSesion
 }

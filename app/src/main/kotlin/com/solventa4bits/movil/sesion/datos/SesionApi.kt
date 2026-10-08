@@ -10,10 +10,13 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import retrofit2.http.Body
 import retrofit2.http.POST
 
-/** Operaciones de sesion del BFF. El contrato vive en bff-web, openapi/openapi.yaml. */
+/** Operaciones de sesion del BFF. El contrato vive en bff-mobile, openapi/openapi.yaml. */
 interface SesionApi {
     @POST("v1/sesiones")
     suspend fun iniciarSesion(@Body credenciales: CredencialesDto): Response<SesionDto>
+
+    @POST("v1/sesiones/refresco")
+    suspend fun refrescar(@Body refresco: RefrescoDto): Response<SesionDto>
 }
 
 /** Los nombres de los campos son los del contrato: van en ingles. */
@@ -22,6 +25,9 @@ data class CredencialesDto(
     val email: String,
     val password: String,
 )
+
+@Serializable
+data class RefrescoDto(val refreshToken: String)
 
 @Serializable
 data class SesionDto(

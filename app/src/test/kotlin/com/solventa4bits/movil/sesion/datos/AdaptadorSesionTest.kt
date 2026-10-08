@@ -92,6 +92,32 @@ class AdaptadorSesionTest {
         assertInstanceOf(IOException::class.java, traza.errores.single().causa)
     }
 
+    @Test
+    @DisplayName("refresca la sesion con POST /v1/sesiones/refresco y devuelve la nueva")
+    fun refrescoCorrecto() = runTest {
+        servidor.enqueue(MockResponse().setResponseCode(200).setBody(SESION_VALIDA))
+
+        val resultado = adaptador.refrescar("token-anterior")
+
+        assertEquals(
+            ResultadoInicioSesion.Exito(Sesion("jwt-de-acceso", "token-de-refresco", 3600)),
+            resultado,
+        )
+        val peticion = servidor.takeRequest()
+        assertEquals("/web/v1/sesiones/refresco", peticion.path)
+        assertEquals("""{"refreshToken":"token-anterior"}""", peticion.body.readUtf8())
+    }
+
+    @Test
+    @DisplayName("si el token de refresco vencio el BFF responde 401 y se informa")
+    fun refrescoVencido() = runTest {
+        servidor.enqueue(MockResponse().setResponseCode(401))
+
+        val resultado = adaptador.refrescar("token-vencido")
+
+        assertEquals(ResultadoInicioSesion.CredencialesInvalidas, resultado)
+    }
+
     private companion object {
         const val CORREO = "ana@correo.com"
         const val CONTRASENA = "Clave-Segura-123"

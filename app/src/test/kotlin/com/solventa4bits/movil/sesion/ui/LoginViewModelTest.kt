@@ -84,13 +84,37 @@ class LoginViewModelTest {
     }
 
     @Test
-    @DisplayName("si ya hay una sesion guardada arranca adentro")
-    fun sesionGuardada() {
+    @DisplayName("al abrir con sesion guardada entra y la renueva por debajo")
+    fun refrescaAlAbrir() {
         almacen.guardar(sesion)
+        val nueva = Sesion("jwt-nuevo", "refresco-nuevo", 3600)
 
-        val viewModel = viewModelQueResponde(ResultadoInicioSesion.Fallo)
+        val viewModel = viewModelQueResponde(refresco = ResultadoInicioSesion.Exito(nueva))
 
         assertTrue(viewModel.estado.sesionIniciada)
+        assertEquals(nueva, almacen.leer())
+    }
+
+    @Test
+    @DisplayName("si el token de refresco ya vencio borra la sesion y pide iniciar sesion")
+    fun refrescoVencido() {
+        almacen.guardar(sesion)
+
+        val viewModel = viewModelQueResponde(refresco = ResultadoInicioSesion.CredencialesInvalidas)
+
+        assertFalse(viewModel.estado.sesionIniciada)
+        assertNull(almacen.leer())
+    }
+
+    @Test
+    @DisplayName("si no se puede refrescar por falta de red conserva la sesion y entra")
+    fun refrescoSinRed() {
+        almacen.guardar(sesion)
+
+        val viewModel = viewModelQueResponde(refresco = ResultadoInicioSesion.Fallo)
+
+        assertTrue(viewModel.estado.sesionIniciada)
+        assertEquals(sesion, almacen.leer())
     }
 
     @Test
@@ -105,9 +129,13 @@ class LoginViewModelTest {
         assertEquals(EstadoLogin(), viewModel.estado)
     }
 
-    private fun viewModelQueResponde(resultado: ResultadoInicioSesion): LoginViewModel {
+    private fun viewModelQueResponde(
+        inicio: ResultadoInicioSesion = ResultadoInicioSesion.Fallo,
+        refresco: ResultadoInicioSesion = ResultadoInicioSesion.Fallo,
+    ): LoginViewModel {
         val servicio = object : ServicioDeSesion {
-            override suspend fun iniciarSesion(correo: String, contrasena: String) = resultado
+            override suspend fun iniciarSesion(correo: String, contrasena: String) = inicio
+            override suspend fun refrescar(tokenDeRefresco: String) = refresco
         }
         return LoginViewModel(servicio, almacen)
     }

@@ -30,9 +30,27 @@ class LoginViewModel(
     private val almacen: AlmacenDeSesion,
 ) : ViewModel() {
 
+    private val sesionGuardada = almacen.leer()
+
     // Si ya hay una sesion guardada, la app arranca adentro.
-    var estado by mutableStateOf(EstadoLogin(sesionIniciada = almacen.leer() != null))
+    var estado by mutableStateOf(EstadoLogin(sesionIniciada = sesionGuardada != null))
         private set
+
+    init {
+        if (sesionGuardada != null) refrescar(sesionGuardada.tokenDeRefresco)
+    }
+
+    // Renueva la sesion por debajo, sin que el cliente lo note. Si no hay red
+    // se conserva la sesion que habia.
+    private fun refrescar(tokenDeRefresco: String) {
+        viewModelScope.launch {
+            when (val resultado = servicio.refrescar(tokenDeRefresco)) {
+                is ResultadoInicioSesion.Exito -> almacen.guardar(resultado.sesion)
+                ResultadoInicioSesion.CredencialesInvalidas -> cerrarSesion()
+                ResultadoInicioSesion.Fallo -> Unit
+            }
+        }
+    }
 
     fun cambiarCorreo(correo: String) {
         estado = estado.copy(correo = correo)
