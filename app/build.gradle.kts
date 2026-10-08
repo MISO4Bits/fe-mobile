@@ -125,9 +125,8 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
 
-    // Estado de pantalla y navegacion entre pantallas.
+    // Estado de pantalla.
     implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(libs.androidx.navigation.compose)
 
     // Red: Retrofit sobre OkHttp, con JSON de kotlinx.serialization.
     implementation(libs.kotlinx.coroutines.android)

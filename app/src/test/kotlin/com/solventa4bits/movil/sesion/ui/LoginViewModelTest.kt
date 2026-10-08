@@ -83,6 +83,28 @@ class LoginViewModelTest {
         assertFalse(viewModel.estado.cargando)
     }
 
+    @Test
+    @DisplayName("si ya hay una sesion guardada arranca adentro")
+    fun sesionGuardada() {
+        almacen.guardar(sesion)
+
+        val viewModel = viewModelQueResponde(ResultadoInicioSesion.Fallo)
+
+        assertTrue(viewModel.estado.sesionIniciada)
+    }
+
+    @Test
+    @DisplayName("al cerrar sesion borra los datos locales y vuelve al inicio de sesion")
+    fun cerrarSesion() {
+        val viewModel = viewModelQueResponde(ResultadoInicioSesion.Exito(sesion))
+        viewModel.escribirCredencialesEIniciar()
+
+        viewModel.cerrarSesion()
+
+        assertNull(almacen.leer())
+        assertEquals(EstadoLogin(), viewModel.estado)
+    }
+
     private fun viewModelQueResponde(resultado: ResultadoInicioSesion): LoginViewModel {
         val servicio = object : ServicioDeSesion {
             override suspend fun iniciarSesion(correo: String, contrasena: String) = resultado

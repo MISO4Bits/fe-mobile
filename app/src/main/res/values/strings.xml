@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Solventa</string>
-    <string name="bienvenida_detalle">Tu seguro de vida para el crédito hipotecario, en tu bolsillo.</string>
 
     <string name="login_lema">Tu seguro de vida para el crédito hipotecario</string>
     <string name="login_correo">Correo electrónico</string>
@@ -12,4 +11,7 @@
     <string name="login_crea_tu_cuenta">Crea tu cuenta en la web. Aquí terminas tu cotización y contratas tu seguro.</string>
     <string name="login_error_credenciales">Correo o contraseña incorrectos.</string>
     <string name="login_error_fallo">No pudimos iniciar sesión. Inténtalo de nuevo.</string>
+
+    <string name="inicio_bienvenida">Bienvenido a Solventa</string>
+    <string name="inicio_cerrar_sesion">Cerrar sesión</string>
 </resources>

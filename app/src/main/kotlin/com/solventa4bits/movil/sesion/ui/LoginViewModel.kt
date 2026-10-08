@@ -30,7 +30,8 @@ class LoginViewModel(
     private val almacen: AlmacenDeSesion,
 ) : ViewModel() {
 
-    var estado by mutableStateOf(EstadoLogin())
+    // Si ya hay una sesion guardada, la app arranca adentro.
+    var estado by mutableStateOf(EstadoLogin(sesionIniciada = almacen.leer() != null))
         private set
 
     fun cambiarCorreo(correo: String) {
@@ -56,5 +57,11 @@ class LoginViewModel(
                     estado.copy(cargando = false, error = ErrorLogin.FALLO)
             }
         }
+    }
+
+    /** Borra los datos locales de sesion y vuelve al inicio de sesion. */
+    fun cerrarSesion() {
+        almacen.borrar()
+        estado = EstadoLogin()
     }
 }
