@@ -63,7 +63,7 @@ android {
         debug {
             // BFF levantado en el computador de quien desarrolla. Desde el
             // emulador, 10.0.2.2 es el localhost de ese computador.
-            buildConfigField("String", "URL_BASE_BFF", "\"http://10.0.2.2:8081/\"")
+            buildConfigField("String", "URL_BASE_BFF", "\"http://10.0.2.2:8082/\"")
         }
         release {
             isMinifyEnabled = true
@@ -146,6 +146,8 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.ui.test.junit4)
+    // BFF falso para la prueba de extremo a extremo.
+    androidTestImplementation(libs.okhttp.mockwebserver)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 }
