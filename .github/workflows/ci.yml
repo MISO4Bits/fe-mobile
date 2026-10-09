@@ -99,11 +99,14 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  # El APK de depuracion, para poder instalarlo desde la corrida.
+  # El APK de depuracion, para poder instalarlo desde la corrida. No corre en
+  # pull_request: igual que las imagenes de los servicios, solo se genera al
+  # hacer push a main/develop o al taguear una version.
   apk:
     name: apk
     runs-on: ubuntu-latest
     needs: [gitleaks, quality, sonar]
+    if: github.event_name != 'pull_request'
     steps:
       - uses: actions/checkout@v7
 
