@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kover)
 }
 
@@ -22,6 +23,9 @@ kover {
                     "com.solventa4bits.movil.MainActivityKt*",
                     "com.solventa4bits.movil.ui.tema.TemaKt",
                 )
+                // Depende del Keystore del dispositivo: se verifica con una
+                // prueba instrumentada (BovedaKeystoreTest).
+                classes("com.solventa4bits.movil.sesion.datos.BovedaKeystore*")
                 // Clases que genera el compilador de Compose.
                 classes("*ComposableSingletons*", "*_Factory*", "*Hilt*")
                 annotatedBy("androidx.compose.runtime.Composable")
@@ -50,9 +54,17 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         resourceConfigurations += listOf("es")
+
+        // URL del BFF del canal movil. Retrofit exige que termine en "/".
+        buildConfigField("String", "URL_BASE_BFF", "\"https://dev.solventa4bits.com/mobile/\"")
     }
 
     buildTypes {
+        debug {
+            // BFF levantado en el computador de quien desarrolla. Desde el
+            // emulador, 10.0.2.2 es el localhost de ese computador.
+            buildConfigField("String", "URL_BASE_BFF", "\"http://10.0.2.2:8082/\"")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -76,6 +88,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     sourceSets {
@@ -112,14 +125,29 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
 
+    // Estado de pantalla.
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+
+    // Red: Retrofit sobre OkHttp, con JSON de kotlinx.serialization.
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.kotlinx.serialization)
+    implementation(libs.okhttp)
+
     // Reglas de negocio: JUnit 5, como declara la Estrategia de Pruebas.
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
+    // Dobles de prueba para la red y control de corrutinas.
+    testImplementation(libs.okhttp.mockwebserver)
+    testImplementation(libs.kotlinx.coroutines.test)
 
     // Interfaz instrumentada: Espresso y las pruebas de Compose.
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.ui.test.junit4)
+    // BFF falso para la prueba de extremo a extremo.
+    androidTestImplementation(libs.okhttp.mockwebserver)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 }
