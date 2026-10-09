@@ -93,8 +93,9 @@ android {
 
     sourceSets {
         getByName("main") { kotlin.srcDir("src/main/kotlin") }
-        getByName("test") { kotlin.srcDir("src/test/kotlin") }
-        getByName("androidTest") { kotlin.srcDir("src/androidTest/kotlin") }
+        // sharedTest: el juego de datos de prueba, comun a unitarias e instrumentadas (BITS-280).
+        getByName("test") { kotlin.srcDirs("src/test/kotlin", "src/sharedTest/kotlin") }
+        getByName("androidTest") { kotlin.srcDirs("src/androidTest/kotlin", "src/sharedTest/kotlin") }
     }
 
     testOptions {

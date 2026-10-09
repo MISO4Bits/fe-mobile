@@ -9,5 +9,7 @@ plugins {
 detekt {
     buildUponDefaultConfig = true
     config.setFrom(files("$rootDir/detekt.yml"))
-    source.setFrom(files("app/src/main/kotlin", "app/src/test/kotlin", "app/src/androidTest/kotlin"))
+    source.setFrom(
+        files("app/src/main/kotlin", "app/src/test/kotlin", "app/src/androidTest/kotlin", "app/src/sharedTest/kotlin"),
+    )
 }
