@@ -42,16 +42,13 @@ import com.solventa4bits.movil.ui.tema.TemaSolventa
 
 /**
  * Primer paso de una cotizacion: el cliente elige su banco y ve los datos de
- * su credito hipotecario (Figma 12, 12A, 12B y 12C). Solo dibuja el [estado].
+ * su credito hipotecario, o los escribe (Figma 12, 12A, 12B y 12C). Solo
+ * dibuja el [estado].
  */
 @Composable
 fun PantallaNuevaCotizacion(
     estado: EstadoNuevaCotizacion,
-    alElegirEntidad: (EntidadFinanciera) -> Unit,
-    alCambiarMonto: (String) -> Unit,
-    alCambiarSaldo: (String) -> Unit,
-    alCambiarMeses: (String) -> Unit,
-    alReintentar: () -> Unit,
+    acciones: AccionesDeCotizacion,
     alVolver: () -> Unit,
     alCerrarSesion: () -> Unit,
     modifier: Modifier = Modifier,
@@ -71,28 +68,15 @@ fun PantallaNuevaCotizacion(
             )
             when {
                 estado.cargando -> Consultando()
-                estado.fallo -> NoSePudoConsultar(alReintentar)
-                else -> {
-                    SelectorConEtiqueta(estado, alElegirEntidad)
-                    if (estado.pideDatosAMano) {
-                        Etiqueta(stringResource(R.string.cotizacion_datos_credito))
-                        FormularioAMano(estado, alCambiarMonto, alCambiarSaldo, alCambiarMeses)
-                    } else {
-                        CreditoDelBanco(estado)
-                    }
-                }
+                // Sin respuesta del BFF no hay ni lista de bancos: se informa
+                // y el cliente decide si reintenta o escribe todo.
+                estado.fallo && !estado.aMano -> NoSePudoConsultar(acciones, conEscribir = true)
+                else -> BancoYCredito(estado, acciones)
             }
         }
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalAlignment = Alignment.Start,
-        ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             // La cotizacion es la siguiente historia (BITS-293): aun no lleva a ninguna parte.
-            Button(
-                onClick = {},
-                enabled = estado.puedeCotizar,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
+            Button(onClick = {}, enabled = estado.puedeCotizar, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.cotizacion_ver_cotizacion))
             }
             TextButton(onClick = alVolver) {
@@ -124,52 +108,71 @@ private fun Consultando() {
 }
 
 @Composable
-private fun NoSePudoConsultar(alReintentar: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+private fun NoSePudoConsultar(acciones: AccionesDeCotizacion, conEscribir: Boolean) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             text = stringResource(R.string.cotizacion_fallo),
             style = MaterialTheme.typography.bodyMedium,
         )
-        OutlinedButton(onClick = alReintentar) {
+        OutlinedButton(onClick = acciones::reintentar) {
             Text(stringResource(R.string.cotizacion_reintentar))
+        }
+        if (conEscribir) {
+            TextButton(onClick = acciones::escribirAMano) {
+                Text(stringResource(R.string.cotizacion_escribir_yo))
+            }
         }
     }
 }
 
 @Composable
-private fun SelectorConEtiqueta(
-    estado: EstadoNuevaCotizacion,
-    alElegirEntidad: (EntidadFinanciera) -> Unit,
-) {
+private fun BancoYCredito(estado: EstadoNuevaCotizacion, acciones: AccionesDeCotizacion) {
+    // El BFF respondio pero la fuente no: el banco elegido se conserva y el
+    // cliente puede reintentar o seguir escribiendo abajo.
+    if (estado.fuenteNoDisponible) NoSePudoConsultar(acciones, conEscribir = false)
+
+    Etiqueta(stringResource(R.string.cotizacion_tu_banco))
+    if (estado.entidades.isNotEmpty()) SelectorDeBanco(estado, acciones)
+    if (estado.otroBanco) {
+        OutlinedTextField(
+            value = estado.bancoEscrito,
+            onValueChange = acciones::cambiarBanco,
+            label = { Text(stringResource(R.string.cotizacion_escribe_banco)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+
+    val elegida = estado.entidadElegida
+    val credito = estado.creditoElegido
+    when {
+        estado.pideDatosAMano -> {
+            Etiqueta(stringResource(R.string.cotizacion_datos_credito))
+            FormularioAMano(estado, acciones)
+        }
+        elegida != null && credito != null -> {
+            Etiqueta(stringResource(R.string.cotizacion_datos_credito))
+            DatosDelCredito(elegida, credito, estado.fechaConsulta)
+            TextButton(onClick = acciones::escribirAMano) {
+                Text(stringResource(R.string.cotizacion_prefiero_escribir))
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SelectorDeBanco(estado: EstadoNuevaCotizacion, acciones: AccionesDeCotizacion) {
+    var abierto by remember { mutableStateOf(false) }
+    val otroBanco = stringResource(R.string.cotizacion_otro_banco)
     Text(
         text = stringResource(R.string.cotizacion_elige_banco),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    Etiqueta(stringResource(R.string.cotizacion_tu_banco))
-    SelectorDeBanco(estado.entidades, estado.entidadElegida, alElegirEntidad)
-}
-
-/** Figma 12B: los datos que el banco reporto, solo lectura. */
-@Composable
-private fun CreditoDelBanco(estado: EstadoNuevaCotizacion) {
-    val entidad = estado.entidadElegida ?: return
-    val credito = estado.creditoElegido ?: return
-    Etiqueta(stringResource(R.string.cotizacion_datos_credito))
-    DatosDelCredito(entidad, credito)
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SelectorDeBanco(
-    entidades: List<EntidadFinanciera>,
-    elegida: EntidadFinanciera?,
-    alElegir: (EntidadFinanciera) -> Unit,
-) {
-    var abierto by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(expanded = abierto, onExpandedChange = { abierto = it }) {
         OutlinedTextField(
-            value = elegida?.nombre.orEmpty(),
+            value = if (estado.otroBanco) otroBanco else estado.entidadElegida?.nombre.orEmpty(),
             onValueChange = {},
             readOnly = true,
             label = { Text(stringResource(R.string.cotizacion_banco_o_entidad)) },
@@ -177,21 +180,29 @@ private fun SelectorDeBanco(
             modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
         )
         ExposedDropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }) {
-            entidades.forEach { entidad ->
+            estado.entidades.forEach { entidad ->
                 DropdownMenuItem(
                     text = { Text(entidad.nombre) },
                     onClick = {
-                        alElegir(entidad)
+                        acciones.elegirEntidad(entidad)
                         abierto = false
                     },
                 )
             }
+            DropdownMenuItem(
+                text = { Text(otroBanco) },
+                onClick = {
+                    acciones.elegirOtroBanco()
+                    abierto = false
+                },
+            )
         }
     }
 }
 
+/** Figma 12B: los datos que el banco reporto, solo lectura, con su origen y fecha. */
 @Composable
-private fun DatosDelCredito(entidad: EntidadFinanciera, credito: CreditoHipotecario) {
+private fun DatosDelCredito(entidad: EntidadFinanciera, credito: CreditoHipotecario, fechaConsulta: String?) {
     OutlinedCard(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -209,6 +220,13 @@ private fun DatosDelCredito(entidad: EntidadFinanciera, credito: CreditoHipoteca
                 stringResource(R.string.cotizacion_meses, credito.plazoRestanteMeses),
             )
             HorizontalDivider()
+            fechaConsulta?.let(::fechaLegible)?.let { fecha ->
+                Text(
+                    text = stringResource(R.string.cotizacion_consultado_el, fecha),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             Text(
                 text = stringResource(R.string.cotizacion_solo_lectura),
                 style = MaterialTheme.typography.bodySmall,
@@ -232,7 +250,7 @@ private fun Dato(nombre: String, valor: String) {
 }
 
 @Composable
-internal fun Etiqueta(texto: String) {
+private fun Etiqueta(texto: String) {
     Text(
         text = texto.uppercase(),
         style = MaterialTheme.typography.labelSmall,
@@ -244,6 +262,16 @@ internal fun Etiqueta(texto: String) {
 @Composable
 private fun PantallaNuevaCotizacionPreview() {
     val bancolombia = EntidadFinanciera("bancolombia", "Bancolombia")
+    val sinAcciones = object : AccionesDeCotizacion {
+        override fun reintentar() = Unit
+        override fun elegirEntidad(entidad: EntidadFinanciera) = Unit
+        override fun elegirOtroBanco() = Unit
+        override fun escribirAMano() = Unit
+        override fun cambiarBanco(texto: String) = Unit
+        override fun cambiarMonto(texto: String) = Unit
+        override fun cambiarSaldo(texto: String) = Unit
+        override fun cambiarMeses(texto: String) = Unit
+    }
     TemaSolventa {
         PantallaNuevaCotizacion(
             estado = EstadoNuevaCotizacion(
@@ -259,13 +287,10 @@ private fun PantallaNuevaCotizacionPreview() {
                         cuotaMensual = 3_100_000.0,
                     ),
                 ),
+                fechaConsulta = "2026-10-09T12:00:00Z",
                 entidadElegida = bancolombia,
             ),
-            alElegirEntidad = {},
-            alCambiarMonto = {},
-            alCambiarSaldo = {},
-            alCambiarMeses = {},
-            alReintentar = {},
+            acciones = sinAcciones,
             alVolver = {},
             alCerrarSesion = {},
         )

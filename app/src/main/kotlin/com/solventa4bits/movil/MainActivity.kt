@@ -78,7 +78,7 @@ fun AppSolventa(sesion: ServicioDeSesion, almacen: AlmacenDeSesion, creditos: Se
             cotizando -> {
                 val cotizacion = viewModel { NuevaCotizacionViewModel(creditos) }
                 // Cada vez que se entra a la pantalla se consulta de nuevo.
-                LaunchedEffect(Unit) { cotizacion.consultar() }
+                LaunchedEffect(Unit) { cotizacion.empezar() }
                 // La sesion ya no se pudo refrescar: toca iniciar sesion de nuevo.
                 LaunchedEffect(cotizacion.estado.sesionVencida) {
                     if (cotizacion.estado.sesionVencida) cerrarSesion()
@@ -86,11 +86,7 @@ fun AppSolventa(sesion: ServicioDeSesion, almacen: AlmacenDeSesion, creditos: Se
                 BackHandler { cotizando = false }
                 PantallaNuevaCotizacion(
                     estado = cotizacion.estado,
-                    alElegirEntidad = cotizacion::elegirEntidad,
-                    alCambiarMonto = cotizacion::cambiarMonto,
-                    alCambiarSaldo = cotizacion::cambiarSaldo,
-                    alCambiarMeses = cotizacion::cambiarMeses,
-                    alReintentar = cotizacion::consultar,
+                    acciones = cotizacion,
                     alVolver = { cotizando = false },
                     alCerrarSesion = cerrarSesion,
                     modifier = conRelleno,

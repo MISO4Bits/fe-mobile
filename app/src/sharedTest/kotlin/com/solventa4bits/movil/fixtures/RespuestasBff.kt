@@ -45,7 +45,7 @@ object RespuestasBff {
                 { "id": "davivienda", "nombre": "Davivienda" },
                 { "id": "banco-de-bogota", "nombre": "Banco de Bogotá" }
               ],
-              "origen": "OPEN_FINANCE"
+              "origen": "OPEN_FINANCE"${if (credito == null) "" else ", \"fechaConsulta\": \"2026-10-09T12:00:00Z\""}
             }
         """.trimIndent()
     }

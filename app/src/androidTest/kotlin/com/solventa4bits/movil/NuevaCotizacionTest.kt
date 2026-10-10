@@ -18,8 +18,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Nueva cotizacion de extremo a extremo (BITS-219): las dos corridas que pide
- * la integracion con Open Finance, la exitosa y la degradada.
+ * Nueva cotizacion de extremo a extremo (BITS-219). Cubre las corridas que
+ * pide la integracion con Open Finance (CP-X): la exitosa, la degradada y la
+ * consulta con error.
  */
 @RunWith(AndroidJUnit4::class)
 class NuevaCotizacionTest {
@@ -37,28 +38,21 @@ class NuevaCotizacionTest {
 
     @Test
     fun siElBancoReportaLaHipotecaMuestraSusDatos() {
-        bff.responder(200, RespuestasBff.sesionValida())
-        bff.responder(200, RespuestasBff.creditosDe(Personas.DANIEL))
-        composeRule.abrirApp(bff, almacen)
-        composeRule.iniciarSesion()
+        entrarANuevaCotizacion(200, RespuestasBff.creditosDe(Personas.DANIEL))
 
-        composeRule.onNodeWithText("Cotizar mi seguro").performClick()
         elegirBanco("Bancolombia")
 
         composeRule.esperarTexto("$180.000.000")
         composeRule.onNodeWithText("$98.000.000").assertIsDisplayed()
         composeRule.onNodeWithText("96 meses").assertIsDisplayed()
+        composeRule.onNodeWithText("Consultado el 9 de octubre de 2026").assertIsDisplayed()
         composeRule.onNodeWithText("Ver mi cotización").assertIsEnabled()
     }
 
     @Test
     fun siNoHayDatosDelBancoElClienteLosEscribe() {
-        bff.responder(200, RespuestasBff.sesionValida())
-        bff.responder(200, RespuestasBff.creditosDe(Personas.NICOLAS))
-        composeRule.abrirApp(bff, almacen)
-        composeRule.iniciarSesion()
+        entrarANuevaCotizacion(200, RespuestasBff.creditosDe(Personas.NICOLAS))
 
-        composeRule.onNodeWithText("Cotizar mi seguro").performClick()
         elegirBanco("Davivienda")
 
         composeRule.esperarTexto("Los datos los declaras tú")
@@ -69,6 +63,32 @@ class NuevaCotizacionTest {
         escribirEn("Meses que te faltan", "120")
 
         composeRule.onNodeWithText("Ver mi cotización").assertIsEnabled()
+    }
+
+    @Test
+    fun siLaConsultaFallaElClienteEscribeElBancoYLosDatos() {
+        entrarANuevaCotizacion(503)
+
+        composeRule.esperarTexto("Reintentar")
+        composeRule.onNodeWithText("Escribir los datos yo mismo").performClick()
+
+        escribirEn("Escribe tu banco", "Banco Caja Social")
+        escribirEn("Monto total del crédito", "5000000")
+        composeRule.esperarTexto("Debe ser de al menos $10.000.000.")
+
+        escribirEn("Monto total del crédito", "0")
+        escribirEn("¿Cuánto debes hoy?", "30000000")
+        escribirEn("Meses que te faltan", "120")
+
+        composeRule.onNodeWithText("Ver mi cotización").assertIsEnabled()
+    }
+
+    private fun entrarANuevaCotizacion(codigoDeCreditos: Int, creditos: String = "") {
+        bff.responder(200, RespuestasBff.sesionValida())
+        bff.responder(codigoDeCreditos, creditos)
+        composeRule.abrirApp(bff, almacen)
+        composeRule.iniciarSesion()
+        composeRule.onNodeWithText("Cotizar mi seguro").performClick()
     }
 
     private fun elegirBanco(nombre: String) {

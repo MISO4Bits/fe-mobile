@@ -36,7 +36,24 @@ data class CreditosHipotecarios(
     val estado: EstadoCreditos,
     val creditos: List<CreditoHipotecario>,
     val entidades: List<EntidadFinanciera>,
+    /** Cuando se trajeron los datos de la fuente, en ISO 8601. Null si no hay datos. */
+    val fechaConsulta: String? = null,
 )
+
+/** Si los datos del credito vienen del banco o los declaro el cliente (BITS-219, AC-6). */
+enum class OrigenDeDatos { VERIFICADO, DECLARADO }
+
+/**
+ * Rangos de los datos escritos a mano. Son los que valida bff-web en
+ * POST /v1/cotizaciones (openapi/openapi.yaml, DatosCredito).
+ */
+object RangosDeCredito {
+    const val VALOR_MINIMO = 10_000_000L
+    const val MESES_MINIMO = 12
+    const val MESES_MAXIMO = 480
+    const val LETRAS_MINIMAS_DEL_BANCO = 2
+    const val LETRAS_MAXIMAS_DEL_BANCO = 80
+}
 
 /** Todo lo que puede pasar al consultar las hipotecas del cliente. */
 sealed interface ResultadoCreditos {

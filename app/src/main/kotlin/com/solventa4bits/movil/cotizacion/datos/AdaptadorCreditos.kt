@@ -79,6 +79,7 @@ class AdaptadorCreditos(
             )
         },
         entidades = entidades.map { EntidadFinanciera(id = it.id, nombre = it.nombre) },
+        fechaConsulta = fechaConsulta,
     )
 
     private companion object {

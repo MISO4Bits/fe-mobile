@@ -16,34 +16,37 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.solventa4bits.movil.R
 
-/** Figma 12C: el banco no reporto la hipoteca y el cliente escribe los datos. */
+/**
+ * Figma 12C: el cliente escribe los datos de su credito. Cada campo senala
+ * su rango permitido cuando el valor escrito queda por fuera.
+ */
 @Composable
-internal fun FormularioAMano(
-    estado: EstadoNuevaCotizacion,
-    alCambiarMonto: (String) -> Unit,
-    alCambiarSaldo: (String) -> Unit,
-    alCambiarMeses: (String) -> Unit,
-) {
+internal fun FormularioAMano(estado: EstadoNuevaCotizacion, acciones: AccionesDeCotizacion) {
     Text(
-        text = stringResource(R.string.cotizacion_sin_conexion),
+        text = stringResource(R.string.cotizacion_escribe_datos),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    CampoDePesos(stringResource(R.string.cotizacion_monto_total), estado.montoEscrito, alCambiarMonto)
-    CampoDePesos(
+    CampoNumerico(
+        nombre = stringResource(R.string.cotizacion_monto_total),
+        valor = estado.montoEscrito,
+        alCambiar = acciones::cambiarMonto,
+        error = if (estado.montoFueraDeRango) stringResource(R.string.cotizacion_rango_monto) else null,
+        prefijo = "$",
+    )
+    CampoNumerico(
         nombre = stringResource(R.string.cotizacion_cuanto_debes),
         valor = estado.saldoEscrito,
-        alCambiar = alCambiarSaldo,
-        error = if (estado.saldoMayorQueMonto) stringResource(R.string.cotizacion_saldo_mayor) else null,
+        alCambiar = acciones::cambiarSaldo,
+        error = if (estado.saldoFueraDeRango) stringResource(R.string.cotizacion_rango_saldo) else null,
+        prefijo = "$",
     )
-    OutlinedTextField(
-        value = estado.mesesEscritos,
-        onValueChange = alCambiarMeses,
-        label = { Text(stringResource(R.string.cotizacion_meses_faltan)) },
-        suffix = { Text(stringResource(R.string.cotizacion_sufijo_meses)) },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-        modifier = Modifier.fillMaxWidth(),
+    CampoNumerico(
+        nombre = stringResource(R.string.cotizacion_meses_faltan),
+        valor = estado.mesesEscritos,
+        alCambiar = acciones::cambiarMeses,
+        error = if (estado.mesesFueraDeRango) stringResource(R.string.cotizacion_rango_meses) else null,
+        sufijo = stringResource(R.string.cotizacion_sufijo_meses),
     )
     Column(
         modifier = Modifier
@@ -66,12 +69,20 @@ internal fun FormularioAMano(
 }
 
 @Composable
-private fun CampoDePesos(nombre: String, valor: String, alCambiar: (String) -> Unit, error: String? = null) {
+private fun CampoNumerico(
+    nombre: String,
+    valor: String,
+    alCambiar: (String) -> Unit,
+    error: String?,
+    prefijo: String? = null,
+    sufijo: String? = null,
+) {
     OutlinedTextField(
         value = valor,
         onValueChange = alCambiar,
         label = { Text(nombre) },
-        prefix = { Text("$") },
+        prefix = prefijo?.let { { Text(it) } },
+        suffix = sufijo?.let { { Text(it) } },
         singleLine = true,
         isError = error != null,
         supportingText = error?.let { { Text(it) } },

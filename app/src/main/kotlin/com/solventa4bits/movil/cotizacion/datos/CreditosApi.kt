@@ -19,6 +19,7 @@ data class CreditosDto(
     val estado: String,
     val creditos: List<CreditoDto>,
     val entidades: List<EntidadDto>,
+    val fechaConsulta: String? = null,
 )
 
 @Serializable
