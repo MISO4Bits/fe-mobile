@@ -7,6 +7,8 @@ import com.solventa4bits.movil.cotizacion.dominio.ResultadoCreditos
 import com.solventa4bits.movil.fixtures.Personas
 import com.solventa4bits.movil.fixtures.RespuestasBff
 import com.solventa4bits.movil.sesion.dominio.AlmacenEnMemoria
+import com.solventa4bits.movil.sesion.dominio.ResultadoInicioSesion
+import com.solventa4bits.movil.sesion.dominio.ServicioDeSesion
 import com.solventa4bits.movil.sesion.dominio.Sesion
 import com.solventa4bits.movil.traza.TrazaFalsa
 import kotlinx.coroutines.test.runTest
@@ -40,8 +42,23 @@ class AdaptadorCreditosTest {
         servidor.shutdown()
     }
 
+    private val sesiones = SesionesFalsas()
+
     private fun adaptador() =
-        AdaptadorCreditos(crearCreditosApi(servidor.url("/mobile/").toString()), almacen, traza)
+        AdaptadorCreditos(crearCreditosApi(servidor.url("/mobile/").toString()), almacen, sesiones, traza)
+
+    /** Doble de prueba del refresco: responde [refresco] y cuenta las veces que lo llaman. */
+    private class SesionesFalsas : ServicioDeSesion {
+        var refresco: ResultadoInicioSesion = ResultadoInicioSesion.CredencialesInvalidas
+        var refrescos = 0
+
+        override suspend fun iniciarSesion(correo: String, contrasena: String) = ResultadoInicioSesion.Fallo
+
+        override suspend fun refrescar(tokenDeRefresco: String): ResultadoInicioSesion {
+            refrescos++
+            return refresco
+        }
+    }
 
     @Test
     @DisplayName("devuelve la hipoteca del cliente y los bancos que entrega el BFF")
@@ -95,11 +112,51 @@ class AdaptadorCreditosTest {
     }
 
     @Test
-    @DisplayName("si el BFF rechaza el token con 401 informa que la sesion vencio")
-    fun tokenRechazado() = runTest {
+    @DisplayName("si el token de acceso vencio refresca la sesion y repite la consulta sin que se note")
+    fun refrescaYReintenta() = runTest {
+        val nueva = Sesion("jwt-nuevo", "refresco-nuevo", 3600)
+        sesiones.refresco = ResultadoInicioSesion.Exito(nueva)
+        servidor.enqueue(MockResponse().setResponseCode(401))
+        servidor.enqueue(MockResponse().setResponseCode(200).setBody(RespuestasBff.creditosDe(Personas.DANIEL)))
+
+        val resultado = adaptador().consultar()
+
+        assertInstanceOf(ResultadoCreditos.Exito::class.java, resultado)
+        assertEquals(nueva, almacen.leer())
+        assertEquals("Bearer jwt-de-acceso", servidor.takeRequest().getHeader("Authorization"))
+        assertEquals("Bearer jwt-nuevo", servidor.takeRequest().getHeader("Authorization"))
+    }
+
+    @Test
+    @DisplayName("si el token de refresco tambien vencio informa que la sesion vencio")
+    fun refrescoVencido() = runTest {
+        sesiones.refresco = ResultadoInicioSesion.CredencialesInvalidas
         servidor.enqueue(MockResponse().setResponseCode(401))
 
         assertEquals(ResultadoCreditos.SesionVencida, adaptador().consultar())
+        assertEquals(1, servidor.requestCount)
+    }
+
+    @Test
+    @DisplayName("si no se puede refrescar por falta de red responde con fallo y conserva la sesion")
+    fun refrescoSinRed() = runTest {
+        sesiones.refresco = ResultadoInicioSesion.Fallo
+        servidor.enqueue(MockResponse().setResponseCode(401))
+
+        assertEquals(ResultadoCreditos.Fallo, adaptador().consultar())
+        assertEquals(Sesion("jwt-de-acceso", "token-de-refresco", 3600), almacen.leer())
+    }
+
+    @Test
+    @DisplayName("si el token nuevo tambien es rechazado no insiste: un solo reintento")
+    fun unSoloReintento() = runTest {
+        sesiones.refresco = ResultadoInicioSesion.Exito(Sesion("jwt-nuevo", "refresco-nuevo", 3600))
+        servidor.enqueue(MockResponse().setResponseCode(401))
+        servidor.enqueue(MockResponse().setResponseCode(401))
+
+        assertEquals(ResultadoCreditos.SesionVencida, adaptador().consultar())
+        assertEquals(2, servidor.requestCount)
+        assertEquals(1, sesiones.refrescos)
     }
 
     @Test

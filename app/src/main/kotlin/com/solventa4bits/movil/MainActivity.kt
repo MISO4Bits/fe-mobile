@@ -43,7 +43,7 @@ class MainActivity : ComponentActivity() {
         val traza = Traza { origen, mensaje, causa -> Log.e(origen, mensaje, causa) }
         val almacen = AlmacenDeSesionSeguro(BovedaKeystore(applicationContext, traza), traza)
         val sesion = AdaptadorSesion(crearSesionApi(BuildConfig.URL_BASE_BFF), traza)
-        val creditos = AdaptadorCreditos(crearCreditosApi(BuildConfig.URL_BASE_BFF), almacen, traza)
+        val creditos = AdaptadorCreditos(crearCreditosApi(BuildConfig.URL_BASE_BFF), almacen, sesion, traza)
 
         setContent {
             TemaSolventa { AppSolventa(sesion, almacen, creditos) }
@@ -79,8 +79,7 @@ fun AppSolventa(sesion: ServicioDeSesion, almacen: AlmacenDeSesion, creditos: Se
                 val cotizacion = viewModel { NuevaCotizacionViewModel(creditos) }
                 // Cada vez que se entra a la pantalla se consulta de nuevo.
                 LaunchedEffect(Unit) { cotizacion.consultar() }
-                // Hasta que exista el refresco automatico, un token vencido
-                // devuelve al inicio de sesion.
+                // La sesion ya no se pudo refrescar: toca iniciar sesion de nuevo.
                 LaunchedEffect(cotizacion.estado.sesionVencida) {
                     if (cotizacion.estado.sesionVencida) cerrarSesion()
                 }

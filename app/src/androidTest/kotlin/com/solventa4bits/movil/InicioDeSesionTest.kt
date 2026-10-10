@@ -59,7 +59,7 @@ class InicioDeSesionTest {
     fun conCredencialesCorrectasLlegaAlInicio() {
         bff.enqueue(MockResponse().setResponseCode(200).setBody(SESION))
         val servicio = AdaptadorSesion(crearSesionApi(bff.url("/").toString()), traza)
-        val creditos = AdaptadorCreditos(crearCreditosApi(bff.url("/").toString()), almacen, traza)
+        val creditos = AdaptadorCreditos(crearCreditosApi(bff.url("/").toString()), almacen, servicio, traza)
         composeRule.setContent {
             TemaSolventa { AppSolventa(servicio, almacen, creditos) }
         }
