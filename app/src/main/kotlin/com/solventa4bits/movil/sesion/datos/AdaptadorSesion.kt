@@ -4,6 +4,7 @@ import com.solventa4bits.movil.sesion.dominio.ResultadoInicioSesion
 import com.solventa4bits.movil.sesion.dominio.ServicioDeSesion
 import com.solventa4bits.movil.sesion.dominio.Sesion
 import com.solventa4bits.movil.traza.Traza
+import kotlinx.serialization.SerializationException
 import retrofit2.Response
 import java.io.IOException
 import java.net.HttpURLConnection.HTTP_UNAUTHORIZED
@@ -11,8 +12,9 @@ import java.net.HttpURLConnection.HTTP_UNAUTHORIZED
 /**
  * Habla con el BFF y traduce lo que pase a un [ResultadoInicioSesion].
  *
- * De aqui no sale ninguna excepcion de red: se captura, se deja traza y se
- * devuelve una respuesta controlada.
+ * De aqui no sale ninguna excepcion, ni de red ni de una respuesta que no
+ * cumpla el contrato: se captura, se deja traza y se devuelve una respuesta
+ * controlada.
  */
 class AdaptadorSesion(
     private val api: SesionApi,
@@ -47,6 +49,9 @@ class AdaptadorSesion(
             }
         } catch (e: IOException) {
             traza.error(ORIGEN, "No se pudo llegar al BFF al $accion", e)
+            ResultadoInicioSesion.Fallo
+        } catch (e: SerializationException) {
+            traza.error(ORIGEN, "La respuesta del BFF no cumple el contrato al $accion", e)
             ResultadoInicioSesion.Fallo
         }
 

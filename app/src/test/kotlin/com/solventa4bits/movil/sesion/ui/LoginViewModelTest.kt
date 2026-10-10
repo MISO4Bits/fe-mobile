@@ -1,6 +1,6 @@
 package com.solventa4bits.movil.sesion.ui
 
-import com.solventa4bits.movil.sesion.dominio.AlmacenDeSesion
+import com.solventa4bits.movil.sesion.dominio.AlmacenEnMemoria
 import com.solventa4bits.movil.sesion.dominio.ResultadoInicioSesion
 import com.solventa4bits.movil.sesion.dominio.ServicioDeSesion
 import com.solventa4bits.movil.sesion.dominio.Sesion
@@ -144,20 +144,5 @@ class LoginViewModelTest {
         cambiarCorreo("ana@correo.com")
         cambiarContrasena("Clave-Segura-123")
         iniciarSesion()
-    }
-}
-
-/** Doble de prueba: guarda la sesion en una variable. */
-private class AlmacenEnMemoria : AlmacenDeSesion {
-    private var guardada: Sesion? = null
-
-    override fun guardar(sesion: Sesion) {
-        guardada = sesion
-    }
-
-    override fun leer(): Sesion? = guardada
-
-    override fun borrar() {
-        guardada = null
     }
 }

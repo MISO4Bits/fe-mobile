@@ -1,12 +1,9 @@
 package com.solventa4bits.movil.sesion.datos
 
+import com.solventa4bits.movil.red.crearRetrofit
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import retrofit2.Response
-import retrofit2.Retrofit
-import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import retrofit2.http.Body
 import retrofit2.http.POST
 
@@ -37,14 +34,5 @@ data class SesionDto(
     val refreshToken: String,
 )
 
-// Si el BFF agrega un campo nuevo, la app no debe romperse por eso.
-private val formatoJson = Json { ignoreUnknownKeys = true }
-
-/** Arma el cliente de Retrofit. La URL base debe terminar en "/". */
 fun crearSesionApi(urlBase: String, cliente: OkHttpClient = OkHttpClient()): SesionApi =
-    Retrofit.Builder()
-        .baseUrl(urlBase)
-        .client(cliente)
-        .addConverterFactory(formatoJson.asConverterFactory("application/json".toMediaType()))
-        .build()
-        .create(SesionApi::class.java)
+    crearRetrofit(urlBase, cliente).create(SesionApi::class.java)
