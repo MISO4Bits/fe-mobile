@@ -12,7 +12,6 @@
     <string name="login_error_fallo">No pudimos iniciar sesión. Inténtalo de nuevo.</string>
 
     <string name="inicio_titulo">Inicio</string>
-    <string name="inicio_menu">Menú</string>
     <string name="inicio_sin_seguros">Todavía no tienes seguros</string>
     <string name="inicio_lema">Todo tu seguro en un solo lugar.</string>
     <string name="inicio_cotiza_detalle">Cotiza el seguro de vida deudores de tu crédito hipotecario. Son unos minutos.</string>
@@ -20,7 +19,30 @@
     <string name="inicio_nueva_cotizacion">Nueva cotización</string>
     <string name="inicio_nueva_cotizacion_detalle">Otro crédito o inmueble</string>
     <string name="inicio_empezar">Empezar</string>
-    <string name="inicio_cerrar_sesion">Cerrar sesión</string>
-    <string name="inicio_confirmar_cierre">¿Quieres cerrar sesión?</string>
-    <string name="inicio_cancelar">Cancelar</string>
+
+    <string name="barra_menu">Menú</string>
+    <string name="barra_cerrar_sesion">Cerrar sesión</string>
+    <string name="barra_confirmar_cierre">¿Quieres cerrar sesión?</string>
+    <string name="barra_cancelar">Cancelar</string>
+
+    <string name="cotizacion_titulo">Nueva cotización</string>
+    <string name="cotizacion_tu_credito">Tu crédito hipotecario</string>
+    <string name="cotizacion_elige_banco">Elige tu banco. Buscamos los datos de tu crédito y con eso calculamos tu precio.</string>
+    <string name="cotizacion_tu_banco">Tu banco</string>
+    <string name="cotizacion_banco_o_entidad">Banco o entidad</string>
+    <string name="cotizacion_datos_credito">Datos de tu crédito</string>
+    <string name="cotizacion_traido_de">Traído de %1$s · Open Finance</string>
+    <string name="cotizacion_monto_total">Monto total del crédito</string>
+    <string name="cotizacion_saldo_hoy">Saldo a hoy</string>
+    <string name="cotizacion_meses_faltan">Meses que te faltan</string>
+    <string name="cotizacion_meses">%1$d meses</string>
+    <string name="cotizacion_solo_lectura">Solo lectura. Nadie los cambia aquí.</string>
+    <string name="cotizacion_origen_datos">Vienen de %1$s por open finance, con el permiso que nos diste. Si el saldo no coincide, pídele la actualización a tu banco: volvemos a consultar cada 24 horas.</string>
+    <string name="cotizacion_sin_credito">No encontramos un crédito hipotecario tuyo en %1$s.</string>
+    <string name="cotizacion_consultando">Estamos consultando tu banco</string>
+    <string name="cotizacion_consultando_detalle">Le pedimos a tu banco los datos de tu crédito. Son unos segundos.</string>
+    <string name="cotizacion_fallo">No pudimos consultar los datos de tu crédito. Inténtalo de nuevo.</string>
+    <string name="cotizacion_reintentar">Reintentar</string>
+    <string name="cotizacion_ver_cotizacion">Ver mi cotización</string>
+    <string name="cotizacion_atras">Atrás</string>
 </resources>

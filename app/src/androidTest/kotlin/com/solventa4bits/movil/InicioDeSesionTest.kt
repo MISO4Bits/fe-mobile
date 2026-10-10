@@ -8,6 +8,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.solventa4bits.movil.cotizacion.datos.AdaptadorCreditos
+import com.solventa4bits.movil.cotizacion.datos.crearCreditosApi
 import com.solventa4bits.movil.sesion.datos.AdaptadorSesion
 import com.solventa4bits.movil.sesion.datos.AlmacenDeSesionSeguro
 import com.solventa4bits.movil.sesion.datos.BovedaKeystore
@@ -57,8 +59,9 @@ class InicioDeSesionTest {
     fun conCredencialesCorrectasLlegaAlInicio() {
         bff.enqueue(MockResponse().setResponseCode(200).setBody(SESION))
         val servicio = AdaptadorSesion(crearSesionApi(bff.url("/").toString()), traza)
+        val creditos = AdaptadorCreditos(crearCreditosApi(bff.url("/").toString()), almacen, traza)
         composeRule.setContent {
-            TemaSolventa { AppSolventa(servicio, almacen) }
+            TemaSolventa { AppSolventa(servicio, almacen, creditos) }
         }
 
         composeRule.onNodeWithText("Correo electrónico").performTextInput("ana.rios@example.com")
