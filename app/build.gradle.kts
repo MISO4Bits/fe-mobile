@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +7,15 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kover)
 }
+
+// URL del BFF en la version de depuracion. Por defecto es el BFF levantado en
+// el computador de quien desarrolla (desde el emulador, 10.0.2.2 es el
+// localhost de ese computador). Para probar contra otro ambiente se define
+// bff.url en local.properties, que no se versiona:
+//   bff.url=https://dev.solventa4bits.com/mobile/
+val urlBffDeDepuracion: String = Properties()
+    .apply { rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use(::load) }
+    .getProperty("bff.url", "http://10.0.2.2:8082/")
 
 // Cobertura de pruebas automatizadas. El umbral es el 80 % que declara la
 // Estrategia de Pruebas y al que apunta el criterio CP-4 de cada historia.
@@ -61,9 +72,7 @@ android {
 
     buildTypes {
         debug {
-            // BFF levantado en el computador de quien desarrolla. Desde el
-            // emulador, 10.0.2.2 es el localhost de ese computador.
-            buildConfigField("String", "URL_BASE_BFF", "\"http://10.0.2.2:8082/\"")
+            buildConfigField("String", "URL_BASE_BFF", "\"$urlBffDeDepuracion\"")
         }
         release {
             isMinifyEnabled = true
