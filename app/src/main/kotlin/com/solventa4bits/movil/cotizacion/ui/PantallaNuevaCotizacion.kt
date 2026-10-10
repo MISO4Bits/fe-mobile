@@ -42,12 +42,15 @@ import com.solventa4bits.movil.ui.tema.TemaSolventa
 
 /**
  * Primer paso de una cotizacion: el cliente elige su banco y ve los datos de
- * su credito hipotecario (Figma 12, 12A y 12B). Solo dibuja el [estado].
+ * su credito hipotecario (Figma 12, 12A, 12B y 12C). Solo dibuja el [estado].
  */
 @Composable
 fun PantallaNuevaCotizacion(
     estado: EstadoNuevaCotizacion,
     alElegirEntidad: (EntidadFinanciera) -> Unit,
+    alCambiarMonto: (String) -> Unit,
+    alCambiarSaldo: (String) -> Unit,
+    alCambiarMeses: (String) -> Unit,
     alReintentar: () -> Unit,
     alVolver: () -> Unit,
     alCerrarSesion: () -> Unit,
@@ -69,7 +72,15 @@ fun PantallaNuevaCotizacion(
             when {
                 estado.cargando -> Consultando()
                 estado.fallo -> NoSePudoConsultar(alReintentar)
-                else -> BancoYCredito(estado, alElegirEntidad)
+                else -> {
+                    SelectorConEtiqueta(estado, alElegirEntidad)
+                    if (estado.pideDatosAMano) {
+                        Etiqueta(stringResource(R.string.cotizacion_datos_credito))
+                        FormularioAMano(estado, alCambiarMonto, alCambiarSaldo, alCambiarMeses)
+                    } else {
+                        CreditoDelBanco(estado)
+                    }
+                }
             }
         }
         Column(
@@ -79,7 +90,7 @@ fun PantallaNuevaCotizacion(
             // La cotizacion es la siguiente historia (BITS-293): aun no lleva a ninguna parte.
             Button(
                 onClick = {},
-                enabled = estado.creditoElegido != null,
+                enabled = estado.puedeCotizar,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(stringResource(R.string.cotizacion_ver_cotizacion))
@@ -126,7 +137,7 @@ private fun NoSePudoConsultar(alReintentar: () -> Unit) {
 }
 
 @Composable
-private fun BancoYCredito(
+private fun SelectorConEtiqueta(
     estado: EstadoNuevaCotizacion,
     alElegirEntidad: (EntidadFinanciera) -> Unit,
 ) {
@@ -137,19 +148,15 @@ private fun BancoYCredito(
     )
     Etiqueta(stringResource(R.string.cotizacion_tu_banco))
     SelectorDeBanco(estado.entidades, estado.entidadElegida, alElegirEntidad)
+}
 
-    val elegida = estado.entidadElegida ?: return
+/** Figma 12B: los datos que el banco reporto, solo lectura. */
+@Composable
+private fun CreditoDelBanco(estado: EstadoNuevaCotizacion) {
+    val entidad = estado.entidadElegida ?: return
+    val credito = estado.creditoElegido ?: return
     Etiqueta(stringResource(R.string.cotizacion_datos_credito))
-    val credito = estado.creditoElegido
-    if (credito == null) {
-        // El formulario para escribir los datos a mano llega en el siguiente paso de BITS-291.
-        Text(
-            text = stringResource(R.string.cotizacion_sin_credito, elegida.nombre),
-            style = MaterialTheme.typography.bodyMedium,
-        )
-    } else {
-        DatosDelCredito(elegida, credito)
-    }
+    DatosDelCredito(entidad, credito)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -225,7 +232,7 @@ private fun Dato(nombre: String, valor: String) {
 }
 
 @Composable
-private fun Etiqueta(texto: String) {
+internal fun Etiqueta(texto: String) {
     Text(
         text = texto.uppercase(),
         style = MaterialTheme.typography.labelSmall,
@@ -255,6 +262,9 @@ private fun PantallaNuevaCotizacionPreview() {
                 entidadElegida = bancolombia,
             ),
             alElegirEntidad = {},
+            alCambiarMonto = {},
+            alCambiarSaldo = {},
+            alCambiarMeses = {},
             alReintentar = {},
             alVolver = {},
             alCerrarSesion = {},

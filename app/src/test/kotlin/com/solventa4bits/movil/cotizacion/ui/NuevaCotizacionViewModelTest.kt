@@ -82,6 +82,8 @@ class NuevaCotizacionViewModelTest {
         viewModel.elegirEntidad(bancolombia)
 
         assertEquals(hipoteca, viewModel.estado.creditoElegido)
+        assertFalse(viewModel.estado.pideDatosAMano)
+        assertTrue(viewModel.estado.puedeCotizar)
     }
 
     @Test
@@ -94,6 +96,65 @@ class NuevaCotizacionViewModelTest {
 
         assertEquals(davivienda, viewModel.estado.entidadElegida)
         assertNull(viewModel.estado.creditoElegido)
+        assertTrue(viewModel.estado.pideDatosAMano)
+        assertFalse(viewModel.estado.puedeCotizar)
+    }
+
+    @Test
+    @DisplayName("con los tres datos escritos a mano y validos se puede cotizar")
+    fun datosAManoValidos() {
+        val viewModel = viewModelEnBancoSinHipoteca()
+
+        viewModel.cambiarMonto("200000000")
+        viewModel.cambiarSaldo("150000000")
+        viewModel.cambiarMeses("120")
+
+        assertTrue(viewModel.estado.puedeCotizar)
+    }
+
+    @Test
+    @DisplayName("de lo que se escribe a mano solo quedan los digitos")
+    fun soloDigitos() {
+        val viewModel = viewModelEnBancoSinHipoteca()
+
+        viewModel.cambiarMonto("$ 200.000.000")
+        viewModel.cambiarMeses("12 meses")
+
+        assertEquals("200000000", viewModel.estado.montoEscrito)
+        assertEquals("12", viewModel.estado.mesesEscritos)
+    }
+
+    @Test
+    @DisplayName("si lo que debe hoy supera el monto total lo senala y no deja cotizar")
+    fun saldoMayorQueMonto() {
+        val viewModel = viewModelEnBancoSinHipoteca()
+
+        viewModel.cambiarMonto("100000000")
+        viewModel.cambiarSaldo("150000000")
+        viewModel.cambiarMeses("120")
+
+        assertTrue(viewModel.estado.saldoMayorQueMonto)
+        assertFalse(viewModel.estado.puedeCotizar)
+    }
+
+    @Test
+    @DisplayName("con un dato en cero o sin escribir no deja cotizar")
+    fun datosIncompletos() {
+        val viewModel = viewModelEnBancoSinHipoteca()
+
+        viewModel.cambiarMonto("200000000")
+        viewModel.cambiarSaldo("150000000")
+        assertFalse(viewModel.estado.puedeCotizar)
+
+        viewModel.cambiarMeses("0")
+        assertFalse(viewModel.estado.puedeCotizar)
+    }
+
+    private fun viewModelEnBancoSinHipoteca(): NuevaCotizacionViewModel {
+        val viewModel = NuevaCotizacionViewModel(ServicioFalso(conHipoteca))
+        viewModel.consultar()
+        viewModel.elegirEntidad(davivienda)
+        return viewModel
     }
 
     @Test

@@ -20,10 +20,35 @@ data class EstadoNuevaCotizacion(
     val entidades: List<EntidadFinanciera> = emptyList(),
     val creditos: List<CreditoHipotecario> = emptyList(),
     val entidadElegida: EntidadFinanciera? = null,
+    // Lo que el cliente escribe a mano cuando su banco no reporto la hipoteca.
+    // Son solo digitos: valores en pesos y meses, sin decimales.
+    val montoEscrito: String = "",
+    val saldoEscrito: String = "",
+    val mesesEscritos: String = "",
 ) {
     /** La hipoteca del cliente en el banco que eligio, si su banco la reporto. */
     val creditoElegido: CreditoHipotecario?
         get() = entidadElegida?.let { elegida -> creditos.find { it.entidadId == elegida.id } }
+
+    /** Eligio banco y no hay datos de ese banco: los escribe el. */
+    val pideDatosAMano: Boolean
+        get() = entidadElegida != null && creditoElegido == null
+
+    /** No se puede deber mas de lo que se pidio prestado. */
+    val saldoMayorQueMonto: Boolean
+        get() {
+            val monto = montoEscrito.toLongOrNull()
+            val saldo = saldoEscrito.toLongOrNull()
+            return monto != null && saldo != null && saldo > monto
+        }
+
+    private val datosAManoValidos: Boolean
+        get() = listOf(montoEscrito, saldoEscrito, mesesEscritos).all { (it.toLongOrNull() ?: 0) > 0 } &&
+            !saldoMayorQueMonto
+
+    /** Hay datos del credito para cotizar, traidos del banco o escritos a mano. */
+    val puedeCotizar: Boolean
+        get() = creditoElegido != null || (pideDatosAMano && datosAManoValidos)
 }
 
 /** Decide que pasa en la pantalla de nueva cotizacion. La pantalla solo dibuja. */
@@ -55,5 +80,24 @@ class NuevaCotizacionViewModel(
 
     fun elegirEntidad(entidad: EntidadFinanciera) {
         estado = estado.copy(entidadElegida = entidad)
+    }
+
+    fun cambiarMonto(texto: String) {
+        estado = estado.copy(montoEscrito = soloDigitos(texto, MAXIMO_DIGITOS_PESOS))
+    }
+
+    fun cambiarSaldo(texto: String) {
+        estado = estado.copy(saldoEscrito = soloDigitos(texto, MAXIMO_DIGITOS_PESOS))
+    }
+
+    fun cambiarMeses(texto: String) {
+        estado = estado.copy(mesesEscritos = soloDigitos(texto, MAXIMO_DIGITOS_MESES))
+    }
+
+    private fun soloDigitos(texto: String, maximo: Int) = texto.filter(Char::isDigit).take(maximo)
+
+    private companion object {
+        const val MAXIMO_DIGITOS_PESOS = 12
+        const val MAXIMO_DIGITOS_MESES = 3
     }
 }

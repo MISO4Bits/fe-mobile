@@ -88,6 +88,9 @@ fun AppSolventa(sesion: ServicioDeSesion, almacen: AlmacenDeSesion, creditos: Se
                 PantallaNuevaCotizacion(
                     estado = cotizacion.estado,
                     alElegirEntidad = cotizacion::elegirEntidad,
+                    alCambiarMonto = cotizacion::cambiarMonto,
+                    alCambiarSaldo = cotizacion::cambiarSaldo,
+                    alCambiarMeses = cotizacion::cambiarMeses,
                     alReintentar = cotizacion::consultar,
                     alVolver = { cotizando = false },
                     alCerrarSesion = cerrarSesion,

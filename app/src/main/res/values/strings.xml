@@ -38,7 +38,12 @@
     <string name="cotizacion_meses">%1$d meses</string>
     <string name="cotizacion_solo_lectura">Solo lectura. Nadie los cambia aquí.</string>
     <string name="cotizacion_origen_datos">Vienen de %1$s por open finance, con el permiso que nos diste. Si el saldo no coincide, pídele la actualización a tu banco: volvemos a consultar cada 24 horas.</string>
-    <string name="cotizacion_sin_credito">No encontramos un crédito hipotecario tuyo en %1$s.</string>
+    <string name="cotizacion_sin_conexion">Tu banco todavía no está conectado. Escribe los datos de tu crédito.</string>
+    <string name="cotizacion_cuanto_debes">¿Cuánto debes hoy?</string>
+    <string name="cotizacion_saldo_mayor">No puede ser mayor que el monto total.</string>
+    <string name="cotizacion_sufijo_meses">meses</string>
+    <string name="cotizacion_declaras_titulo">Los datos los declaras tú</string>
+    <string name="cotizacion_declaras_detalle">Míralos en tu extracto y escríbelos exactos. Si no cuadran con tu banco, tu precio cambia y tu seguro puede quedar mal cubierto.</string>
     <string name="cotizacion_consultando">Estamos consultando tu banco</string>
     <string name="cotizacion_consultando_detalle">Le pedimos a tu banco los datos de tu crédito. Son unos segundos.</string>
     <string name="cotizacion_fallo">No pudimos consultar los datos de tu crédito. Inténtalo de nuevo.</string>
