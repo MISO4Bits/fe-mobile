@@ -58,6 +58,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AppSolventa(sesion: ServicioDeSesion, almacen: AlmacenDeSesion, creditos: ServicioDeCreditos) {
     val login = viewModel { LoginViewModel(sesion, almacen) }
+    val cotizacion = viewModel { NuevaCotizacionViewModel(creditos) }
     var cotizando by rememberSaveable { mutableStateOf(false) }
     val cerrarSesion = {
         cotizando = false
@@ -76,9 +77,10 @@ fun AppSolventa(sesion: ServicioDeSesion, almacen: AlmacenDeSesion, creditos: Se
             )
 
             cotizando -> {
-                val cotizacion = viewModel { NuevaCotizacionViewModel(creditos) }
-                // Cada vez que se entra a la pantalla se consulta de nuevo.
-                LaunchedEffect(Unit) { cotizacion.empezar() }
+                // Al girar el telefono esto se vuelve a ejecutar: no debe
+                // borrar lo que el cliente ya escribio. Solo consulta si la
+                // pantalla se restauro sin haber consultado nunca.
+                LaunchedEffect(Unit) { if (!cotizacion.empezo) cotizacion.empezar() }
                 // La sesion ya no se pudo refrescar: toca iniciar sesion de nuevo.
                 LaunchedEffect(cotizacion.estado.sesionVencida) {
                     if (cotizacion.estado.sesionVencida) cerrarSesion()
@@ -94,7 +96,11 @@ fun AppSolventa(sesion: ServicioDeSesion, almacen: AlmacenDeSesion, creditos: Se
             }
 
             else -> PantallaInicio(
-                alCotizar = { cotizando = true },
+                // Cada vez que se entra desde el inicio, la cotizacion empieza de cero.
+                alCotizar = {
+                    cotizacion.empezar()
+                    cotizando = true
+                },
                 alCerrarSesion = cerrarSesion,
                 modifier = conRelleno,
             )

@@ -91,6 +91,10 @@ class NuevaCotizacionViewModel(
     var estado by mutableStateOf(EstadoNuevaCotizacion())
         private set
 
+    /** Si ya se consulto alguna vez. Sirve para no volver a empezar al girar el telefono. */
+    var empezo = false
+        private set
+
     /** Al entrar a la pantalla: empieza de cero y consulta. */
     fun empezar() = cargar(EstadoNuevaCotizacion())
 
@@ -99,6 +103,7 @@ class NuevaCotizacionViewModel(
     // Una sola llamada trae los bancos y las hipotecas. Elegir banco despues
     // no vuelve a llamar al BFF.
     private fun cargar(desde: EstadoNuevaCotizacion) {
+        empezo = true
         estado = desde.copy(cargando = true, fallo = false, fuenteNoDisponible = false)
         viewModelScope.launch {
             estado = when (val resultado = servicio.consultar()) {

@@ -69,9 +69,15 @@ class NuevaCotizacionViewModelTest {
     // --- AC-1 y AC-2: elegir banco y ver los datos que reporto.
 
     @Test
-    @DisplayName("antes de consultar muestra que esta cargando")
+    @DisplayName("antes de consultar muestra que esta cargando y sabe que aun no empezo")
     fun empiezaCargando() {
-        assertTrue(NuevaCotizacionViewModel(ServicioFalso(conHipoteca)).estado.cargando)
+        val viewModel = NuevaCotizacionViewModel(ServicioFalso(conHipoteca))
+
+        assertTrue(viewModel.estado.cargando)
+        assertFalse(viewModel.empezo)
+
+        viewModel.empezar()
+        assertTrue(viewModel.empezo)
     }
 
     @Test

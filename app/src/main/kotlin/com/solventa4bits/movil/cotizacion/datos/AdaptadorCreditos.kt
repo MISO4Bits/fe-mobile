@@ -11,6 +11,7 @@ import com.solventa4bits.movil.sesion.dominio.ResultadoInicioSesion
 import com.solventa4bits.movil.sesion.dominio.ServicioDeSesion
 import com.solventa4bits.movil.sesion.dominio.Sesion
 import com.solventa4bits.movil.traza.Traza
+import kotlinx.serialization.SerializationException
 import java.io.IOException
 import java.net.HttpURLConnection.HTTP_UNAUTHORIZED
 
@@ -61,6 +62,9 @@ class AdaptadorCreditos(
             }
         } catch (e: IOException) {
             traza.error(ORIGEN, "No se pudo llegar al BFF al consultar las hipotecas", e)
+            ResultadoCreditos.Fallo
+        } catch (e: SerializationException) {
+            traza.error(ORIGEN, "La respuesta del BFF no cumple el contrato de hipotecas", e)
             ResultadoCreditos.Fallo
         }
 

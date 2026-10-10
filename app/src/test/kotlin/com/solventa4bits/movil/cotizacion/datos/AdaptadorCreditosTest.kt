@@ -12,6 +12,7 @@ import com.solventa4bits.movil.sesion.dominio.ServicioDeSesion
 import com.solventa4bits.movil.sesion.dominio.Sesion
 import com.solventa4bits.movil.traza.TrazaFalsa
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.SerializationException
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.jupiter.api.AfterEach
@@ -175,6 +176,15 @@ class AdaptadorCreditosTest {
 
         assertEquals(ResultadoCreditos.Fallo, adaptador().consultar())
         assertTrue(traza.errores.single().mensaje.contains("503"))
+    }
+
+    @Test
+    @DisplayName("si la respuesta no cumple el contrato responde controlado y deja traza")
+    fun respuestaFueraDeContrato() = runTest {
+        servidor.enqueue(MockResponse().setResponseCode(200).setBody("{\"inesperado\": true}"))
+
+        assertEquals(ResultadoCreditos.Fallo, adaptador().consultar())
+        assertInstanceOf(SerializationException::class.java, traza.errores.single().causa)
     }
 
     @Test
