@@ -11,7 +11,15 @@
     <string name="login_error_credenciales">Correo o contraseña incorrectos.</string>
     <string name="login_error_fallo">No pudimos iniciar sesión. Inténtalo de nuevo.</string>
 
-    <string name="inicio_bienvenida">Bienvenido a Solventa</string>
+    <string name="inicio_titulo">Inicio</string>
+    <string name="inicio_menu">Menú</string>
+    <string name="inicio_sin_seguros">Todavía no tienes seguros</string>
+    <string name="inicio_lema">Todo tu seguro en un solo lugar.</string>
+    <string name="inicio_cotiza_detalle">Cotiza el seguro de vida deudores de tu crédito hipotecario. Son unos minutos.</string>
+    <string name="inicio_cotizar">Cotizar mi seguro</string>
+    <string name="inicio_nueva_cotizacion">Nueva cotización</string>
+    <string name="inicio_nueva_cotizacion_detalle">Otro crédito o inmueble</string>
+    <string name="inicio_empezar">Empezar</string>
     <string name="inicio_cerrar_sesion">Cerrar sesión</string>
     <string name="inicio_confirmar_cierre">¿Quieres cerrar sesión?</string>
     <string name="inicio_cancelar">Cancelar</string>

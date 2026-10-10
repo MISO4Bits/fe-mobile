@@ -46,6 +46,8 @@ fun AppSolventa(servicio: ServicioDeSesion, almacen: AlmacenDeSesion) {
     Scaffold(modifier = Modifier.fillMaxSize()) { relleno ->
         if (viewModel.estado.sesionIniciada) {
             PantallaInicio(
+                // La pantalla de nueva cotizacion llega en el siguiente paso de BITS-291.
+                alCotizar = {},
                 alCerrarSesion = viewModel::cerrarSesion,
                 modifier = Modifier.padding(relleno),
             )

@@ -66,9 +66,9 @@ class InicioDeSesionTest {
         composeRule.onNodeWithText("Iniciar sesión").performClick()
 
         composeRule.waitUntil(ESPERA_MS) {
-            composeRule.onAllNodesWithText("Bienvenido a Solventa").fetchSemanticsNodes().isNotEmpty()
+            composeRule.onAllNodesWithText("Cotizar mi seguro").fetchSemanticsNodes().isNotEmpty()
         }
-        composeRule.onNodeWithText("Bienvenido a Solventa").assertIsDisplayed()
+        composeRule.onNodeWithText("Cotizar mi seguro").assertIsDisplayed()
         assertNotNull(almacen.leer())
     }
 
