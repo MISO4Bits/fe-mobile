@@ -15,6 +15,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -43,6 +47,7 @@ fun PantallaLoQuePagas(
     modifier: Modifier = Modifier,
 ) {
     val variante = cotizacion.variante()
+    var explicandoElPrecio by rememberSaveable { mutableStateOf(false) }
     Column(modifier = modifier.fillMaxSize()) {
         BarraSolventa(stringResource(R.string.pagas_titulo), alCerrarSesion)
         Column(
@@ -63,6 +68,12 @@ fun PantallaLoQuePagas(
                 )
             }
             PrecioMensual(cotizacion)
+            // AC-3 y AC-4: la explicacion solo existe si el precio aplica el perfil.
+            if (cotizacion.personalizada) {
+                TextButton(onClick = { explicandoElPrecio = true }) {
+                    Text(stringResource(R.string.pagas_por_que))
+                }
+            }
             DatosALaVista(cotizacion)
             Avisos(variante)
         }
@@ -75,6 +86,9 @@ fun PantallaLoQuePagas(
                 Text(stringResource(R.string.cotizacion_atras))
             }
         }
+    }
+    if (explicandoElPrecio) {
+        PanelPorQueEstePrecio(cotizacion, alCerrar = { explicandoElPrecio = false })
     }
 }
 

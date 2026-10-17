@@ -86,4 +86,15 @@
     <string name="pagas_buscar_credito">Buscar mi crédito</string>
     <string name="pagas_ir_a_mis_seguros">Ir a mis seguros</string>
     <string name="pagas_continuar">Continuar</string>
+
+    <string name="pagas_por_que">¿Por qué este precio?</string>
+    <string name="porque_tu_precio">Tu precio personalizado</string>
+    <string name="porque_titulo">¿Por qué este precio?</string>
+    <string name="porque_resumen">Pagas %1$s al mes. La tarifa estándar para tu crédito sería %2$s.</string>
+    <string name="porque_baja">Baja tu precio.</string>
+    <string name="porque_sube">Sube tu precio.</string>
+    <string name="porque_mas_pesa">Es lo que más pesa.</string>
+    <string name="porque_saldos_titulo">No miramos tus saldos exactos</string>
+    <string name="porque_saldos_detalle">Solo el impacto de cada señal, nunca tus cifras.</string>
+    <string name="porque_entendido">Entendido</string>
 </resources>
