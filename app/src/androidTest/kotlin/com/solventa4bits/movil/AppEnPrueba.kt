@@ -54,7 +54,16 @@ fun ComposeContentTestRule.iniciarSesion() {
     onNodeWithText("Correo electrónico").performTextInput(UsuarioDemo.CORREO)
     onNodeWithText("Contraseña").performTextInput(UsuarioDemo.CONTRASENA)
     onNodeWithText("Iniciar sesión").performClick()
-    esperarTexto("Cotizar mi seguro")
+    // "Nueva cotizacion" esta en el Home con y sin cotizacion en curso.
+    esperarTexto("Nueva cotización")
+}
+
+/** Abre la lista de bancos de la nueva cotizacion y elige uno. */
+fun ComposeContentTestRule.elegirBanco(nombre: String) {
+    esperarTexto("Banco o entidad")
+    onNodeWithText("Banco o entidad").performClick()
+    esperarTexto(nombre)
+    onNodeWithText(nombre).performClick()
 }
 
 fun ComposeContentTestRule.esperarTexto(texto: String) {
