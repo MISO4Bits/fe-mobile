@@ -64,7 +64,10 @@ class LoginViewModel(
         if (!estado.puedeEnviar) return
         estado = estado.copy(cargando = true, error = null)
         viewModelScope.launch {
-            estado = when (val resultado = servicio.iniciarSesion(estado.correo, estado.contrasena)) {
+            // Un espacio que deja el teclado o el pegado al inicio o al final del
+            // correo hace que el BFF rechace el formato. La contrasena no se toca:
+            // un espacio puede ser parte de ella.
+            estado = when (val resultado = servicio.iniciarSesion(estado.correo.trim(), estado.contrasena)) {
                 is ResultadoInicioSesion.Exito -> {
                     almacen.guardar(resultado.sesion)
                     estado.copy(cargando = false, sesionIniciada = true)

@@ -22,4 +22,7 @@ interface AccionesDeCotizacion {
     fun cambiarSaldo(texto: String)
 
     fun cambiarMeses(texto: String)
+
+    /** Cotiza con los datos del credito: los del banco o los escritos a mano. */
+    fun cotizar()
 }

@@ -40,7 +40,7 @@ class NuevaCotizacionTest {
     fun siElBancoReportaLaHipotecaMuestraSusDatos() {
         entrarANuevaCotizacion(200, RespuestasBff.creditosDe(Personas.DANIEL))
 
-        elegirBanco("Bancolombia")
+        composeRule.elegirBanco("Bancolombia")
 
         composeRule.esperarTexto("$180.000.000")
         composeRule.onNodeWithText("$98.000.000").assertIsDisplayed()
@@ -53,7 +53,7 @@ class NuevaCotizacionTest {
     fun siNoHayDatosDelBancoElClienteLosEscribe() {
         entrarANuevaCotizacion(200, RespuestasBff.creditosDe(Personas.NICOLAS))
 
-        elegirBanco("Davivienda")
+        composeRule.elegirBanco("Davivienda")
 
         composeRule.esperarTexto("Los datos los declaras tú")
         composeRule.onNodeWithText("Ver mi cotización").assertIsNotEnabled()
@@ -89,13 +89,6 @@ class NuevaCotizacionTest {
         composeRule.abrirApp(bff, almacen)
         composeRule.iniciarSesion()
         composeRule.onNodeWithText("Cotizar mi seguro").performClick()
-    }
-
-    private fun elegirBanco(nombre: String) {
-        composeRule.esperarTexto("Banco o entidad")
-        composeRule.onNodeWithText("Banco o entidad").performClick()
-        composeRule.esperarTexto(nombre)
-        composeRule.onNodeWithText(nombre).performClick()
     }
 
     private fun escribirEn(campo: String, texto: String) {

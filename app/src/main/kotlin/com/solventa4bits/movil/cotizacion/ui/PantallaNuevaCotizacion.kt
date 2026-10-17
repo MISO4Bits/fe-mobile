@@ -75,8 +75,23 @@ fun PantallaNuevaCotizacion(
             }
         }
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            // La cotizacion es la siguiente historia (BITS-293): aun no lleva a ninguna parte.
-            Button(onClick = {}, enabled = estado.puedeCotizar, modifier = Modifier.fillMaxWidth()) {
+            estado.errorAlCotizar?.let { error ->
+                Text(
+                    text = when (error) {
+                        is ErrorAlCotizar.DatosRechazados ->
+                            error.mensaje ?: stringResource(R.string.cotizacion_rechazo_generico)
+                        ErrorAlCotizar.Fallo -> stringResource(R.string.cotizacion_fallo_al_cotizar)
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+            }
+            Button(
+                onClick = acciones::cotizar,
+                enabled = estado.puedeCotizar && !estado.cotizando,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
                 Text(stringResource(R.string.cotizacion_ver_cotizacion))
             }
             TextButton(onClick = alVolver) {
@@ -271,6 +286,7 @@ private fun PantallaNuevaCotizacionPreview() {
         override fun cambiarMonto(texto: String) = Unit
         override fun cambiarSaldo(texto: String) = Unit
         override fun cambiarMeses(texto: String) = Unit
+        override fun cotizar() = Unit
     }
     TemaSolventa {
         PantallaNuevaCotizacion(

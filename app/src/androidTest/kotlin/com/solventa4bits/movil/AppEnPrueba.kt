@@ -6,13 +6,16 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.platform.app.InstrumentationRegistry
+import com.solventa4bits.movil.cotizacion.datos.AdaptadorCotizaciones
 import com.solventa4bits.movil.cotizacion.datos.AdaptadorCreditos
+import com.solventa4bits.movil.cotizacion.datos.crearCotizacionesApi
 import com.solventa4bits.movil.cotizacion.datos.crearCreditosApi
 import com.solventa4bits.movil.fixtures.BffFalso
 import com.solventa4bits.movil.fixtures.UsuarioDemo
 import com.solventa4bits.movil.sesion.datos.AdaptadorSesion
 import com.solventa4bits.movil.sesion.datos.AlmacenDeSesionSeguro
 import com.solventa4bits.movil.sesion.datos.BovedaKeystore
+import com.solventa4bits.movil.sesion.datos.ConSesion
 import com.solventa4bits.movil.sesion.datos.crearSesionApi
 import com.solventa4bits.movil.sesion.dominio.AlmacenDeSesion
 import com.solventa4bits.movil.traza.Traza
@@ -34,10 +37,15 @@ fun almacenDelDispositivo(): AlmacenDeSesion {
 }
 
 fun ComposeContentTestRule.abrirApp(bff: BffFalso, almacen: AlmacenDeSesion) {
+    // Por defecto el cliente no tiene cotizacion en curso. Una prueba que la
+    // necesite responde otra cosa en la misma ruta.
+    bff.responderSiempreEn("/v1/cotizaciones/actual", 404)
     val sesion = AdaptadorSesion(crearSesionApi(bff.url), sinTraza)
-    val creditos = AdaptadorCreditos(crearCreditosApi(bff.url), almacen, sesion, sinTraza)
+    val conSesion = ConSesion(almacen, sesion)
+    val creditos = AdaptadorCreditos(crearCreditosApi(bff.url), conSesion, sinTraza)
+    val cotizaciones = AdaptadorCotizaciones(crearCotizacionesApi(bff.url), conSesion, sinTraza)
     setContent {
-        TemaSolventa { AppSolventa(sesion, almacen, creditos) }
+        TemaSolventa { AppSolventa(sesion, almacen, creditos, cotizaciones) }
     }
 }
 
@@ -46,7 +54,16 @@ fun ComposeContentTestRule.iniciarSesion() {
     onNodeWithText("Correo electrónico").performTextInput(UsuarioDemo.CORREO)
     onNodeWithText("Contraseña").performTextInput(UsuarioDemo.CONTRASENA)
     onNodeWithText("Iniciar sesión").performClick()
-    esperarTexto("Cotizar mi seguro")
+    // "Nueva cotizacion" esta en el Home con y sin cotizacion en curso.
+    esperarTexto("Nueva cotización")
+}
+
+/** Abre la lista de bancos de la nueva cotizacion y elige uno. */
+fun ComposeContentTestRule.elegirBanco(nombre: String) {
+    esperarTexto("Banco o entidad")
+    onNodeWithText("Banco o entidad").performClick()
+    esperarTexto(nombre)
+    onNodeWithText(nombre).performClick()
 }
 
 fun ComposeContentTestRule.esperarTexto(texto: String) {

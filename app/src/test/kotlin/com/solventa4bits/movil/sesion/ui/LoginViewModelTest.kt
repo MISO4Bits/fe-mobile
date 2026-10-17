@@ -50,6 +50,19 @@ class LoginViewModelTest {
     }
 
     @Test
+    @DisplayName("quita los espacios del inicio y el final del correo, pero no toca la contrasena")
+    fun quitaEspaciosDelCorreo() {
+        val viewModel = viewModelQueResponde(ResultadoInicioSesion.Exito(sesion))
+
+        viewModel.cambiarCorreo(" ana@correo.com ")
+        viewModel.cambiarContrasena(" Clave con espacios ")
+        viewModel.iniciarSesion()
+
+        assertEquals("ana@correo.com", correoEnviado)
+        assertEquals(" Clave con espacios ", contrasenaEnviada)
+    }
+
+    @Test
     @DisplayName("con credenciales correctas guarda la sesion y marca que entro")
     fun credencialesCorrectas() {
         val viewModel = viewModelQueResponde(ResultadoInicioSesion.Exito(sesion))
@@ -129,12 +142,19 @@ class LoginViewModelTest {
         assertEquals(EstadoLogin(), viewModel.estado)
     }
 
+    private var correoEnviado: String? = null
+    private var contrasenaEnviada: String? = null
+
     private fun viewModelQueResponde(
         inicio: ResultadoInicioSesion = ResultadoInicioSesion.Fallo,
         refresco: ResultadoInicioSesion = ResultadoInicioSesion.Fallo,
     ): LoginViewModel {
         val servicio = object : ServicioDeSesion {
-            override suspend fun iniciarSesion(correo: String, contrasena: String) = inicio
+            override suspend fun iniciarSesion(correo: String, contrasena: String): ResultadoInicioSesion {
+                correoEnviado = correo
+                contrasenaEnviada = contrasena
+                return inicio
+            }
             override suspend fun refrescar(tokenDeRefresco: String) = refresco
         }
         return LoginViewModel(servicio, almacen)

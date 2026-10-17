@@ -17,15 +17,21 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.solventa4bits.movil.cotizacion.datos.AdaptadorCotizaciones
 import com.solventa4bits.movil.cotizacion.datos.AdaptadorCreditos
+import com.solventa4bits.movil.cotizacion.datos.crearCotizacionesApi
 import com.solventa4bits.movil.cotizacion.datos.crearCreditosApi
+import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCotizaciones
 import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCreditos
 import com.solventa4bits.movil.cotizacion.ui.NuevaCotizacionViewModel
+import com.solventa4bits.movil.cotizacion.ui.PantallaLoQuePagas
 import com.solventa4bits.movil.cotizacion.ui.PantallaNuevaCotizacion
+import com.solventa4bits.movil.inicio.ui.InicioViewModel
 import com.solventa4bits.movil.inicio.ui.PantallaInicio
 import com.solventa4bits.movil.sesion.datos.AdaptadorSesion
 import com.solventa4bits.movil.sesion.datos.AlmacenDeSesionSeguro
 import com.solventa4bits.movil.sesion.datos.BovedaKeystore
+import com.solventa4bits.movil.sesion.datos.ConSesion
 import com.solventa4bits.movil.sesion.datos.crearSesionApi
 import com.solventa4bits.movil.sesion.dominio.AlmacenDeSesion
 import com.solventa4bits.movil.sesion.dominio.ServicioDeSesion
@@ -43,10 +49,12 @@ class MainActivity : ComponentActivity() {
         val traza = Traza { origen, mensaje, causa -> Log.e(origen, mensaje, causa) }
         val almacen = AlmacenDeSesionSeguro(BovedaKeystore(applicationContext, traza), traza)
         val sesion = AdaptadorSesion(crearSesionApi(BuildConfig.URL_BASE_BFF), traza)
-        val creditos = AdaptadorCreditos(crearCreditosApi(BuildConfig.URL_BASE_BFF), almacen, sesion, traza)
+        val conSesion = ConSesion(almacen, sesion)
+        val creditos = AdaptadorCreditos(crearCreditosApi(BuildConfig.URL_BASE_BFF), conSesion, traza)
+        val cotizaciones = AdaptadorCotizaciones(crearCotizacionesApi(BuildConfig.URL_BASE_BFF), conSesion, traza)
 
         setContent {
-            TemaSolventa { AppSolventa(sesion, almacen, creditos) }
+            TemaSolventa { AppSolventa(sesion, almacen, creditos, cotizaciones) }
         }
     }
 }
@@ -56,10 +64,18 @@ class MainActivity : ComponentActivity() {
  * inicio o la nueva cotizacion.
  */
 @Composable
-fun AppSolventa(sesion: ServicioDeSesion, almacen: AlmacenDeSesion, creditos: ServicioDeCreditos) {
+fun AppSolventa(
+    sesion: ServicioDeSesion,
+    almacen: AlmacenDeSesion,
+    creditos: ServicioDeCreditos,
+    cotizaciones: ServicioDeCotizaciones,
+) {
     val login = viewModel { LoginViewModel(sesion, almacen) }
-    val cotizacion = viewModel { NuevaCotizacionViewModel(creditos) }
+    val cotizacion = viewModel { NuevaCotizacionViewModel(creditos, cotizaciones) }
+    val inicio = viewModel { InicioViewModel(cotizaciones) }
     var cotizando by rememberSaveable { mutableStateOf(false) }
+    // La cotizacion se retomo desde el Home: "Atras" vuelve al Home.
+    var retomada by rememberSaveable { mutableStateOf(false) }
     val cerrarSesion = {
         cotizando = false
         login.cerrarSesion()
@@ -75,6 +91,24 @@ fun AppSolventa(sesion: ServicioDeSesion, almacen: AlmacenDeSesion, creditos: Se
                 alIniciarSesion = login::iniciarSesion,
                 modifier = conRelleno,
             )
+
+            cotizando && cotizacion.estado.cotizacion != null -> {
+                val volver = cotizacion::volverAlCredito
+                val alInicio = {
+                    volver()
+                    cotizando = false
+                }
+                val atras = if (retomada) alInicio else volver
+                BackHandler(onBack = atras)
+                PantallaLoQuePagas(
+                    cotizacion = checkNotNull(cotizacion.estado.cotizacion),
+                    alBuscarCredito = volver,
+                    alIrAMisSeguros = alInicio,
+                    alVolver = atras,
+                    alCerrarSesion = cerrarSesion,
+                    modifier = conRelleno,
+                )
+            }
 
             cotizando -> {
                 // Al girar el telefono esto se vuelve a ejecutar: no debe
@@ -95,15 +129,29 @@ fun AppSolventa(sesion: ServicioDeSesion, almacen: AlmacenDeSesion, creditos: Se
                 )
             }
 
-            else -> PantallaInicio(
-                // Cada vez que se entra desde el inicio, la cotizacion empieza de cero.
-                alCotizar = {
-                    cotizacion.empezar()
-                    cotizando = true
-                },
-                alCerrarSesion = cerrarSesion,
-                modifier = conRelleno,
-            )
+            else -> {
+                // Cada vez que se muestra el Home se consulta la cotizacion en curso.
+                LaunchedEffect(Unit) { inicio.consultar() }
+                LaunchedEffect(inicio.estado.sesionVencida) {
+                    if (inicio.estado.sesionVencida) cerrarSesion()
+                }
+                PantallaInicio(
+                    cotizacionEnCurso = inicio.estado.cotizacionEnCurso,
+                    // Cada vez que se entra desde el inicio, la cotizacion empieza de cero.
+                    alCotizar = {
+                        cotizacion.empezar()
+                        retomada = false
+                        cotizando = true
+                    },
+                    alVerCotizacion = { enCurso ->
+                        cotizacion.retomar(enCurso)
+                        retomada = true
+                        cotizando = true
+                    },
+                    alCerrarSesion = cerrarSesion,
+                    modifier = conRelleno,
+                )
+            }
         }
     }
 }

@@ -49,4 +49,53 @@ object RespuestasBff {
             }
         """.trimIndent()
     }
+
+    /**
+     * Respuesta de POST /v1/cotizaciones y GET /v1/cotizaciones/actual: el
+     * ejemplo del contrato de bff-mobile. Sin perfil, tarifa estandar.
+     */
+    fun cotizacion(conPerfil: Boolean = true): String {
+        val prima = if (conPerfil) PRIMA_CON_PERFIL else PRIMA_BASE
+        val perfil = if (conPerfil) {
+            """
+                {
+                  "nivelRiesgo": "BAJO",
+                  "factores": [
+                    { "descripcion": "Historial de pagos excelente", "efecto": "POSITIVO", "pesoRelativo": 0.1 },
+                    { "descripcion": "Endeudamiento bajo", "efecto": "POSITIVO", "pesoRelativo": 0.2 }
+                  ]
+                }
+            """.trimIndent()
+        } else {
+            "null"
+        }
+        return """
+            {
+              "estado": "VIGENTE",
+              "producto": "VIDA_HIPOTECARIO",
+              "datosCredito": {
+                "valorCredito": 250000000,
+                "plazoRestanteMeses": 180,
+                "entidadAcreedora": "Bancolombia",
+                "saldoInsoluto": 238500000
+              },
+              "origenDatos": "DECLARADO",
+              "oferta": {
+                "primaMensual": $prima,
+                "primaBaseMensual": $PRIMA_BASE,
+                "sumaAsegurada": 238500000,
+                "coberturaMeses": 180,
+                "moneda": "COP",
+                "personalizado": $conPerfil
+              },
+              "perfilRiesgo": $perfil,
+              "vigenciaCotizacion": { "desde": "2026-10-06T14:35:00Z", "hasta": "2026-11-05T14:35:00Z" },
+              "creadaEn": "2026-10-06T14:35:00Z"
+            }
+        """.trimIndent()
+    }
+
+    // Prima del ejemplo de BITS-95: tarifa estandar y con el ajuste de un perfil de riesgo bajo.
+    private const val PRIMA_BASE = 46_746
+    private const val PRIMA_CON_PERFIL = 39_734
 }

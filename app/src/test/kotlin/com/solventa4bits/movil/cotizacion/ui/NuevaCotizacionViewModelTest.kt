@@ -1,11 +1,15 @@
 package com.solventa4bits.movil.cotizacion.ui
 
+import com.solventa4bits.movil.cotizacion.dominio.Cotizacion
 import com.solventa4bits.movil.cotizacion.dominio.CreditoHipotecario
 import com.solventa4bits.movil.cotizacion.dominio.CreditosHipotecarios
+import com.solventa4bits.movil.cotizacion.dominio.DatosDelCredito
 import com.solventa4bits.movil.cotizacion.dominio.EntidadFinanciera
 import com.solventa4bits.movil.cotizacion.dominio.EstadoCreditos
 import com.solventa4bits.movil.cotizacion.dominio.OrigenDeDatos
+import com.solventa4bits.movil.cotizacion.dominio.ResultadoCotizacion
 import com.solventa4bits.movil.cotizacion.dominio.ResultadoCreditos
+import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCotizaciones
 import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCreditos
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -47,6 +51,33 @@ class NuevaCotizacionViewModelTest {
         override suspend fun consultar() = resultado
     }
 
+    /** Doble de prueba: responde [resultado] y guarda lo que se le envio. */
+    private class CotizacionesFalsas : ServicioDeCotizaciones {
+        var resultado: ResultadoCotizacion = ResultadoCotizacion.Fallo
+        var enviados: DatosDelCredito? = null
+
+        override suspend fun cotizar(datos: DatosDelCredito): ResultadoCotizacion {
+            enviados = datos
+            return resultado
+        }
+
+        override suspend fun consultarActual() = ResultadoCotizacion.SinCotizacion
+    }
+
+    private val cotizaciones = CotizacionesFalsas()
+
+    private val cotizacionDePrueba = Cotizacion(
+        vigente = true,
+        datosCredito = DatosDelCredito("Bancolombia", 180_000_000, 98_000_000, 96),
+        datosDeclarados = true,
+        primaMensual = 11_412.0,
+        primaBaseMensual = 13_426.0,
+        sumaAsegurada = 98_000_000.0,
+        coberturaMeses = 96,
+        personalizada = true,
+        factores = emptyList(),
+    )
+
     @BeforeEach
     fun preparar() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -58,7 +89,7 @@ class NuevaCotizacionViewModelTest {
     }
 
     private fun viewModelCon(resultado: ResultadoCreditos) =
-        NuevaCotizacionViewModel(ServicioFalso(resultado)).apply { empezar() }
+        NuevaCotizacionViewModel(ServicioFalso(resultado), cotizaciones).apply { empezar() }
 
     private fun NuevaCotizacionViewModel.escribirDatos(monto: String, saldo: String, meses: String) {
         cambiarMonto(monto)
@@ -71,7 +102,7 @@ class NuevaCotizacionViewModelTest {
     @Test
     @DisplayName("antes de consultar muestra que esta cargando y sabe que aun no empezo")
     fun empiezaCargando() {
-        val viewModel = NuevaCotizacionViewModel(ServicioFalso(conHipoteca))
+        val viewModel = NuevaCotizacionViewModel(ServicioFalso(conHipoteca), cotizaciones)
 
         assertTrue(viewModel.estado.cargando)
         assertFalse(viewModel.empezo)
@@ -111,7 +142,7 @@ class NuevaCotizacionViewModelTest {
     @DisplayName("si la consulta falla lo informa y al reintentar se recupera")
     fun falloYReintento() {
         val servicio = ServicioFalso(ResultadoCreditos.Fallo)
-        val viewModel = NuevaCotizacionViewModel(servicio).apply { empezar() }
+        val viewModel = NuevaCotizacionViewModel(servicio, cotizaciones).apply { empezar() }
         assertTrue(viewModel.estado.fallo)
 
         servicio.resultado = conHipoteca
@@ -139,7 +170,7 @@ class NuevaCotizacionViewModelTest {
     @DisplayName("si la fuente no responde lo informa, y al reintentar conserva el banco elegido y lo escrito")
     fun fuenteNoDisponibleConservaElBanco() {
         val servicio = ServicioFalso(fuenteCaida)
-        val viewModel = NuevaCotizacionViewModel(servicio).apply { empezar() }
+        val viewModel = NuevaCotizacionViewModel(servicio, cotizaciones).apply { empezar() }
         assertTrue(viewModel.estado.fuenteNoDisponible)
         viewModel.elegirEntidad(bancolombia)
         viewModel.cambiarMonto("200000000")
@@ -252,11 +283,11 @@ class NuevaCotizacionViewModelTest {
     }
 
     @Test
-    @DisplayName("un plazo por fuera de 12 a 480 meses se senala y no deja cotizar")
+    @DisplayName("un plazo por fuera de 1 a 480 meses se senala y no deja cotizar")
     fun mesesFueraDeRango() {
         val viewModel = viewModelCon(conHipoteca).apply { elegirEntidad(davivienda) }
 
-        viewModel.escribirDatos(monto = "200000000", saldo = "150000000", meses = "11")
+        viewModel.escribirDatos(monto = "200000000", saldo = "150000000", meses = "0")
         assertTrue(viewModel.estado.mesesFueraDeRango)
         assertFalse(viewModel.estado.puedeCotizar)
 
@@ -277,6 +308,108 @@ class NuevaCotizacionViewModelTest {
         assertFalse(viewModel.estado.saldoFueraDeRango)
         assertFalse(viewModel.estado.mesesFueraDeRango)
         assertFalse(viewModel.estado.puedeCotizar)
+    }
+
+    // --- Cotizar (BITS-95).
+
+    @Test
+    @DisplayName("cotiza con los datos que trajo el banco y guarda la cotizacion que devuelve el backend")
+    fun cotizaConDatosDelBanco() {
+        cotizaciones.resultado = ResultadoCotizacion.Exito(cotizacionDePrueba)
+        val viewModel = viewModelCon(conHipoteca).apply { elegirEntidad(bancolombia) }
+
+        viewModel.cotizar()
+
+        assertEquals(DatosDelCredito("Bancolombia", 180_000_000, 98_000_000, 96), cotizaciones.enviados)
+        assertEquals(cotizacionDePrueba, viewModel.estado.cotizacion)
+        assertFalse(viewModel.estado.cotizando)
+    }
+
+    @Test
+    @DisplayName("cotiza con los datos escritos a mano, con el banco que escribio el cliente")
+    fun cotizaConDatosAMano() {
+        val viewModel = viewModelCon(conHipoteca)
+        viewModel.elegirOtroBanco()
+        viewModel.cambiarBanco("  Banco Caja Social ")
+        viewModel.escribirDatos(monto = "200000000", saldo = "150000000", meses = "120")
+
+        viewModel.cotizar()
+
+        assertEquals(DatosDelCredito("Banco Caja Social", 200_000_000, 150_000_000, 120), cotizaciones.enviados)
+    }
+
+    @Test
+    @DisplayName("al volver de la cotizacion al credito se conserva lo elegido")
+    fun volverAlCredito() {
+        cotizaciones.resultado = ResultadoCotizacion.Exito(cotizacionDePrueba)
+        val viewModel = viewModelCon(conHipoteca).apply { elegirEntidad(bancolombia) }
+        viewModel.cotizar()
+
+        viewModel.volverAlCredito()
+
+        assertNull(viewModel.estado.cotizacion)
+        assertEquals(bancolombia, viewModel.estado.entidadElegida)
+    }
+
+    @Test
+    @DisplayName("retoma desde el Home la cotizacion en curso, y al buscar el credito consulta desde cero")
+    fun retomar() {
+        val viewModel = viewModelCon(conHipoteca).apply { elegirEntidad(bancolombia) }
+
+        viewModel.retomar(cotizacionDePrueba)
+
+        assertEquals(cotizacionDePrueba, viewModel.estado.cotizacion)
+        assertNull(viewModel.estado.entidadElegida)
+        assertFalse(viewModel.empezo)
+    }
+
+    @Test
+    @DisplayName("sin datos completos no cotiza")
+    fun sinDatosNoCotiza() {
+        val viewModel = viewModelCon(conHipoteca).apply { elegirEntidad(davivienda) }
+
+        viewModel.cotizar()
+
+        assertNull(cotizaciones.enviados)
+    }
+
+    @Test
+    @DisplayName("si el backend rechaza los datos muestra su mensaje, por ejemplo el limite de los 75 anos")
+    fun datosRechazados() {
+        cotizaciones.resultado = ResultadoCotizacion.DatosRechazados("El crédito terminaría a los 80 años")
+        val viewModel = viewModelCon(conHipoteca).apply { elegirEntidad(bancolombia) }
+
+        viewModel.cotizar()
+
+        assertEquals(
+            ErrorAlCotizar.DatosRechazados("El crédito terminaría a los 80 años"),
+            viewModel.estado.errorAlCotizar,
+        )
+        assertNull(viewModel.estado.cotizacion)
+    }
+
+    @Test
+    @DisplayName("si no se puede cotizar lo informa, y al volver a intentar se borra el aviso")
+    fun falloAlCotizar() {
+        val viewModel = viewModelCon(conHipoteca).apply { elegirEntidad(bancolombia) }
+        viewModel.cotizar()
+        assertEquals(ErrorAlCotizar.Fallo, viewModel.estado.errorAlCotizar)
+
+        cotizaciones.resultado = ResultadoCotizacion.Exito(cotizacionDePrueba)
+        viewModel.cotizar()
+
+        assertNull(viewModel.estado.errorAlCotizar)
+    }
+
+    @Test
+    @DisplayName("si la sesion vencio al cotizar lo informa para volver al inicio de sesion")
+    fun sesionVencidaAlCotizar() {
+        cotizaciones.resultado = ResultadoCotizacion.SesionVencida
+        val viewModel = viewModelCon(conHipoteca).apply { elegirEntidad(bancolombia) }
+
+        viewModel.cotizar()
+
+        assertTrue(viewModel.estado.sesionVencida)
     }
 
     @Test
