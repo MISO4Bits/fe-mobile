@@ -352,6 +352,18 @@ class NuevaCotizacionViewModelTest {
     }
 
     @Test
+    @DisplayName("retoma desde el Home la cotizacion en curso, y al buscar el credito consulta desde cero")
+    fun retomar() {
+        val viewModel = viewModelCon(conHipoteca).apply { elegirEntidad(bancolombia) }
+
+        viewModel.retomar(cotizacionDePrueba)
+
+        assertEquals(cotizacionDePrueba, viewModel.estado.cotizacion)
+        assertNull(viewModel.estado.entidadElegida)
+        assertFalse(viewModel.empezo)
+    }
+
+    @Test
     @DisplayName("sin datos completos no cotiza")
     fun sinDatosNoCotiza() {
         val viewModel = viewModelCon(conHipoteca).apply { elegirEntidad(davivienda) }

@@ -21,13 +21,20 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.solventa4bits.movil.R
+import com.solventa4bits.movil.cotizacion.dominio.Cotizacion
+import com.solventa4bits.movil.cotizacion.ui.enPesos
 import com.solventa4bits.movil.ui.BarraSolventa
 import com.solventa4bits.movil.ui.tema.TemaSolventa
 
-/** Inicio del cliente que todavia no tiene seguros ni cotizaciones (Figma 02A). */
+/**
+ * Inicio del cliente: sin cotizaciones ofrece cotizar (Figma 02A); con una
+ * cotizacion en curso la muestra para retomarla (02B, BITS-95 AC-6).
+ */
 @Composable
 fun PantallaInicio(
+    cotizacionEnCurso: Cotizacion?,
     alCotizar: () -> Unit,
+    alVerCotizacion: (Cotizacion) -> Unit,
     alCerrarSesion: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -39,7 +46,9 @@ fun PantallaInicio(
         ) {
             Column {
                 Text(
-                    text = stringResource(R.string.inicio_sin_seguros),
+                    text = stringResource(
+                        if (cotizacionEnCurso == null) R.string.inicio_sin_seguros else R.string.inicio_en_curso,
+                    ),
                     style = MaterialTheme.typography.headlineSmall,
                 )
                 Text(
@@ -47,7 +56,11 @@ fun PantallaInicio(
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
-            TarjetaCotizar(alCotizar)
+            if (cotizacionEnCurso == null) {
+                TarjetaCotizar(alCotizar)
+            } else {
+                TarjetaCotizacionEnCurso(cotizacionEnCurso) { alVerCotizacion(cotizacionEnCurso) }
+            }
             TarjetaNuevaCotizacion(alCotizar)
         }
     }
@@ -72,6 +85,30 @@ private fun TarjetaCotizar(alCotizar: () -> Unit) {
             Spacer(Modifier.height(8.dp))
             Button(onClick = alCotizar) {
                 Text(stringResource(R.string.inicio_cotizar))
+            }
+        }
+    }
+}
+
+@Composable
+private fun TarjetaCotizacionEnCurso(cotizacion: Cotizacion, alVer: () -> Unit) {
+    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.inicio_cotizacion_lista),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = stringResource(R.string.inicio_cotizacion_resumen, enPesos(cotizacion.primaMensual)),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(8.dp))
+            Button(onClick = alVer) {
+                Text(stringResource(R.string.inicio_ver_cotizacion))
             }
         }
     }
@@ -109,5 +146,5 @@ private fun TarjetaNuevaCotizacion(alCotizar: () -> Unit) {
 @Preview(showBackground = true)
 @Composable
 private fun PantallaInicioPreview() {
-    TemaSolventa { PantallaInicio(alCotizar = {}, alCerrarSesion = {}) }
+    TemaSolventa { PantallaInicio(cotizacionEnCurso = null, alCotizar = {}, alVerCotizacion = {}, alCerrarSesion = {}) }
 }

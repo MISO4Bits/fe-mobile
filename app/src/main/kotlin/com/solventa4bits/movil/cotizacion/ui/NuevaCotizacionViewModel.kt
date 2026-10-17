@@ -186,6 +186,15 @@ class NuevaCotizacionViewModel(
         estado = estado.copy(mesesEscritos = soloDigitos(texto, MAXIMO_DIGITOS_MESES))
     }
 
+    /**
+     * Retoma desde el Home la cotizacion en curso, sin repetir el proceso. Si
+     * luego el cliente busca su credito, la pantalla consulta desde cero.
+     */
+    fun retomar(cotizacion: Cotizacion) {
+        empezo = false
+        estado = EstadoNuevaCotizacion(cotizacion = cotizacion)
+    }
+
     /** Desde "Lo que pagas", de vuelta al credito: conserva el banco elegido y lo escrito. */
     fun volverAlCredito() {
         estado = estado.copy(cotizacion = null)

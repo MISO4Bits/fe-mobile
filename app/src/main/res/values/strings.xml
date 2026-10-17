@@ -97,4 +97,9 @@
     <string name="porque_saldos_titulo">No miramos tus saldos exactos</string>
     <string name="porque_saldos_detalle">Solo el impacto de cada señal, nunca tus cifras.</string>
     <string name="porque_entendido">Entendido</string>
+
+    <string name="inicio_en_curso">Tienes una cotización en curso</string>
+    <string name="inicio_cotizacion_lista">Tu cotización está lista</string>
+    <string name="inicio_cotizacion_resumen">Vida para tu crédito. %1$s al mes.</string>
+    <string name="inicio_ver_cotizacion">Ver mi cotización</string>
 </resources>

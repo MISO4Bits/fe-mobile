@@ -26,6 +26,7 @@ import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCreditos
 import com.solventa4bits.movil.cotizacion.ui.NuevaCotizacionViewModel
 import com.solventa4bits.movil.cotizacion.ui.PantallaLoQuePagas
 import com.solventa4bits.movil.cotizacion.ui.PantallaNuevaCotizacion
+import com.solventa4bits.movil.inicio.ui.InicioViewModel
 import com.solventa4bits.movil.inicio.ui.PantallaInicio
 import com.solventa4bits.movil.sesion.datos.AdaptadorSesion
 import com.solventa4bits.movil.sesion.datos.AlmacenDeSesionSeguro
@@ -71,7 +72,10 @@ fun AppSolventa(
 ) {
     val login = viewModel { LoginViewModel(sesion, almacen) }
     val cotizacion = viewModel { NuevaCotizacionViewModel(creditos, cotizaciones) }
+    val inicio = viewModel { InicioViewModel(cotizaciones) }
     var cotizando by rememberSaveable { mutableStateOf(false) }
+    // La cotizacion se retomo desde el Home: "Atras" vuelve al Home.
+    var retomada by rememberSaveable { mutableStateOf(false) }
     val cerrarSesion = {
         cotizando = false
         login.cerrarSesion()
@@ -90,15 +94,17 @@ fun AppSolventa(
 
             cotizando && cotizacion.estado.cotizacion != null -> {
                 val volver = cotizacion::volverAlCredito
-                BackHandler(onBack = volver)
+                val alInicio = {
+                    volver()
+                    cotizando = false
+                }
+                val atras = if (retomada) alInicio else volver
+                BackHandler(onBack = atras)
                 PantallaLoQuePagas(
                     cotizacion = checkNotNull(cotizacion.estado.cotizacion),
                     alBuscarCredito = volver,
-                    alIrAMisSeguros = {
-                        volver()
-                        cotizando = false
-                    },
-                    alVolver = volver,
+                    alIrAMisSeguros = alInicio,
+                    alVolver = atras,
                     alCerrarSesion = cerrarSesion,
                     modifier = conRelleno,
                 )
@@ -123,15 +129,29 @@ fun AppSolventa(
                 )
             }
 
-            else -> PantallaInicio(
-                // Cada vez que se entra desde el inicio, la cotizacion empieza de cero.
-                alCotizar = {
-                    cotizacion.empezar()
-                    cotizando = true
-                },
-                alCerrarSesion = cerrarSesion,
-                modifier = conRelleno,
-            )
+            else -> {
+                // Cada vez que se muestra el Home se consulta la cotizacion en curso.
+                LaunchedEffect(Unit) { inicio.consultar() }
+                LaunchedEffect(inicio.estado.sesionVencida) {
+                    if (inicio.estado.sesionVencida) cerrarSesion()
+                }
+                PantallaInicio(
+                    cotizacionEnCurso = inicio.estado.cotizacionEnCurso,
+                    // Cada vez que se entra desde el inicio, la cotizacion empieza de cero.
+                    alCotizar = {
+                        cotizacion.empezar()
+                        retomada = false
+                        cotizando = true
+                    },
+                    alVerCotizacion = { enCurso ->
+                        cotizacion.retomar(enCurso)
+                        retomada = true
+                        cotizando = true
+                    },
+                    alCerrarSesion = cerrarSesion,
+                    modifier = conRelleno,
+                )
+            }
         }
     }
 }
