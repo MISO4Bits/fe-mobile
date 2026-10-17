@@ -6,7 +6,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.platform.app.InstrumentationRegistry
+import com.solventa4bits.movil.cotizacion.datos.AdaptadorCotizaciones
 import com.solventa4bits.movil.cotizacion.datos.AdaptadorCreditos
+import com.solventa4bits.movil.cotizacion.datos.crearCotizacionesApi
 import com.solventa4bits.movil.cotizacion.datos.crearCreditosApi
 import com.solventa4bits.movil.fixtures.BffFalso
 import com.solventa4bits.movil.fixtures.UsuarioDemo
@@ -36,9 +38,11 @@ fun almacenDelDispositivo(): AlmacenDeSesion {
 
 fun ComposeContentTestRule.abrirApp(bff: BffFalso, almacen: AlmacenDeSesion) {
     val sesion = AdaptadorSesion(crearSesionApi(bff.url), sinTraza)
-    val creditos = AdaptadorCreditos(crearCreditosApi(bff.url), ConSesion(almacen, sesion), sinTraza)
+    val conSesion = ConSesion(almacen, sesion)
+    val creditos = AdaptadorCreditos(crearCreditosApi(bff.url), conSesion, sinTraza)
+    val cotizaciones = AdaptadorCotizaciones(crearCotizacionesApi(bff.url), conSesion, sinTraza)
     setContent {
-        TemaSolventa { AppSolventa(sesion, almacen, creditos) }
+        TemaSolventa { AppSolventa(sesion, almacen, creditos, cotizaciones) }
     }
 }
 

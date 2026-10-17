@@ -5,12 +5,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.solventa4bits.movil.cotizacion.dominio.Cotizacion
 import com.solventa4bits.movil.cotizacion.dominio.CreditoHipotecario
+import com.solventa4bits.movil.cotizacion.dominio.DatosDelCredito
 import com.solventa4bits.movil.cotizacion.dominio.EntidadFinanciera
 import com.solventa4bits.movil.cotizacion.dominio.EstadoCreditos
 import com.solventa4bits.movil.cotizacion.dominio.OrigenDeDatos
 import com.solventa4bits.movil.cotizacion.dominio.RangosDeCredito
+import com.solventa4bits.movil.cotizacion.dominio.ResultadoCotizacion
 import com.solventa4bits.movil.cotizacion.dominio.ResultadoCreditos
+import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCotizaciones
 import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCreditos
 import kotlinx.coroutines.launch
 
@@ -35,6 +39,10 @@ data class EstadoNuevaCotizacion(
     val montoEscrito: String = "",
     val saldoEscrito: String = "",
     val mesesEscritos: String = "",
+    val cotizando: Boolean = false,
+    /** La cotizacion que devolvio el backend, para mostrarla en "Lo que pagas". */
+    val cotizacion: Cotizacion? = null,
+    val errorAlCotizar: ErrorAlCotizar? = null,
 ) {
     private val monto get() = montoEscrito.toLongOrNull() ?: 0
     private val saldo get() = saldoEscrito.toLongOrNull() ?: 0
@@ -74,6 +82,23 @@ data class EstadoNuevaCotizacion(
     val puedeCotizar: Boolean
         get() = creditoElegido != null || (pideDatosAMano && datosAManoValidos)
 
+    /** Lo que se envia al cotizar: los datos del banco o los escritos a mano. Null si faltan. */
+    val datosParaCotizar: DatosDelCredito?
+        get() {
+            val credito = creditoElegido
+            val entidad = entidadElegida?.nombre ?: bancoEscrito.trim()
+            return when {
+                credito != null -> DatosDelCredito(
+                    entidadAcreedora = entidad,
+                    valorCredito = credito.valorCredito.toLong(),
+                    saldoInsoluto = credito.saldoInsoluto.toLong(),
+                    plazoRestanteMeses = credito.plazoRestanteMeses,
+                )
+                puedeCotizar -> DatosDelCredito(entidad, monto, saldo, meses)
+                else -> null
+            }
+        }
+
     /** La marca que acompana a la cotizacion (BITS-95). Null mientras no haya datos completos. */
     val origen: OrigenDeDatos?
         get() = when {
@@ -83,9 +108,18 @@ data class EstadoNuevaCotizacion(
         }
 }
 
+/** Lo que impidio cotizar. */
+sealed interface ErrorAlCotizar {
+    /** El backend rechazo los datos y dijo por que, por ejemplo el limite de los 75 anos. */
+    data class DatosRechazados(val mensaje: String?) : ErrorAlCotizar
+
+    data object Fallo : ErrorAlCotizar
+}
+
 /** Decide que pasa en la pantalla de nueva cotizacion. La pantalla solo dibuja. */
 class NuevaCotizacionViewModel(
     private val servicio: ServicioDeCreditos,
+    private val cotizaciones: ServicioDeCotizaciones,
 ) : ViewModel(), AccionesDeCotizacion {
 
     var estado by mutableStateOf(EstadoNuevaCotizacion())
@@ -96,15 +130,16 @@ class NuevaCotizacionViewModel(
         private set
 
     /** Al entrar a la pantalla: empieza de cero y consulta. */
-    fun empezar() = cargar(EstadoNuevaCotizacion())
-
-    override fun reintentar() = cargar(estado)
+    fun empezar() {
+        estado = EstadoNuevaCotizacion()
+        reintentar()
+    }
 
     // Una sola llamada trae los bancos y las hipotecas. Elegir banco despues
-    // no vuelve a llamar al BFF.
-    private fun cargar(desde: EstadoNuevaCotizacion) {
+    // no vuelve a llamar al BFF. Reintentar conserva el banco elegido y lo escrito.
+    override fun reintentar() {
         empezo = true
-        estado = desde.copy(cargando = true, fallo = false, fuenteNoDisponible = false)
+        estado = estado.copy(cargando = true, fallo = false, fuenteNoDisponible = false)
         viewModelScope.launch {
             estado = when (val resultado = servicio.consultar()) {
                 is ResultadoCreditos.Exito -> estado.copy(
@@ -147,6 +182,22 @@ class NuevaCotizacionViewModel(
 
     override fun cambiarMeses(texto: String) {
         estado = estado.copy(mesesEscritos = soloDigitos(texto, MAXIMO_DIGITOS_MESES))
+    }
+
+    override fun cotizar() {
+        val datos = estado.datosParaCotizar ?: return
+        estado = estado.copy(cotizando = true, errorAlCotizar = null)
+        viewModelScope.launch {
+            estado = when (val resultado = cotizaciones.cotizar(datos)) {
+                is ResultadoCotizacion.Exito -> estado.copy(cotizando = false, cotizacion = resultado.cotizacion)
+                is ResultadoCotizacion.DatosRechazados ->
+                    estado.copy(cotizando = false, errorAlCotizar = ErrorAlCotizar.DatosRechazados(resultado.mensaje))
+                ResultadoCotizacion.SesionVencida -> estado.copy(cotizando = false, sesionVencida = true)
+                // Al cotizar no hay "sin cotizacion": cualquier otra respuesta es un fallo.
+                ResultadoCotizacion.SinCotizacion, ResultadoCotizacion.Fallo ->
+                    estado.copy(cotizando = false, errorAlCotizar = ErrorAlCotizar.Fallo)
+            }
+        }
     }
 }
 

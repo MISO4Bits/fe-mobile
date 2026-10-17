@@ -44,12 +44,14 @@ data class CreditosHipotecarios(
 enum class OrigenDeDatos { VERIFICADO, DECLARADO }
 
 /**
- * Rangos de los datos escritos a mano. Son los que valida bff-web en
- * POST /v1/cotizaciones (openapi/openapi.yaml, DatosCredito).
+ * Rangos de los datos escritos a mano. Son los que valida bff-mobile en
+ * POST /v1/cotizaciones (openapi/openapi.yaml, DatosCredito). Que el credito no
+ * termine despues de los 75 anos solo lo puede validar el backend, que conoce
+ * la edad.
  */
 object RangosDeCredito {
     const val VALOR_MINIMO = 10_000_000L
-    const val MESES_MINIMO = 12
+    const val MESES_MINIMO = 1
     const val MESES_MAXIMO = 480
     const val LETRAS_MINIMAS_DEL_BANCO = 2
     const val LETRAS_MAXIMAS_DEL_BANCO = 80

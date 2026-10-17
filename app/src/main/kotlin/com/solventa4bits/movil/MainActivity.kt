@@ -17,8 +17,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.solventa4bits.movil.cotizacion.datos.AdaptadorCotizaciones
 import com.solventa4bits.movil.cotizacion.datos.AdaptadorCreditos
+import com.solventa4bits.movil.cotizacion.datos.crearCotizacionesApi
 import com.solventa4bits.movil.cotizacion.datos.crearCreditosApi
+import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCotizaciones
 import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCreditos
 import com.solventa4bits.movil.cotizacion.ui.NuevaCotizacionViewModel
 import com.solventa4bits.movil.cotizacion.ui.PantallaNuevaCotizacion
@@ -44,10 +47,12 @@ class MainActivity : ComponentActivity() {
         val traza = Traza { origen, mensaje, causa -> Log.e(origen, mensaje, causa) }
         val almacen = AlmacenDeSesionSeguro(BovedaKeystore(applicationContext, traza), traza)
         val sesion = AdaptadorSesion(crearSesionApi(BuildConfig.URL_BASE_BFF), traza)
-        val creditos = AdaptadorCreditos(crearCreditosApi(BuildConfig.URL_BASE_BFF), ConSesion(almacen, sesion), traza)
+        val conSesion = ConSesion(almacen, sesion)
+        val creditos = AdaptadorCreditos(crearCreditosApi(BuildConfig.URL_BASE_BFF), conSesion, traza)
+        val cotizaciones = AdaptadorCotizaciones(crearCotizacionesApi(BuildConfig.URL_BASE_BFF), conSesion, traza)
 
         setContent {
-            TemaSolventa { AppSolventa(sesion, almacen, creditos) }
+            TemaSolventa { AppSolventa(sesion, almacen, creditos, cotizaciones) }
         }
     }
 }
@@ -57,9 +62,14 @@ class MainActivity : ComponentActivity() {
  * inicio o la nueva cotizacion.
  */
 @Composable
-fun AppSolventa(sesion: ServicioDeSesion, almacen: AlmacenDeSesion, creditos: ServicioDeCreditos) {
+fun AppSolventa(
+    sesion: ServicioDeSesion,
+    almacen: AlmacenDeSesion,
+    creditos: ServicioDeCreditos,
+    cotizaciones: ServicioDeCotizaciones,
+) {
     val login = viewModel { LoginViewModel(sesion, almacen) }
-    val cotizacion = viewModel { NuevaCotizacionViewModel(creditos) }
+    val cotizacion = viewModel { NuevaCotizacionViewModel(creditos, cotizaciones) }
     var cotizando by rememberSaveable { mutableStateOf(false) }
     val cerrarSesion = {
         cotizando = false
