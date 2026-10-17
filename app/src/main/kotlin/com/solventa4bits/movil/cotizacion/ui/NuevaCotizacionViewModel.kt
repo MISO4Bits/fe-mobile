@@ -117,6 +117,8 @@ sealed interface ErrorAlCotizar {
 }
 
 /** Decide que pasa en la pantalla de nueva cotizacion. La pantalla solo dibuja. */
+// Una funcion por cada accion del cliente en el recorrido: partirla no lo haria mas claro.
+@Suppress("TooManyFunctions")
 class NuevaCotizacionViewModel(
     private val servicio: ServicioDeCreditos,
     private val cotizaciones: ServicioDeCotizaciones,
@@ -182,6 +184,11 @@ class NuevaCotizacionViewModel(
 
     override fun cambiarMeses(texto: String) {
         estado = estado.copy(mesesEscritos = soloDigitos(texto, MAXIMO_DIGITOS_MESES))
+    }
+
+    /** Desde "Lo que pagas", de vuelta al credito: conserva el banco elegido y lo escrito. */
+    fun volverAlCredito() {
+        estado = estado.copy(cotizacion = null)
     }
 
     override fun cotizar() {

@@ -339,6 +339,19 @@ class NuevaCotizacionViewModelTest {
     }
 
     @Test
+    @DisplayName("al volver de la cotizacion al credito se conserva lo elegido")
+    fun volverAlCredito() {
+        cotizaciones.resultado = ResultadoCotizacion.Exito(cotizacionDePrueba)
+        val viewModel = viewModelCon(conHipoteca).apply { elegirEntidad(bancolombia) }
+        viewModel.cotizar()
+
+        viewModel.volverAlCredito()
+
+        assertNull(viewModel.estado.cotizacion)
+        assertEquals(bancolombia, viewModel.estado.entidadElegida)
+    }
+
+    @Test
     @DisplayName("sin datos completos no cotiza")
     fun sinDatosNoCotiza() {
         val viewModel = viewModelCon(conHipoteca).apply { elegirEntidad(davivienda) }

@@ -59,4 +59,31 @@
     <string name="cotizacion_reintentar">Reintentar</string>
     <string name="cotizacion_ver_cotizacion">Ver mi cotización</string>
     <string name="cotizacion_atras">Atrás</string>
+
+    <string name="pagas_titulo">Lo que pagas</string>
+    <string name="pagas_esto_es_lo_que_pagas">Esto es lo que pagas</string>
+    <string name="pagas_subtitulo_preaprobada">Vida para tu crédito.</string>
+    <string name="pagas_subtitulo_banco">Precio estimado. Los datos de tu crédito vienen de tu banco.</string>
+    <string name="pagas_subtitulo_declarados">Precio estimado con los datos de crédito que tú declaraste.</string>
+    <string name="pagas_cada_mes">Pagas cada mes</string>
+    <string name="pagas_por_mes">/ mes</string>
+    <string name="pagas_te_cubre">Te cubre %1$d meses</string>
+    <string name="pagas_tu_credito">Tu crédito</string>
+    <string name="pagas_entidad">Entidad</string>
+    <string name="pagas_suma_asegurada">Suma asegurada</string>
+    <string name="pagas_estimada_titulo">Esta cotización es estimada</string>
+    <string name="pagas_estimada_detalle">Estamos analizando tu perfil. Para que el precio quede preaprobado también necesitamos los datos de tu crédito desde tu banco.</string>
+    <string name="pagas_trae_credito_titulo">Trae tu crédito desde tu banco</string>
+    <string name="pagas_trae_credito_detalle">Tu perfil está en análisis y te avisamos cuando termine. Mientras tanto no puedes subir documentos ni firmar.</string>
+    <string name="pagas_falta_confirmar_titulo">Falta confirmar los datos de tu crédito</string>
+    <string name="pagas_falta_confirmar_detalle">Ahora usamos lo que tú declaraste. Si los traemos desde tu banco, el precio queda preaprobado y no cambia después.</string>
+    <string name="pagas_necesitamos_banco_titulo">Para continuar necesitamos los datos de tu banco</string>
+    <string name="pagas_necesitamos_banco_detalle">Busca tu crédito en tu banco y confirmamos monto, saldo y plazo. Mientras tanto no puedes subir documentos ni firmar.</string>
+    <string name="pagas_analizando_titulo">Estamos analizando tu perfil</string>
+    <string name="pagas_analizando_detalle">Cuando termine te avisamos y tu precio queda preaprobado. No tienes que hacer nada.</string>
+    <string name="pagas_en_espera_titulo">Tu cotización queda en espera</string>
+    <string name="pagas_en_espera_detalle">Te avisamos apenas tengamos el resultado. Mientras tanto no puedes subir documentos ni firmar.</string>
+    <string name="pagas_buscar_credito">Buscar mi crédito</string>
+    <string name="pagas_ir_a_mis_seguros">Ir a mis seguros</string>
+    <string name="pagas_continuar">Continuar</string>
 </resources>

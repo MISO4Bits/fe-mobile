@@ -24,6 +24,7 @@ import com.solventa4bits.movil.cotizacion.datos.crearCreditosApi
 import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCotizaciones
 import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCreditos
 import com.solventa4bits.movil.cotizacion.ui.NuevaCotizacionViewModel
+import com.solventa4bits.movil.cotizacion.ui.PantallaLoQuePagas
 import com.solventa4bits.movil.cotizacion.ui.PantallaNuevaCotizacion
 import com.solventa4bits.movil.inicio.ui.PantallaInicio
 import com.solventa4bits.movil.sesion.datos.AdaptadorSesion
@@ -86,6 +87,22 @@ fun AppSolventa(
                 alIniciarSesion = login::iniciarSesion,
                 modifier = conRelleno,
             )
+
+            cotizando && cotizacion.estado.cotizacion != null -> {
+                val volver = cotizacion::volverAlCredito
+                BackHandler(onBack = volver)
+                PantallaLoQuePagas(
+                    cotizacion = checkNotNull(cotizacion.estado.cotizacion),
+                    alBuscarCredito = volver,
+                    alIrAMisSeguros = {
+                        volver()
+                        cotizando = false
+                    },
+                    alVolver = volver,
+                    alCerrarSesion = cerrarSesion,
+                    modifier = conRelleno,
+                )
+            }
 
             cotizando -> {
                 // Al girar el telefono esto se vuelve a ejecutar: no debe
