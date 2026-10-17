@@ -26,6 +26,7 @@ import com.solventa4bits.movil.inicio.ui.PantallaInicio
 import com.solventa4bits.movil.sesion.datos.AdaptadorSesion
 import com.solventa4bits.movil.sesion.datos.AlmacenDeSesionSeguro
 import com.solventa4bits.movil.sesion.datos.BovedaKeystore
+import com.solventa4bits.movil.sesion.datos.ConSesion
 import com.solventa4bits.movil.sesion.datos.crearSesionApi
 import com.solventa4bits.movil.sesion.dominio.AlmacenDeSesion
 import com.solventa4bits.movil.sesion.dominio.ServicioDeSesion
@@ -43,7 +44,7 @@ class MainActivity : ComponentActivity() {
         val traza = Traza { origen, mensaje, causa -> Log.e(origen, mensaje, causa) }
         val almacen = AlmacenDeSesionSeguro(BovedaKeystore(applicationContext, traza), traza)
         val sesion = AdaptadorSesion(crearSesionApi(BuildConfig.URL_BASE_BFF), traza)
-        val creditos = AdaptadorCreditos(crearCreditosApi(BuildConfig.URL_BASE_BFF), almacen, sesion, traza)
+        val creditos = AdaptadorCreditos(crearCreditosApi(BuildConfig.URL_BASE_BFF), ConSesion(almacen, sesion), traza)
 
         setContent {
             TemaSolventa { AppSolventa(sesion, almacen, creditos) }

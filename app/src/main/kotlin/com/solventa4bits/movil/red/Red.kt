@@ -7,7 +7,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 
 // Si el BFF agrega un campo nuevo, la app no debe romperse por eso.
-private val formatoJson = Json { ignoreUnknownKeys = true }
+internal val formatoJson = Json { ignoreUnknownKeys = true }
 
 /** Arma el cliente de Retrofit contra el BFF. La URL base debe terminar en "/". */
 fun crearRetrofit(urlBase: String, cliente: OkHttpClient = OkHttpClient()): Retrofit =

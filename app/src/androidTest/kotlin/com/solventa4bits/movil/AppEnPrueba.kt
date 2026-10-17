@@ -13,6 +13,7 @@ import com.solventa4bits.movil.fixtures.UsuarioDemo
 import com.solventa4bits.movil.sesion.datos.AdaptadorSesion
 import com.solventa4bits.movil.sesion.datos.AlmacenDeSesionSeguro
 import com.solventa4bits.movil.sesion.datos.BovedaKeystore
+import com.solventa4bits.movil.sesion.datos.ConSesion
 import com.solventa4bits.movil.sesion.datos.crearSesionApi
 import com.solventa4bits.movil.sesion.dominio.AlmacenDeSesion
 import com.solventa4bits.movil.traza.Traza
@@ -35,7 +36,7 @@ fun almacenDelDispositivo(): AlmacenDeSesion {
 
 fun ComposeContentTestRule.abrirApp(bff: BffFalso, almacen: AlmacenDeSesion) {
     val sesion = AdaptadorSesion(crearSesionApi(bff.url), sinTraza)
-    val creditos = AdaptadorCreditos(crearCreditosApi(bff.url), almacen, sesion, sinTraza)
+    val creditos = AdaptadorCreditos(crearCreditosApi(bff.url), ConSesion(almacen, sesion), sinTraza)
     setContent {
         TemaSolventa { AppSolventa(sesion, almacen, creditos) }
     }

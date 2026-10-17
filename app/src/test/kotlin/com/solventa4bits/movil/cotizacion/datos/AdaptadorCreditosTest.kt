@@ -6,6 +6,7 @@ import com.solventa4bits.movil.cotizacion.dominio.EstadoCreditos
 import com.solventa4bits.movil.cotizacion.dominio.ResultadoCreditos
 import com.solventa4bits.movil.fixtures.Personas
 import com.solventa4bits.movil.fixtures.RespuestasBff
+import com.solventa4bits.movil.sesion.datos.ConSesion
 import com.solventa4bits.movil.sesion.dominio.AlmacenEnMemoria
 import com.solventa4bits.movil.sesion.dominio.ResultadoInicioSesion
 import com.solventa4bits.movil.sesion.dominio.ServicioDeSesion
@@ -46,7 +47,7 @@ class AdaptadorCreditosTest {
     private val sesiones = SesionesFalsas()
 
     private fun adaptador() =
-        AdaptadorCreditos(crearCreditosApi(servidor.url("/mobile/").toString()), almacen, sesiones, traza)
+        AdaptadorCreditos(crearCreditosApi(servidor.url("/mobile/").toString()), ConSesion(almacen, sesiones), traza)
 
     /** Doble de prueba del refresco: responde [refresco] y cuenta las veces que lo llaman. */
     private class SesionesFalsas : ServicioDeSesion {
