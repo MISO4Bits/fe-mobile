@@ -85,6 +85,7 @@ class CotizacionTest {
         escribirEn("¿Cuánto debes hoy?", "238500000")
         escribirEn("Meses que te faltan", "180")
         composeRule.onNodeWithText("Ver mi cotización").performClick()
+        composeRule.continuarDesdeCoberturas()
 
         composeRule.esperarTexto("Esta cotización usa la tarifa estándar")
         composeRule.onNodeWithText("Para continuar necesitamos tu autorización").assertIsDisplayed()
@@ -101,6 +102,7 @@ class CotizacionTest {
 
         composeRule.esperarTexto("Tienes una cotización en curso")
         composeRule.onNodeWithText("Ver mi cotización").performClick()
+        composeRule.continuarDesdeCoberturas()
 
         composeRule.esperarTexto("Esto es lo que pagas")
         composeRule.onNodeWithText("$39.734").assertIsDisplayed()
@@ -121,5 +123,6 @@ class CotizacionTest {
         composeRule.elegirBanco("Bancolombia")
         composeRule.esperarTexto("$180.000.000")
         composeRule.onNodeWithText("Ver mi cotización").performClick()
+        composeRule.continuarDesdeCoberturas()
     }
 }

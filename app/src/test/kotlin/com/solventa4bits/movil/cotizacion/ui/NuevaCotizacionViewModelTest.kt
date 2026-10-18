@@ -379,6 +379,38 @@ class NuevaCotizacionViewModelTest {
     }
 
     @Test
+    @DisplayName("al cotizar va a elegir coberturas con Tu casa desmarcada, y de ahi a lo que pagas")
+    fun eligeCoberturas() {
+        cotizaciones.resultado = ResultadoCotizacion.Exito(cotizacionDePrueba)
+        val viewModel = viewModelCon(conHipoteca).apply { elegirEntidad(bancolombia) }
+        viewModel.cotizar()
+        assertFalse(viewModel.estado.conTuCasa)
+        assertFalse(viewModel.estado.coberturasElegidas)
+
+        viewModel.cambiarTuCasa(true)
+        viewModel.continuarALoQuePagas()
+        assertTrue(viewModel.estado.coberturasElegidas)
+
+        viewModel.volverACoberturas()
+        assertFalse(viewModel.estado.coberturasElegidas)
+        assertTrue(viewModel.estado.conTuCasa)
+
+        viewModel.volverAlCredito()
+        assertFalse(viewModel.estado.conTuCasa)
+    }
+
+    @Test
+    @DisplayName("al retomar desde el Home el cliente vuelve a elegir coberturas")
+    fun retomarEligeCoberturas() {
+        val viewModel = viewModelCon(conHipoteca)
+
+        viewModel.retomar(cotizacionDePrueba)
+
+        assertFalse(viewModel.estado.coberturasElegidas)
+        assertFalse(viewModel.estado.conTuCasa)
+    }
+
+    @Test
     @DisplayName("sin datos completos no cotiza")
     fun sinDatosNoCotiza() {
         val viewModel = viewModelCon(conHipoteca).apply { elegirEntidad(davivienda) }
