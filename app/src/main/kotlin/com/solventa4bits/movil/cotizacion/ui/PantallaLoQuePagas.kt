@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -29,6 +30,8 @@ import androidx.compose.ui.unit.dp
 import com.solventa4bits.movil.R
 import com.solventa4bits.movil.cotizacion.dominio.Cotizacion
 import com.solventa4bits.movil.cotizacion.dominio.DatosDelCredito
+import com.solventa4bits.movil.cotizacion.dominio.PlanElegido
+import com.solventa4bits.movil.cotizacion.dominio.plan
 import com.solventa4bits.movil.ui.BarraSolventa
 import com.solventa4bits.movil.ui.tema.TemaSolventa
 
@@ -41,6 +44,7 @@ import com.solventa4bits.movil.ui.tema.TemaSolventa
 fun PantallaLoQuePagas(
     cotizacion: Cotizacion,
     sinAutorizacion: Boolean,
+    conTuCasa: Boolean,
     alBuscarCredito: () -> Unit,
     alIrAMisSeguros: () -> Unit,
     alVolver: () -> Unit,
@@ -68,13 +72,15 @@ fun PantallaLoQuePagas(
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
-            PrecioMensual(cotizacion)
+            val plan = cotizacion.plan(conTuCasa)
+            PrecioMensual(cotizacion, plan.total)
             // AC-3 y AC-4: la explicacion solo existe si el precio aplica el perfil.
             if (cotizacion.personalizada) {
                 TextButton(onClick = { explicandoElPrecio = true }) {
                     Text(stringResource(R.string.pagas_por_que))
                 }
             }
+            Detalle(plan)
             DatosALaVista(cotizacion)
             Avisos(variante)
         }
@@ -104,7 +110,7 @@ private fun subtitulo(variante: VarianteDeCotizacion): Int = when (variante) {
 }
 
 @Composable
-private fun PrecioMensual(cotizacion: Cotizacion) {
+private fun PrecioMensual(cotizacion: Cotizacion, total: Double) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -119,7 +125,7 @@ private fun PrecioMensual(cotizacion: Cotizacion) {
         )
         Row(verticalAlignment = Alignment.Bottom) {
             Text(
-                text = enPesos(cotizacion.primaMensual),
+                text = enPesos(total),
                 style = MaterialTheme.typography.displaySmall,
                 fontWeight = FontWeight.Bold,
                 color = sobreElColor,
@@ -159,11 +165,38 @@ private fun DatosALaVista(cotizacion: Cotizacion) {
     }
 }
 
+/**
+ * BITS-96, AC-3: la vida, "Tu casa", el IVA y el total por separado, cada uno
+ * "/mes" (Figma 05 y 05D). La vida no lleva IVA.
+ */
 @Composable
-private fun Linea(nombre: String, valor: String) {
+private fun Detalle(plan: PlanElegido) {
+    val plantilla = stringResource(R.string.pagas_valor_mes)
+    val porMes = { valor: Double -> plantilla.format(enPesos(valor)) }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text = stringResource(R.string.pagas_detalle),
+            style = MaterialTheme.typography.titleSmall,
+        )
+        Linea(stringResource(R.string.coberturas_vida_titulo), porMes(plan.vida))
+        plan.tuCasa?.let { Linea(stringResource(R.string.coberturas_casa_titulo), porMes(it)) }
+        Linea(stringResource(R.string.pagas_subtotal), porMes(plan.subtotal))
+        Linea(stringResource(R.string.pagas_iva), porMes(plan.iva))
+        HorizontalDivider()
+        Linea(stringResource(R.string.pagas_total), porMes(plan.total), resaltada = true)
+    }
+}
+
+@Composable
+private fun Linea(nombre: String, valor: String, resaltada: Boolean = false) {
+    val color = if (resaltada) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(nombre, style = MaterialTheme.typography.bodyMedium)
-        Text(valor, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+        Text(
+            text = nombre,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = if (resaltada) FontWeight.SemiBold else null,
+        )
+        Text(valor, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = color)
     }
 }
 
@@ -247,6 +280,7 @@ private fun PantallaLoQuePagasPreview() {
                 factores = emptyList(),
             ),
             sinAutorizacion = false,
+            conTuCasa = false,
             alBuscarCredito = {},
             alIrAMisSeguros = {},
             alVolver = {},

@@ -24,6 +24,7 @@ import com.solventa4bits.movil.cotizacion.datos.crearCreditosApi
 import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCotizaciones
 import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCreditos
 import com.solventa4bits.movil.cotizacion.ui.NuevaCotizacionViewModel
+import com.solventa4bits.movil.cotizacion.ui.PantallaCoberturas
 import com.solventa4bits.movil.cotizacion.ui.PantallaLoQuePagas
 import com.solventa4bits.movil.cotizacion.ui.PantallaNuevaCotizacion
 import com.solventa4bits.movil.inicio.ui.InicioViewModel
@@ -92,20 +93,38 @@ fun AppSolventa(
                 modifier = conRelleno,
             )
 
+            cotizando && cotizacion.estado.cotizacion != null && !cotizacion.estado.coberturasElegidas -> {
+                val alInicio = {
+                    cotizacion.volverAlCredito()
+                    cotizando = false
+                }
+                val atras = if (retomada) alInicio else cotizacion::volverAlCredito
+                BackHandler(onBack = atras)
+                PantallaCoberturas(
+                    cotizacion = checkNotNull(cotizacion.estado.cotizacion),
+                    conTuCasa = cotizacion.estado.conTuCasa,
+                    alCambiarTuCasa = cotizacion::cambiarTuCasa,
+                    alContinuar = cotizacion::continuarALoQuePagas,
+                    alVolver = atras,
+                    alCerrarSesion = cerrarSesion,
+                    modifier = conRelleno,
+                )
+            }
+
             cotizando && cotizacion.estado.cotizacion != null -> {
                 val volver = cotizacion::volverAlCredito
                 val alInicio = {
                     volver()
                     cotizando = false
                 }
-                val atras = if (retomada) alInicio else volver
-                BackHandler(onBack = atras)
+                BackHandler(onBack = cotizacion::volverACoberturas)
                 PantallaLoQuePagas(
                     cotizacion = checkNotNull(cotizacion.estado.cotizacion),
                     sinAutorizacion = cotizacion.estado.sinConsentimiento,
+                    conTuCasa = cotizacion.estado.conTuCasa,
                     alBuscarCredito = volver,
                     alIrAMisSeguros = alInicio,
-                    alVolver = atras,
+                    alVolver = cotizacion::volverACoberturas,
                     alCerrarSesion = cerrarSesion,
                     modifier = conRelleno,
                 )

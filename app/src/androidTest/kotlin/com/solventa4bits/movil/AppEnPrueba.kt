@@ -66,6 +66,12 @@ fun ComposeContentTestRule.elegirBanco(nombre: String) {
     onNodeWithText(nombre).performClick()
 }
 
+/** En "Tus coberturas", sigue a "Lo que pagas" sin marcar "Tu casa". */
+fun ComposeContentTestRule.continuarDesdeCoberturas() {
+    esperarTexto("Elige tus coberturas")
+    onNodeWithText("Continuar").performClick()
+}
+
 fun ComposeContentTestRule.esperarTexto(texto: String) {
     waitUntil(ESPERA_MS) { onAllNodesWithText(texto).fetchSemanticsNodes().isNotEmpty() }
 }

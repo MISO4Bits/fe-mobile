@@ -44,6 +44,10 @@ data class EstadoNuevaCotizacion(
     val cotizando: Boolean = false,
     /** La cotizacion que devolvio el backend, para mostrarla en "Lo que pagas". */
     val cotizacion: Cotizacion? = null,
+    /** El cliente marco "Tu casa" (BITS-96). Viene desmarcada: es opcional. */
+    val conTuCasa: Boolean = false,
+    /** Ya eligio coberturas y paso a "Lo que pagas". */
+    val coberturasElegidas: Boolean = false,
     val errorAlCotizar: ErrorAlCotizar? = null,
 ) {
     private val monto get() = montoEscrito.toLongOrNull() ?: 0
@@ -201,7 +205,21 @@ class NuevaCotizacionViewModel(
 
     /** Desde "Lo que pagas", de vuelta al credito: conserva el banco elegido y lo escrito. */
     fun volverAlCredito() {
-        estado = estado.copy(cotizacion = null)
+        estado = estado.copy(cotizacion = null, conTuCasa = false, coberturasElegidas = false)
+    }
+
+    /** Marca o quita "Tu casa". El total se recalcula en la app, sin llamar al servidor. */
+    fun cambiarTuCasa(marcada: Boolean) {
+        estado = estado.copy(conTuCasa = marcada)
+    }
+
+    fun continuarALoQuePagas() {
+        estado = estado.copy(coberturasElegidas = true)
+    }
+
+    /** Desde "Lo que pagas", de vuelta a elegir coberturas: conserva lo marcado. */
+    fun volverACoberturas() {
+        estado = estado.copy(coberturasElegidas = false)
     }
 
     override fun cotizar() {
@@ -209,7 +227,12 @@ class NuevaCotizacionViewModel(
         estado = estado.copy(cotizando = true, errorAlCotizar = null)
         viewModelScope.launch {
             estado = when (val resultado = cotizaciones.cotizar(datos)) {
-                is ResultadoCotizacion.Exito -> estado.copy(cotizando = false, cotizacion = resultado.cotizacion)
+                is ResultadoCotizacion.Exito -> estado.copy(
+                    cotizando = false,
+                    cotizacion = resultado.cotizacion,
+                    conTuCasa = false,
+                    coberturasElegidas = false,
+                )
                 is ResultadoCotizacion.DatosRechazados ->
                     estado.copy(cotizando = false, errorAlCotizar = ErrorAlCotizar.DatosRechazados(resultado.mensaje))
                 ResultadoCotizacion.SesionVencida -> estado.copy(cotizando = false, sesionVencida = true)

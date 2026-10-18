@@ -111,4 +111,26 @@
     <string name="pagas_tarifa_estandar_detalle">No autorizaste la consulta de tus datos financieros, así que tu precio no considera tu historial. Si la autorizas, tu precio puede bajar.</string>
     <string name="pagas_necesitamos_autorizacion_titulo">Para continuar necesitamos tu autorización</string>
     <string name="pagas_necesitamos_autorizacion_detalle">Autoriza la consulta de tus datos financieros y trae tu crédito desde tu banco. Mientras tanto no puedes subir documentos ni firmar.</string>
+
+    <string name="coberturas_titulo">Coberturas</string>
+    <string name="coberturas_elige">Elige tus coberturas</string>
+    <string name="coberturas_subtitulo">Vida va siempre porque la pide tu crédito. Tu casa es opcional: márcala o quítala cuando quieras.</string>
+    <string name="coberturas_va_siempre">Va siempre</string>
+    <string name="coberturas_vida_titulo">Vida para tu crédito</string>
+    <string name="coberturas_vida_detalle">Si faltas o quedas incapacitado, saldamos con el banco lo que quede del crédito.</string>
+    <string name="coberturas_casa_titulo">Tu casa</string>
+    <string name="coberturas_casa_detalle">Incendio y terremoto. Cubrimos hasta %1$s.</string>
+    <string name="coberturas_por_mes">%1$s / mes</string>
+    <string name="coberturas_mas_por_mes">+ %1$s / mes</string>
+    <string name="coberturas_pagas">Pagas cada mes</string>
+    <string name="coberturas_se_cobra">Se cobra con la cuota de tu crédito.</string>
+    <string name="coberturas_cuanto_cubrimos">Cuánto cubrimos hoy</string>
+    <string name="coberturas_lo_que_debes">%1$s · lo que debes hoy</string>
+    <string name="coberturas_continuar">Continuar</string>
+
+    <string name="pagas_detalle">Detalle</string>
+    <string name="pagas_subtotal">Subtotal</string>
+    <string name="pagas_iva">IVA</string>
+    <string name="pagas_total">Total cada mes</string>
+    <string name="pagas_valor_mes">%1$s/mes</string>
 </resources>

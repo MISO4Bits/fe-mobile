@@ -1,9 +1,11 @@
 package com.solventa4bits.movil.cotizacion.datos
 
+import com.solventa4bits.movil.cotizacion.dominio.CodigoCobertura
 import com.solventa4bits.movil.cotizacion.dominio.Cotizacion
 import com.solventa4bits.movil.cotizacion.dominio.DatosDelCredito
 import com.solventa4bits.movil.cotizacion.dominio.EfectoEnElPrecio
 import com.solventa4bits.movil.cotizacion.dominio.FactorDelPrecio
+import com.solventa4bits.movil.cotizacion.dominio.PrecioDeCobertura
 import com.solventa4bits.movil.cotizacion.dominio.ResultadoCotizacion
 import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCotizaciones
 import com.solventa4bits.movil.red.formatoJson
@@ -100,6 +102,18 @@ class AdaptadorCotizaciones(
                 efecto = if (it.efecto == "POSITIVO") EfectoEnElPrecio.BAJA else EfectoEnElPrecio.SUBE,
                 peso = it.pesoRelativo,
             )
+        },
+        // Una cobertura que la app aun no conoce se ignora.
+        coberturas = oferta.desglose?.coberturas.orEmpty().mapNotNull { cobertura ->
+            CodigoCobertura.entries.find { it.name == cobertura.codigo }?.let { codigo ->
+                PrecioDeCobertura(
+                    codigo = codigo,
+                    sumaAsegurada = cobertura.sumaAsegurada,
+                    primaNeta = cobertura.primaNeta,
+                    iva = cobertura.iva,
+                    primaTotal = cobertura.primaTotal,
+                )
+            }
         },
     )
 
