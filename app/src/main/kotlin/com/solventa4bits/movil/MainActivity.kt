@@ -102,6 +102,7 @@ fun AppSolventa(
                 BackHandler(onBack = atras)
                 PantallaLoQuePagas(
                     cotizacion = checkNotNull(cotizacion.estado.cotizacion),
+                    sinAutorizacion = cotizacion.estado.sinConsentimiento,
                     alBuscarCredito = volver,
                     alIrAMisSeguros = alInicio,
                     alVolver = atras,

@@ -18,10 +18,11 @@ object RespuestasBff {
 
     /**
      * Respuesta de GET /v1/creditos-hipotecarios para una persona de prueba:
-     * su hipoteca si la tiene, y siempre la lista de bancos.
+     * su hipoteca si la tiene, y siempre la lista de bancos. Sin consentimiento
+     * de Open Finance no trae hipotecas.
      */
-    fun creditosDe(persona: PersonaDePrueba): String {
-        val credito = persona.credito
+    fun creditosDe(persona: PersonaDePrueba, sinConsentimiento: Boolean = false): String {
+        val credito = persona.credito.takeUnless { sinConsentimiento }
         val creditos = if (credito == null) {
             ""
         } else {
@@ -38,7 +39,13 @@ object RespuestasBff {
         }
         return """
             {
-              "estado": "${if (credito == null) "SIN_HIPOTECAS" else "DISPONIBLE"}",
+              "estado": "${
+                when {
+                    sinConsentimiento -> "SIN_CONSENTIMIENTO"
+                    credito == null -> "SIN_HIPOTECAS"
+                    else -> "DISPONIBLE"
+                }
+            }",
               "creditos": [$creditos],
               "entidades": [
                 { "id": "bancolombia", "nombre": "Bancolombia" },
@@ -52,11 +59,14 @@ object RespuestasBff {
 
     /**
      * Respuesta de POST /v1/cotizaciones y GET /v1/cotizaciones/actual: el
-     * ejemplo del contrato de bff-mobile. Sin perfil, tarifa estandar.
+     * ejemplo del contrato de bff-mobile. Sin perfil, tarifa estandar. Con perfil
+     * neutro, personalizada pero sin factores y a tarifa estandar (cuenta t3 de dev).
      */
-    fun cotizacion(conPerfil: Boolean = true): String {
-        val prima = if (conPerfil) PRIMA_CON_PERFIL else PRIMA_BASE
-        val perfil = if (conPerfil) {
+    fun cotizacion(conPerfil: Boolean = true, perfilNeutro: Boolean = false): String {
+        val prima = if (conPerfil && !perfilNeutro) PRIMA_CON_PERFIL else PRIMA_BASE
+        val perfil = if (perfilNeutro) {
+            """{ "nivelRiesgo": "MEDIO", "factores": [] }"""
+        } else if (conPerfil) {
             """
                 {
                   "nivelRiesgo": "BAJO",

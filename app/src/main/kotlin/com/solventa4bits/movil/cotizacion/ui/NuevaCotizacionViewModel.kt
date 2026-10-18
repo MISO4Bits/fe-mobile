@@ -25,6 +25,8 @@ data class EstadoNuevaCotizacion(
     val fallo: Boolean = false,
     /** El BFF respondio, pero la fuente (Open Finance) no: mismo trato. */
     val fuenteNoDisponible: Boolean = false,
+    /** El cliente no autorizo la consulta financiera (Open Finance). */
+    val sinConsentimiento: Boolean = false,
     val sesionVencida: Boolean = false,
     val entidades: List<EntidadFinanciera> = emptyList(),
     val creditos: List<CreditoHipotecario> = emptyList(),
@@ -150,6 +152,7 @@ class NuevaCotizacionViewModel(
                     creditos = resultado.creditos.creditos,
                     fechaConsulta = resultado.creditos.fechaConsulta,
                     fuenteNoDisponible = resultado.creditos.estado == EstadoCreditos.NO_DISPONIBLE,
+                    sinConsentimiento = resultado.creditos.estado == EstadoCreditos.SIN_CONSENTIMIENTO,
                 )
                 ResultadoCreditos.SesionVencida -> estado.copy(cargando = false, sesionVencida = true)
                 ResultadoCreditos.Fallo -> estado.copy(cargando = false, fallo = true)
@@ -187,12 +190,13 @@ class NuevaCotizacionViewModel(
     }
 
     /**
-     * Retoma desde el Home la cotizacion en curso, sin repetir el proceso. Si
-     * luego el cliente busca su credito, la pantalla consulta desde cero.
+     * Retoma desde el Home la cotizacion en curso, sin repetir el proceso. Por
+     * debajo consulta los creditos: asi "Lo que pagas" sabe si el cliente no
+     * autorizo la consulta financiera, y "Buscar mi credito" ya tiene los bancos.
      */
     fun retomar(cotizacion: Cotizacion) {
-        empezo = false
         estado = EstadoNuevaCotizacion(cotizacion = cotizacion)
+        reintentar()
     }
 
     /** Desde "Lo que pagas", de vuelta al credito: conserva el banco elegido y lo escrito. */

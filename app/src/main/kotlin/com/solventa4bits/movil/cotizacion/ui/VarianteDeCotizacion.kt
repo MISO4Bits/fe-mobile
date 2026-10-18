@@ -19,9 +19,21 @@ enum class VarianteDeCotizacion {
 
     /** Datos del banco y tarifa estandar: falta que termine el perfil (05G). */
     VERIFICADA_SIN_PERFIL,
+
+    /**
+     * El cliente no autorizo la consulta financiera: el perfil nunca llega y
+     * el precio se queda en la tarifa estandar (05F sin autorizacion).
+     */
+    SIN_AUTORIZACION,
 }
 
-fun Cotizacion.variante(): VarianteDeCotizacion = when {
+/**
+ * [sinAutorizacion] no viene en la cotizacion: la app lo sabe porque la
+ * consulta de creditos respondio SIN_CONSENTIMIENTO.
+ */
+fun Cotizacion.variante(sinAutorizacion: Boolean = false): VarianteDeCotizacion = when {
+    // Sin autorizacion no hay perfil; si aun asi llega personalizada, manda la cotizacion.
+    sinAutorizacion && !personalizada -> VarianteDeCotizacion.SIN_AUTORIZACION
     datosDeclarados && personalizada -> VarianteDeCotizacion.DECLARADA_CON_PERFIL
     datosDeclarados -> VarianteDeCotizacion.DECLARADA_SIN_PERFIL
     personalizada -> VarianteDeCotizacion.PREAPROBADA

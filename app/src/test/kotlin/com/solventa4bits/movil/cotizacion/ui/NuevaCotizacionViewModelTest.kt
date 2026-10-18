@@ -352,7 +352,7 @@ class NuevaCotizacionViewModelTest {
     }
 
     @Test
-    @DisplayName("retoma desde el Home la cotizacion en curso, y al buscar el credito consulta desde cero")
+    @DisplayName("retoma desde el Home la cotizacion en curso y consulta los creditos por debajo")
     fun retomar() {
         val viewModel = viewModelCon(conHipoteca).apply { elegirEntidad(bancolombia) }
 
@@ -360,7 +360,22 @@ class NuevaCotizacionViewModelTest {
 
         assertEquals(cotizacionDePrueba, viewModel.estado.cotizacion)
         assertNull(viewModel.estado.entidadElegida)
-        assertFalse(viewModel.empezo)
+        assertEquals(bancos, viewModel.estado.entidades)
+        assertTrue(viewModel.empezo)
+    }
+
+    @Test
+    @DisplayName("sabe cuando el cliente no autorizo la consulta financiera, tambien al retomar")
+    fun sinConsentimiento() {
+        val sinPermiso = ResultadoCreditos.Exito(
+            CreditosHipotecarios(EstadoCreditos.SIN_CONSENTIMIENTO, emptyList(), bancos),
+        )
+        assertTrue(viewModelCon(sinPermiso).estado.sinConsentimiento)
+        assertFalse(viewModelCon(conHipoteca).estado.sinConsentimiento)
+
+        val retomada = NuevaCotizacionViewModel(ServicioFalso(sinPermiso), cotizaciones)
+        retomada.retomar(cotizacionDePrueba)
+        assertTrue(retomada.estado.sinConsentimiento)
     }
 
     @Test
