@@ -40,13 +40,14 @@ import com.solventa4bits.movil.ui.tema.TemaSolventa
 @Composable
 fun PantallaLoQuePagas(
     cotizacion: Cotizacion,
+    sinAutorizacion: Boolean,
     alBuscarCredito: () -> Unit,
     alIrAMisSeguros: () -> Unit,
     alVolver: () -> Unit,
     alCerrarSesion: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val variante = cotizacion.variante()
+    val variante = cotizacion.variante(sinAutorizacion)
     var explicandoElPrecio by rememberSaveable { mutableStateOf(false) }
     Column(modifier = modifier.fillMaxSize()) {
         BarraSolventa(stringResource(R.string.pagas_titulo), alCerrarSesion)
@@ -98,6 +99,7 @@ private fun subtitulo(variante: VarianteDeCotizacion): Int = when (variante) {
     VarianteDeCotizacion.VERIFICADA_SIN_PERFIL -> R.string.pagas_subtitulo_banco
     VarianteDeCotizacion.DECLARADA_CON_PERFIL,
     VarianteDeCotizacion.DECLARADA_SIN_PERFIL,
+    VarianteDeCotizacion.SIN_AUTORIZACION,
     -> R.string.pagas_subtitulo_declarados
 }
 
@@ -179,6 +181,9 @@ private fun Avisos(variante: VarianteDeCotizacion) {
         VarianteDeCotizacion.VERIFICADA_SIN_PERFIL ->
             (R.string.pagas_analizando_titulo to R.string.pagas_analizando_detalle) to
                 (R.string.pagas_en_espera_titulo to R.string.pagas_en_espera_detalle)
+        VarianteDeCotizacion.SIN_AUTORIZACION ->
+            (R.string.pagas_tarifa_estandar_titulo to R.string.pagas_tarifa_estandar_detalle) to
+                (R.string.pagas_necesitamos_autorizacion_titulo to R.string.pagas_necesitamos_autorizacion_detalle)
     }
     Aviso(informativo, MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer)
     Aviso(enEspera, MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer)
@@ -208,7 +213,10 @@ private fun BotonPrincipal(
         VarianteDeCotizacion.DECLARADA_SIN_PERFIL,
         VarianteDeCotizacion.DECLARADA_CON_PERFIL,
         -> R.string.pagas_buscar_credito to alBuscarCredito
-        VarianteDeCotizacion.VERIFICADA_SIN_PERFIL -> R.string.pagas_ir_a_mis_seguros to alIrAMisSeguros
+        // Sin autorizacion pasara a "Autorizar consulta" cuando exista BITS-227.
+        VarianteDeCotizacion.VERIFICADA_SIN_PERFIL,
+        VarianteDeCotizacion.SIN_AUTORIZACION,
+        -> R.string.pagas_ir_a_mis_seguros to alIrAMisSeguros
         // Continuar lleva a elegir coberturas, que es otra historia (BITS-96): aun no hace nada.
         VarianteDeCotizacion.PREAPROBADA -> R.string.pagas_continuar to {}
     }
@@ -238,6 +246,7 @@ private fun PantallaLoQuePagasPreview() {
                 personalizada = true,
                 factores = emptyList(),
             ),
+            sinAutorizacion = false,
             alBuscarCredito = {},
             alIrAMisSeguros = {},
             alVolver = {},

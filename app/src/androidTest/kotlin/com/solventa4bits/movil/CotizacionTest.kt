@@ -6,6 +6,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.solventa4bits.movil.fixtures.BffFalso
 import com.solventa4bits.movil.fixtures.Personas
@@ -70,6 +72,27 @@ class CotizacionTest {
     }
 
     @Test
+    fun sinAutorizacionFinancieraDiceQueUsaLaTarifaEstandar() {
+        bff.responder(200, RespuestasBff.sesionValida())
+        bff.responder(200, RespuestasBff.creditosDe(Personas.DANIEL, sinConsentimiento = true))
+        bff.responder(201, RespuestasBff.cotizacion(conPerfil = false))
+        composeRule.abrirApp(bff, almacen)
+        composeRule.iniciarSesion()
+
+        composeRule.onNodeWithText("Cotizar mi seguro").performClick()
+        composeRule.elegirBanco("Davivienda")
+        escribirEn("Monto total del crédito", "250000000")
+        escribirEn("¿Cuánto debes hoy?", "238500000")
+        escribirEn("Meses que te faltan", "180")
+        composeRule.onNodeWithText("Ver mi cotización").performClick()
+
+        composeRule.esperarTexto("Esta cotización usa la tarifa estándar")
+        composeRule.onNodeWithText("Para continuar necesitamos tu autorización").assertIsDisplayed()
+        composeRule.onNodeWithText("Ir a mis seguros").assertIsDisplayed()
+        composeRule.onAllNodesWithText("Estamos analizando tu perfil").assertCountEquals(0)
+    }
+
+    @Test
     fun conUnaCotizacionEnCursoElHomeLaMuestraYSeRetoma() {
         bff.responder(200, RespuestasBff.sesionValida())
         composeRule.abrirApp(bff, almacen)
@@ -81,6 +104,10 @@ class CotizacionTest {
 
         composeRule.esperarTexto("Esto es lo que pagas")
         composeRule.onNodeWithText("$39.734").assertIsDisplayed()
+    }
+
+    private fun escribirEn(campo: String, texto: String) {
+        composeRule.onNodeWithText(campo).performScrollTo().performTextInput(texto)
     }
 
     private fun cotizarConLosDatosDelBanco(cotizacion: String) {

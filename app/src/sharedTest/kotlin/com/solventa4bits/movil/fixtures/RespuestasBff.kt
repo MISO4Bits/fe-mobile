@@ -18,10 +18,11 @@ object RespuestasBff {
 
     /**
      * Respuesta de GET /v1/creditos-hipotecarios para una persona de prueba:
-     * su hipoteca si la tiene, y siempre la lista de bancos.
+     * su hipoteca si la tiene, y siempre la lista de bancos. Sin consentimiento
+     * de Open Finance no trae hipotecas.
      */
-    fun creditosDe(persona: PersonaDePrueba): String {
-        val credito = persona.credito
+    fun creditosDe(persona: PersonaDePrueba, sinConsentimiento: Boolean = false): String {
+        val credito = persona.credito.takeUnless { sinConsentimiento }
         val creditos = if (credito == null) {
             ""
         } else {
@@ -38,7 +39,13 @@ object RespuestasBff {
         }
         return """
             {
-              "estado": "${if (credito == null) "SIN_HIPOTECAS" else "DISPONIBLE"}",
+              "estado": "${
+                when {
+                    sinConsentimiento -> "SIN_CONSENTIMIENTO"
+                    credito == null -> "SIN_HIPOTECAS"
+                    else -> "DISPONIBLE"
+                }
+            }",
               "creditos": [$creditos],
               "entidades": [
                 { "id": "bancolombia", "nombre": "Bancolombia" },

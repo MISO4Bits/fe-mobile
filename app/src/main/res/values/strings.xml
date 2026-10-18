@@ -106,4 +106,9 @@
     <string name="porque_resumen_estandar">Pagas %1$s al mes. Es la tarifa estándar para tu crédito.</string>
     <string name="porque_neutro_titulo">Tu historial no cambia tu precio</string>
     <string name="porque_neutro_detalle">Revisamos tus datos y ninguna señal lo sube ni lo baja.</string>
+
+    <string name="pagas_tarifa_estandar_titulo">Esta cotización usa la tarifa estándar</string>
+    <string name="pagas_tarifa_estandar_detalle">No autorizaste la consulta de tus datos financieros, así que tu precio no considera tu historial. Si la autorizas, tu precio puede bajar.</string>
+    <string name="pagas_necesitamos_autorizacion_titulo">Para continuar necesitamos tu autorización</string>
+    <string name="pagas_necesitamos_autorizacion_detalle">Autoriza la consulta de tus datos financieros y trae tu crédito desde tu banco. Mientras tanto no puedes subir documentos ni firmar.</string>
 </resources>
