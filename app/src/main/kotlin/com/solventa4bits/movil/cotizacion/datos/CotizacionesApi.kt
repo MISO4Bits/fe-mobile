@@ -58,6 +58,20 @@ data class OfertaDto(
     val sumaAsegurada: Double,
     val coberturaMeses: Int,
     val personalizado: Boolean,
+    val desglose: DesgloseDto? = null,
+)
+
+/** Precio de cada cobertura. No trae totales: la app suma las que el cliente elija. */
+@Serializable
+data class DesgloseDto(val coberturas: List<CoberturaPrecioDto>)
+
+@Serializable
+data class CoberturaPrecioDto(
+    val codigo: String,
+    val sumaAsegurada: Double,
+    val primaNeta: Double,
+    val iva: Double,
+    val primaTotal: Double,
 )
 
 @Serializable

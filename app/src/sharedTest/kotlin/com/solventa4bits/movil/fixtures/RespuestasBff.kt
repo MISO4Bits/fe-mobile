@@ -96,7 +96,19 @@ object RespuestasBff {
                 "sumaAsegurada": 238500000,
                 "coberturaMeses": 180,
                 "moneda": "COP",
-                "personalizado": $conPerfil
+                "personalizado": $conPerfil,
+                "desglose": {
+                  "coberturas": [
+                    {
+                      "codigo": "VIDA", "obligatoria": true, "sumaAsegurada": 238500000,
+                      "primaNeta": $prima, "iva": 0, "primaTotal": $prima
+                    },
+                    {
+                      "codigo": "HOGAR", "obligatoria": false, "sumaAsegurada": 240000000,
+                      "primaNeta": 23760, "iva": 4514, "primaTotal": 28274
+                    }
+                  ]
+                }
               },
               "perfilRiesgo": $perfil,
               "vigenciaCotizacion": { "desde": "2026-10-06T14:35:00Z", "hasta": "2026-11-05T14:35:00Z" },

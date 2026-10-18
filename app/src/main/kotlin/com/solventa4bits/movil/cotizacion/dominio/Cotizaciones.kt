@@ -36,6 +36,8 @@ data class Cotizacion(
     /** El precio aplica el ajuste del perfil de riesgo del cliente. */
     val personalizada: Boolean,
     val factores: List<FactorDelPrecio>,
+    /** El precio de cada cobertura (BITS-96). Vacio si el backend no trae el desglose. */
+    val coberturas: List<PrecioDeCobertura> = emptyList(),
 )
 
 /** Todo lo que puede pasar al cotizar o al consultar la cotizacion activa. */

@@ -1,9 +1,11 @@
 package com.solventa4bits.movil.cotizacion.datos
 
+import com.solventa4bits.movil.cotizacion.dominio.CodigoCobertura
 import com.solventa4bits.movil.cotizacion.dominio.Cotizacion
 import com.solventa4bits.movil.cotizacion.dominio.DatosDelCredito
 import com.solventa4bits.movil.cotizacion.dominio.EfectoEnElPrecio
 import com.solventa4bits.movil.cotizacion.dominio.FactorDelPrecio
+import com.solventa4bits.movil.cotizacion.dominio.PrecioDeCobertura
 import com.solventa4bits.movil.cotizacion.dominio.ResultadoCotizacion
 import com.solventa4bits.movil.fixtures.RespuestasBff
 import com.solventa4bits.movil.sesion.datos.ConSesion
@@ -106,9 +108,23 @@ class AdaptadorCotizacionesTest {
                     FactorDelPrecio("Historial de pagos excelente", EfectoEnElPrecio.BAJA, 0.1),
                     FactorDelPrecio("Endeudamiento bajo", EfectoEnElPrecio.BAJA, 0.2),
                 ),
+                coberturas = listOf(
+                    PrecioDeCobertura(CodigoCobertura.VIDA, 238_500_000.0, 39_734.0, 0.0, 39_734.0),
+                    PrecioDeCobertura(CodigoCobertura.HOGAR, 240_000_000.0, 23_760.0, 4_514.0, 28_274.0),
+                ),
             ),
             assertInstanceOf(ResultadoCotizacion.Exito::class.java, resultado).cotizacion,
         )
+    }
+
+    @Test
+    @DisplayName("ignora una cobertura que la app aun no conoce y lee una oferta sin desglose")
+    fun coberturasDesconocidas() = runTest {
+        responder(201, RespuestasBff.cotizacion().replace("\"HOGAR\"", "\"ROBO\""))
+
+        val cotizacion = assertInstanceOf(ResultadoCotizacion.Exito::class.java, adaptador().cotizar(datos)).cotizacion
+
+        assertEquals(listOf(CodigoCobertura.VIDA), cotizacion.coberturas.map { it.codigo })
     }
 
     @Test
