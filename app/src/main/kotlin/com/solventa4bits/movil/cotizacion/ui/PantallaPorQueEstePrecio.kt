@@ -28,6 +28,8 @@ import com.solventa4bits.movil.cotizacion.dominio.FactorDelPrecio
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PanelPorQueEstePrecio(cotizacion: Cotizacion, alCerrar: () -> Unit) {
+    // Perfil neutro: se calculo, pero ninguna senal sube ni baja el precio.
+    val sinAjustes = cotizacion.factores.isEmpty()
     ModalBottomSheet(
         onDismissRequest = alCerrar,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -47,17 +49,28 @@ fun PanelPorQueEstePrecio(cotizacion: Cotizacion, alCerrar: () -> Unit) {
                     style = MaterialTheme.typography.headlineSmall,
                 )
                 Text(
-                    text = stringResource(
-                        R.string.porque_resumen,
-                        enPesos(cotizacion.primaMensual),
-                        enPesos(cotizacion.primaBaseMensual),
-                    ),
+                    text = if (sinAjustes) {
+                        stringResource(R.string.porque_resumen_estandar, enPesos(cotizacion.primaMensual))
+                    } else {
+                        stringResource(
+                            R.string.porque_resumen,
+                            enPesos(cotizacion.primaMensual),
+                            enPesos(cotizacion.primaBaseMensual),
+                        )
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            val masPesa = cotizacion.factorQueMasPesa()
-            cotizacion.factoresPorPeso().forEach { factor -> Factor(factor, esElQueMasPesa = factor == masPesa) }
+            if (sinAjustes) {
+                Explicacion(
+                    titulo = stringResource(R.string.porque_neutro_titulo),
+                    detalle = stringResource(R.string.porque_neutro_detalle),
+                )
+            } else {
+                val masPesa = cotizacion.factorQueMasPesa()
+                cotizacion.factoresPorPeso().forEach { factor -> Factor(factor, esElQueMasPesa = factor == masPesa) }
+            }
             Explicacion(
                 titulo = stringResource(R.string.porque_saldos_titulo),
                 detalle = stringResource(R.string.porque_saldos_detalle),

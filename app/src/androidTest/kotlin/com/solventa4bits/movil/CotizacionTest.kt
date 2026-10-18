@@ -49,6 +49,17 @@ class CotizacionTest {
     }
 
     @Test
+    fun conPerfilNeutroExplicaQueElHistorialNoCambiaElPrecio() {
+        cotizarConLosDatosDelBanco(RespuestasBff.cotizacion(perfilNeutro = true))
+
+        composeRule.esperarTexto("Esto es lo que pagas")
+        composeRule.onNodeWithText("¿Por qué este precio?").performClick()
+
+        composeRule.esperarTexto("Tu historial no cambia tu precio")
+        composeRule.onNodeWithText("Pagas $46.746 al mes. Es la tarifa estándar para tu crédito.").assertIsDisplayed()
+    }
+
+    @Test
     fun sinPerfilMuestraLaTarifaEstandarSinHablarDelPerfil() {
         cotizarConLosDatosDelBanco(RespuestasBff.cotizacion(conPerfil = false))
 

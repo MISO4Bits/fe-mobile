@@ -102,4 +102,8 @@
     <string name="inicio_cotizacion_lista">Tu cotización está lista</string>
     <string name="inicio_cotizacion_resumen">Vida para tu crédito. %1$s al mes.</string>
     <string name="inicio_ver_cotizacion">Ver mi cotización</string>
+
+    <string name="porque_resumen_estandar">Pagas %1$s al mes. Es la tarifa estándar para tu crédito.</string>
+    <string name="porque_neutro_titulo">Tu historial no cambia tu precio</string>
+    <string name="porque_neutro_detalle">Revisamos tus datos y ninguna señal lo sube ni lo baja.</string>
 </resources>

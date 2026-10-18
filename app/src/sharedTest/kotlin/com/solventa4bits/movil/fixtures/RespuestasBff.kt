@@ -52,11 +52,14 @@ object RespuestasBff {
 
     /**
      * Respuesta de POST /v1/cotizaciones y GET /v1/cotizaciones/actual: el
-     * ejemplo del contrato de bff-mobile. Sin perfil, tarifa estandar.
+     * ejemplo del contrato de bff-mobile. Sin perfil, tarifa estandar. Con perfil
+     * neutro, personalizada pero sin factores y a tarifa estandar (cuenta t3 de dev).
      */
-    fun cotizacion(conPerfil: Boolean = true): String {
-        val prima = if (conPerfil) PRIMA_CON_PERFIL else PRIMA_BASE
-        val perfil = if (conPerfil) {
+    fun cotizacion(conPerfil: Boolean = true, perfilNeutro: Boolean = false): String {
+        val prima = if (conPerfil && !perfilNeutro) PRIMA_CON_PERFIL else PRIMA_BASE
+        val perfil = if (perfilNeutro) {
+            """{ "nivelRiesgo": "MEDIO", "factores": [] }"""
+        } else if (conPerfil) {
             """
                 {
                   "nivelRiesgo": "BAJO",
