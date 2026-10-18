@@ -121,6 +121,7 @@ fun AppSolventa(
                 PantallaLoQuePagas(
                     cotizacion = checkNotNull(cotizacion.estado.cotizacion),
                     sinAutorizacion = cotizacion.estado.sinConsentimiento,
+                    conTuCasa = cotizacion.estado.conTuCasa,
                     alBuscarCredito = volver,
                     alIrAMisSeguros = alInicio,
                     alVolver = cotizacion::volverACoberturas,

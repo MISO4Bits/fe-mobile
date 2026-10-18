@@ -127,4 +127,10 @@
     <string name="coberturas_cuanto_cubrimos">Cuánto cubrimos hoy</string>
     <string name="coberturas_lo_que_debes">%1$s · lo que debes hoy</string>
     <string name="coberturas_continuar">Continuar</string>
+
+    <string name="pagas_detalle">Detalle</string>
+    <string name="pagas_subtotal">Subtotal</string>
+    <string name="pagas_iva">IVA</string>
+    <string name="pagas_total">Total cada mes</string>
+    <string name="pagas_valor_mes">%1$s/mes</string>
 </resources>
