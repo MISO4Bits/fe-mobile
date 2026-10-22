@@ -14,6 +14,7 @@ import com.solventa4bits.movil.cotizacion.dominio.OrigenDeDatos
 import com.solventa4bits.movil.cotizacion.dominio.RangosDeCredito
 import com.solventa4bits.movil.cotizacion.dominio.ResultadoCotizacion
 import com.solventa4bits.movil.cotizacion.dominio.ResultadoCreditos
+import com.solventa4bits.movil.cotizacion.dominio.ResultadoDeclinacion
 import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCotizaciones
 import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCreditos
 import kotlinx.coroutines.launch
@@ -49,6 +50,12 @@ data class EstadoNuevaCotizacion(
     /** Ya eligio coberturas y paso a "Lo que pagas". */
     val coberturasElegidas: Boolean = false,
     val errorAlCotizar: ErrorAlCotizar? = null,
+    /** Esta abierto el modal de "Declinar estas condiciones" (BITS-337). */
+    val confirmandoDeclinacion: Boolean = false,
+    val declinando: Boolean = false,
+    val falloAlDeclinar: Boolean = false,
+    /** La cotizacion se elimino: toca ir al Inicio. */
+    val declinada: Boolean = false,
 ) {
     private val monto get() = montoEscrito.toLongOrNull() ?: 0
     private val saldo get() = saldoEscrito.toLongOrNull() ?: 0
@@ -220,6 +227,30 @@ class NuevaCotizacionViewModel(
     /** Desde "Lo que pagas", de vuelta a elegir coberturas: conserva lo marcado. */
     fun volverACoberturas() {
         estado = estado.copy(coberturasElegidas = false)
+    }
+
+    /** AC-1: abre el modal que explica que declinar elimina la cotizacion. */
+    fun pedirDeclinacion() {
+        estado = estado.copy(confirmandoDeclinacion = true, falloAlDeclinar = false)
+    }
+
+    /** AC-2: "Volver" cierra el modal y la cotizacion queda sin cambios. */
+    fun cancelarDeclinacion() {
+        estado = estado.copy(confirmandoDeclinacion = false, falloAlDeclinar = false)
+    }
+
+    /** AC-3: elimina la cotizacion. Si falla, el modal sigue abierto con el aviso. */
+    fun declinar() {
+        if (estado.declinando) return
+        estado = estado.copy(declinando = true, falloAlDeclinar = false)
+        viewModelScope.launch {
+            estado = when (cotizaciones.declinarActual()) {
+                ResultadoDeclinacion.Declinada ->
+                    estado.copy(declinando = false, confirmandoDeclinacion = false, declinada = true)
+                ResultadoDeclinacion.SesionVencida -> estado.copy(declinando = false, sesionVencida = true)
+                ResultadoDeclinacion.Fallo -> estado.copy(declinando = false, falloAlDeclinar = true)
+            }
+        }
     }
 
     override fun cotizar() {

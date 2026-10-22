@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 import okhttp3.OkHttpClient
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
@@ -19,6 +20,10 @@ interface CotizacionesApi {
 
     @GET("v1/cotizaciones/actual")
     suspend fun actual(@Header("Authorization") autorizacion: String): Response<CotizacionDto>
+
+    /** Responde 204 sin cuerpo si la elimino y 404 si no habia. */
+    @DELETE("v1/cotizaciones/actual")
+    suspend fun declinarActual(@Header("Authorization") autorizacion: String): Response<Unit>
 }
 
 /** Los nombres de los campos son los del contrato. */

@@ -22,7 +22,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -37,17 +36,17 @@ import com.solventa4bits.movil.ui.tema.TemaSolventa
 
 /**
  * "Lo que pagas": la cotizacion tal como la calculo el backend, con los datos
- * del credito a la vista (BITS-95, AC-2) y, segun la [variante], los avisos de
- * lo que falta para que el precio quede preaprobado (AC-5).
+ * del credito a la vista (BITS-95, AC-2) y, segun la [variante], el aviso que
+ * explica el precio. Toda variante acepta y continua (BITS-333, AC-1) o
+ * declina las condiciones (BITS-337).
  */
 @Composable
 fun PantallaLoQuePagas(
     cotizacion: Cotizacion,
     sinAutorizacion: Boolean,
     conTuCasa: Boolean,
-    alBuscarCredito: () -> Unit,
-    alIrAMisSeguros: () -> Unit,
-    alVolver: () -> Unit,
+    alAceptar: () -> Unit,
+    declinacion: Declinacion,
     alCerrarSesion: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -82,22 +81,52 @@ fun PantallaLoQuePagas(
             }
             Detalle(plan)
             DatosALaVista(cotizacion)
-            Avisos(variante)
+            Aviso(variante)
         }
         Column(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            BotonPrincipal(variante, alBuscarCredito, alIrAMisSeguros)
-            TextButton(onClick = alVolver) {
-                Text(stringResource(R.string.cotizacion_atras))
+            Button(onClick = alAceptar, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.pagas_aceptar_y_continuar))
+            }
+            TextButton(onClick = declinacion.alPedir) {
+                Text(stringResource(R.string.declinar_confirmar))
             }
         }
     }
     if (explicandoElPrecio) {
         PanelPorQueEstePrecio(cotizacion, alCerrar = { explicandoElPrecio = false })
     }
+    if (declinacion.confirmando) {
+        PanelDeclinarCondiciones(
+            declinando = declinacion.declinando,
+            fallo = declinacion.fallo,
+            alDeclinar = declinacion.alDeclinar,
+            alVolver = declinacion.alCancelar,
+        )
+    }
 }
+
+/** Lo que "Lo que pagas" necesita para el modal de declinar (BITS-337). */
+data class Declinacion(
+    val confirmando: Boolean,
+    val declinando: Boolean,
+    val fallo: Boolean,
+    val alPedir: () -> Unit,
+    val alDeclinar: () -> Unit,
+    val alCancelar: () -> Unit,
+)
+
+private fun sinDeclinar() = Declinacion(
+    confirmando = false,
+    declinando = false,
+    fallo = false,
+    alPedir = {},
+    alDeclinar = {},
+    alCancelar = {},
+)
+
 
 @StringRes
 private fun subtitulo(variante: VarianteDeCotizacion): Int = when (variante) {
@@ -200,61 +229,30 @@ private fun Linea(nombre: String, valor: String, resaltada: Boolean = false) {
     }
 }
 
-/** Los dos avisos de Figma: que significa el precio (azul) y que queda en espera (claro). */
+/** El aviso azul de Figma: que significa el precio. La preaprobada no lleva aviso. */
 @Composable
-private fun Avisos(variante: VarianteDeCotizacion) {
-    val (informativo, enEspera) = when (variante) {
+private fun Aviso(variante: VarianteDeCotizacion) {
+    val (titulo, detalle) = when (variante) {
         VarianteDeCotizacion.PREAPROBADA -> return
         VarianteDeCotizacion.DECLARADA_SIN_PERFIL ->
-            (R.string.pagas_estimada_titulo to R.string.pagas_estimada_detalle) to
-                (R.string.pagas_trae_credito_titulo to R.string.pagas_trae_credito_detalle)
+            R.string.pagas_estimada_titulo to R.string.pagas_estimada_detalle
         VarianteDeCotizacion.DECLARADA_CON_PERFIL ->
-            (R.string.pagas_falta_confirmar_titulo to R.string.pagas_falta_confirmar_detalle) to
-                (R.string.pagas_necesitamos_banco_titulo to R.string.pagas_necesitamos_banco_detalle)
+            R.string.pagas_falta_confirmar_titulo to R.string.pagas_falta_confirmar_detalle
         VarianteDeCotizacion.VERIFICADA_SIN_PERFIL ->
-            (R.string.pagas_analizando_titulo to R.string.pagas_analizando_detalle) to
-                (R.string.pagas_en_espera_titulo to R.string.pagas_en_espera_detalle)
+            R.string.pagas_analizando_titulo to R.string.pagas_analizando_detalle
         VarianteDeCotizacion.SIN_AUTORIZACION ->
-            (R.string.pagas_tarifa_estandar_titulo to R.string.pagas_tarifa_estandar_detalle) to
-                (R.string.pagas_necesitamos_autorizacion_titulo to R.string.pagas_necesitamos_autorizacion_detalle)
+            R.string.pagas_tarifa_estandar_titulo to R.string.pagas_tarifa_estandar_detalle
     }
-    Aviso(informativo, MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer)
-    Aviso(enEspera, MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer)
-}
-
-@Composable
-private fun Aviso(textos: Pair<Int, Int>, fondo: Color, letra: Color) {
+    val letra = MaterialTheme.colorScheme.onTertiaryContainer
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(fondo, MaterialTheme.shapes.medium)
+            .background(MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.shapes.medium)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Text(stringResource(textos.first), style = MaterialTheme.typography.titleSmall, color = letra)
-        Text(stringResource(textos.second), style = MaterialTheme.typography.bodySmall, color = letra)
-    }
-}
-
-@Composable
-private fun BotonPrincipal(
-    variante: VarianteDeCotizacion,
-    alBuscarCredito: () -> Unit,
-    alIrAMisSeguros: () -> Unit,
-) {
-    val (texto, accion) = when (variante) {
-        VarianteDeCotizacion.DECLARADA_SIN_PERFIL,
-        VarianteDeCotizacion.DECLARADA_CON_PERFIL,
-        -> R.string.pagas_buscar_credito to alBuscarCredito
-        // Sin autorizacion pasara a "Autorizar consulta" cuando exista BITS-227.
-        VarianteDeCotizacion.VERIFICADA_SIN_PERFIL,
-        VarianteDeCotizacion.SIN_AUTORIZACION,
-        -> R.string.pagas_ir_a_mis_seguros to alIrAMisSeguros
-        // Continuar lleva a elegir coberturas, que es otra historia (BITS-96): aun no hace nada.
-        VarianteDeCotizacion.PREAPROBADA -> R.string.pagas_continuar to {}
-    }
-    Button(onClick = accion, modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(texto))
+        Text(stringResource(titulo), style = MaterialTheme.typography.titleSmall, color = letra)
+        Text(stringResource(detalle), style = MaterialTheme.typography.bodySmall, color = letra)
     }
 }
 
@@ -281,9 +279,8 @@ private fun PantallaLoQuePagasPreview() {
             ),
             sinAutorizacion = false,
             conTuCasa = false,
-            alBuscarCredito = {},
-            alIrAMisSeguros = {},
-            alVolver = {},
+            alAceptar = {},
+            declinacion = sinDeclinar(),
             alCerrarSesion = {},
         )
     }
