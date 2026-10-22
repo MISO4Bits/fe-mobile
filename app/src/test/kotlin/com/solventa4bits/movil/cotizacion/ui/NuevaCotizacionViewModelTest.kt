@@ -64,7 +64,13 @@ class NuevaCotizacionViewModelTest {
 
         override suspend fun consultarActual() = ResultadoCotizacion.SinCotizacion
 
-        override suspend fun declinarActual() = ResultadoDeclinacion.Fallo
+        var declinacion: ResultadoDeclinacion = ResultadoDeclinacion.Declinada
+        var declinaciones = 0
+
+        override suspend fun declinarActual(): ResultadoDeclinacion {
+            declinaciones++
+            return declinacion
+        }
     }
 
     private val cotizaciones = CotizacionesFalsas()
@@ -466,5 +472,80 @@ class NuevaCotizacionViewModelTest {
     @DisplayName("si la sesion vencio lo informa para volver al inicio de sesion")
     fun sesionVencida() {
         assertTrue(viewModelCon(ResultadoCreditos.SesionVencida).estado.sesionVencida)
+    }
+
+    // --- BITS-337: declinar las condiciones de la cotizacion.
+
+    private fun enLoQuePagas() = viewModelCon(conHipoteca).apply { retomar(cotizacionDePrueba) }
+
+    @Test
+    @DisplayName("AC-1 y AC-2: el modal se abre y Volver lo cierra sin tocar la cotizacion")
+    fun volverDelModal() {
+        val viewModel = enLoQuePagas()
+
+        viewModel.pedirDeclinacion()
+        assertTrue(viewModel.estado.confirmandoDeclinacion)
+        viewModel.cancelarDeclinacion()
+
+        assertFalse(viewModel.estado.confirmandoDeclinacion)
+        assertEquals(cotizacionDePrueba, viewModel.estado.cotizacion)
+        assertEquals(0, cotizaciones.declinaciones)
+    }
+
+    @Test
+    @DisplayName("AC-3: al declinar se elimina la cotizacion y avisa que toca ir al Inicio")
+    fun declina() {
+        val viewModel = enLoQuePagas().apply { pedirDeclinacion() }
+
+        viewModel.declinar()
+
+        assertTrue(viewModel.estado.declinada)
+        assertFalse(viewModel.estado.confirmandoDeclinacion)
+        assertEquals(1, cotizaciones.declinaciones)
+    }
+
+    @Test
+    @DisplayName("si falla al declinar el modal sigue abierto con el aviso, y al reintentar se borra")
+    fun falloAlDeclinar() {
+        cotizaciones.declinacion = ResultadoDeclinacion.Fallo
+        val viewModel = enLoQuePagas().apply { pedirDeclinacion() }
+
+        viewModel.declinar()
+        assertTrue(viewModel.estado.falloAlDeclinar)
+        assertTrue(viewModel.estado.confirmandoDeclinacion)
+        assertFalse(viewModel.estado.declinada)
+
+        cotizaciones.declinacion = ResultadoDeclinacion.Declinada
+        viewModel.declinar()
+
+        assertFalse(viewModel.estado.falloAlDeclinar)
+        assertTrue(viewModel.estado.declinada)
+    }
+
+    @Test
+    @DisplayName("al cerrar el modal tras un fallo, el aviso no reaparece al abrirlo de nuevo")
+    fun cerrarBorraElFallo() {
+        cotizaciones.declinacion = ResultadoDeclinacion.Fallo
+        val viewModel = enLoQuePagas().apply {
+            pedirDeclinacion()
+            declinar()
+            cancelarDeclinacion()
+        }
+
+        viewModel.pedirDeclinacion()
+
+        assertFalse(viewModel.estado.falloAlDeclinar)
+    }
+
+    @Test
+    @DisplayName("si la sesion vencio al declinar lo informa para volver al inicio de sesion")
+    fun sesionVencidaAlDeclinar() {
+        cotizaciones.declinacion = ResultadoDeclinacion.SesionVencida
+        val viewModel = enLoQuePagas().apply { pedirDeclinacion() }
+
+        viewModel.declinar()
+
+        assertTrue(viewModel.estado.sesionVencida)
+        assertFalse(viewModel.estado.declinada)
     }
 }
