@@ -112,18 +112,13 @@ fun AppSolventa(
             }
 
             cotizando && cotizacion.estado.cotizacion != null -> {
-                val volver = cotizacion::volverAlCredito
-                val alInicio = {
-                    volver()
-                    cotizando = false
-                }
                 BackHandler(onBack = cotizacion::volverACoberturas)
                 PantallaLoQuePagas(
                     cotizacion = checkNotNull(cotizacion.estado.cotizacion),
                     sinAutorizacion = cotizacion.estado.sinConsentimiento,
                     conTuCasa = cotizacion.estado.conTuCasa,
-                    alBuscarCredito = volver,
-                    alIrAMisSeguros = alInicio,
+                    // Lo que sigue es la firma (BITS-278): por ahora no hace nada.
+                    alAceptar = {},
                     alVolver = cotizacion::volverACoberturas,
                     alCerrarSesion = cerrarSesion,
                     modifier = conRelleno,

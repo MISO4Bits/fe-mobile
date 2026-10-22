@@ -69,6 +69,9 @@ class CotizacionTest {
         composeRule.onNodeWithText("$46.746").assertIsDisplayed()
         composeRule.onNodeWithText("Esta cotización es estimada").assertIsDisplayed()
         composeRule.onAllNodesWithText("¿Por qué este precio?").assertCountEquals(0)
+        // BITS-333, AC-1: con datos declarados ya no se pide buscar el credito.
+        composeRule.onNodeWithText("Aceptar y continuar").assertIsDisplayed()
+        composeRule.onAllNodesWithText("Buscar mi crédito").assertCountEquals(0)
     }
 
     @Test
@@ -88,8 +91,8 @@ class CotizacionTest {
         composeRule.continuarDesdeCoberturas()
 
         composeRule.esperarTexto("Esta cotización usa la tarifa estándar")
-        composeRule.onNodeWithText("Para continuar necesitamos tu autorización").assertIsDisplayed()
-        composeRule.onNodeWithText("Ir a mis seguros").assertIsDisplayed()
+        // BITS-333, AC-1: sin autorizacion tambien se acepta y continua.
+        composeRule.onNodeWithText("Aceptar y continuar").assertIsDisplayed()
         composeRule.onAllNodesWithText("Estamos analizando tu perfil").assertCountEquals(0)
     }
 
