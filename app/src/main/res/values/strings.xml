@@ -123,4 +123,11 @@
     <string name="pagas_iva">IVA</string>
     <string name="pagas_total">Total cada mes</string>
     <string name="pagas_valor_mes">%1$s/mes</string>
+
+    <string name="declinar_etiqueta">TU COTIZACIÓN</string>
+    <string name="declinar_titulo">¿Quieres declinar estas condiciones?</string>
+    <string name="declinar_detalle">Al declinarlas rechazas esta cotización y la eliminamos por completo. Vuelves al inicio y puedes cotizar de nuevo cuando quieras.</string>
+    <string name="declinar_confirmar">Declinar estas condiciones</string>
+    <string name="declinar_volver">Volver</string>
+    <string name="declinar_fallo">No pudimos declinar tu cotización. Inténtalo de nuevo.</string>
 </resources>

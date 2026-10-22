@@ -37,7 +37,8 @@ import com.solventa4bits.movil.ui.tema.TemaSolventa
 /**
  * "Lo que pagas": la cotizacion tal como la calculo el backend, con los datos
  * del credito a la vista (BITS-95, AC-2) y, segun la [variante], el aviso que
- * explica el precio. Toda variante acepta y continua (BITS-333, AC-1).
+ * explica el precio. Toda variante acepta y continua (BITS-333, AC-1) o
+ * declina las condiciones (BITS-337).
  */
 @Composable
 fun PantallaLoQuePagas(
@@ -45,7 +46,7 @@ fun PantallaLoQuePagas(
     sinAutorizacion: Boolean,
     conTuCasa: Boolean,
     alAceptar: () -> Unit,
-    alVolver: () -> Unit,
+    declinacion: Declinacion,
     alCerrarSesion: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -89,15 +90,43 @@ fun PantallaLoQuePagas(
             Button(onClick = alAceptar, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.pagas_aceptar_y_continuar))
             }
-            TextButton(onClick = alVolver) {
-                Text(stringResource(R.string.cotizacion_atras))
+            TextButton(onClick = declinacion.alPedir) {
+                Text(stringResource(R.string.declinar_confirmar))
             }
         }
     }
     if (explicandoElPrecio) {
         PanelPorQueEstePrecio(cotizacion, alCerrar = { explicandoElPrecio = false })
     }
+    if (declinacion.confirmando) {
+        PanelDeclinarCondiciones(
+            declinando = declinacion.declinando,
+            fallo = declinacion.fallo,
+            alDeclinar = declinacion.alDeclinar,
+            alVolver = declinacion.alCancelar,
+        )
+    }
 }
+
+/** Lo que "Lo que pagas" necesita para el modal de declinar (BITS-337). */
+data class Declinacion(
+    val confirmando: Boolean,
+    val declinando: Boolean,
+    val fallo: Boolean,
+    val alPedir: () -> Unit,
+    val alDeclinar: () -> Unit,
+    val alCancelar: () -> Unit,
+)
+
+private fun sinDeclinar() = Declinacion(
+    confirmando = false,
+    declinando = false,
+    fallo = false,
+    alPedir = {},
+    alDeclinar = {},
+    alCancelar = {},
+)
+
 
 @StringRes
 private fun subtitulo(variante: VarianteDeCotizacion): Int = when (variante) {
@@ -251,7 +280,7 @@ private fun PantallaLoQuePagasPreview() {
             sinAutorizacion = false,
             conTuCasa = false,
             alAceptar = {},
-            alVolver = {},
+            declinacion = sinDeclinar(),
             alCerrarSesion = {},
         )
     }

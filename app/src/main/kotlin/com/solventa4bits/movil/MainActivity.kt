@@ -23,6 +23,7 @@ import com.solventa4bits.movil.cotizacion.datos.crearCotizacionesApi
 import com.solventa4bits.movil.cotizacion.datos.crearCreditosApi
 import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCotizaciones
 import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCreditos
+import com.solventa4bits.movil.cotizacion.ui.Declinacion
 import com.solventa4bits.movil.cotizacion.ui.NuevaCotizacionViewModel
 import com.solventa4bits.movil.cotizacion.ui.PantallaCoberturas
 import com.solventa4bits.movil.cotizacion.ui.PantallaLoQuePagas
@@ -111,19 +112,12 @@ fun AppSolventa(
                 )
             }
 
-            cotizando && cotizacion.estado.cotizacion != null -> {
-                BackHandler(onBack = cotizacion::volverACoberturas)
-                PantallaLoQuePagas(
-                    cotizacion = checkNotNull(cotizacion.estado.cotizacion),
-                    sinAutorizacion = cotizacion.estado.sinConsentimiento,
-                    conTuCasa = cotizacion.estado.conTuCasa,
-                    // Lo que sigue es la firma (BITS-278): por ahora no hace nada.
-                    alAceptar = {},
-                    alVolver = cotizacion::volverACoberturas,
-                    alCerrarSesion = cerrarSesion,
-                    modifier = conRelleno,
-                )
-            }
+            cotizando && cotizacion.estado.cotizacion != null -> LoQuePagas(
+                cotizacion = cotizacion,
+                alInicio = { cotizando = false },
+                alCerrarSesion = cerrarSesion,
+                modifier = conRelleno,
+            )
 
             cotizando -> {
                 // Al girar el telefono esto se vuelve a ejecutar: no debe
@@ -169,4 +163,36 @@ fun AppSolventa(
             }
         }
     }
+}
+
+/** "Lo que pagas", con el modal para declinar sus condiciones (BITS-337). */
+@Composable
+private fun LoQuePagas(
+    cotizacion: NuevaCotizacionViewModel,
+    alInicio: () -> Unit,
+    alCerrarSesion: () -> Unit,
+    modifier: Modifier,
+) {
+    val estado = cotizacion.estado
+    // AC-3: declinada, vuelve al Inicio, que ya no la encuentra.
+    LaunchedEffect(estado.declinada) { if (estado.declinada) alInicio() }
+    LaunchedEffect(estado.sesionVencida) { if (estado.sesionVencida) alCerrarSesion() }
+    BackHandler(onBack = cotizacion::volverACoberturas)
+    PantallaLoQuePagas(
+        cotizacion = checkNotNull(estado.cotizacion),
+        sinAutorizacion = estado.sinConsentimiento,
+        conTuCasa = estado.conTuCasa,
+        // Lo que sigue es la firma (BITS-278): por ahora no hace nada.
+        alAceptar = {},
+        declinacion = Declinacion(
+            confirmando = estado.confirmandoDeclinacion,
+            declinando = estado.declinando,
+            fallo = estado.falloAlDeclinar,
+            alPedir = cotizacion::pedirDeclinacion,
+            alDeclinar = cotizacion::declinar,
+            alCancelar = cotizacion::cancelarDeclinacion,
+        ),
+        alCerrarSesion = alCerrarSesion,
+        modifier = modifier,
+    )
 }
