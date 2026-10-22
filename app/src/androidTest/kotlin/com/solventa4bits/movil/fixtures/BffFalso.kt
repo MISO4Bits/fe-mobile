@@ -18,6 +18,9 @@ class BffFalso : ExternalResource() {
     private val enOrden = ConcurrentLinkedQueue<MockResponse>()
     private val porRuta = ConcurrentHashMap<String, MockResponse>()
 
+    /** Lo que la app pidio, como "DELETE /v1/cotizaciones/actual", en orden de llegada. */
+    val recibidas = ConcurrentLinkedQueue<String>()
+
     /** URL base para crear el cliente HTTP de la app contra este BFF. */
     val url: String
         get() = servidor.url("/").toString()
@@ -31,9 +34,10 @@ class BffFalso : ExternalResource() {
      * Responde siempre lo mismo a una ruta, sin importar cuando llegue. Sirve
      * para las consultas que la app hace por su cuenta, como la del Home, que
      * de otro modo se quedarian con la respuesta encolada para otra peticion.
+     * Con [metodo], solo a ese metodo: el DELETE y el GET de una ruta responden distinto.
      */
-    fun responderSiempreEn(ruta: String, codigo: Int, cuerpo: String = "") {
-        porRuta[ruta] = respuesta(codigo, cuerpo)
+    fun responderSiempreEn(ruta: String, codigo: Int, cuerpo: String = "", metodo: String? = null) {
+        porRuta[if (metodo == null) ruta else "$metodo $ruta"] = respuesta(codigo, cuerpo)
     }
 
     private fun respuesta(codigo: Int, cuerpo: String) = MockResponse().setResponseCode(codigo).setBody(cuerpo)
@@ -41,8 +45,12 @@ class BffFalso : ExternalResource() {
     override fun before() {
         servidor.dispatcher = object : Dispatcher() {
             // Sin nada preparado responde 404, en vez de dejar la peticion esperando.
-            override fun dispatch(request: RecordedRequest): MockResponse =
-                request.path?.let(porRuta::get) ?: enOrden.poll() ?: respuesta(NO_ENCONTRADO, "")
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val pedida = "${request.method} ${request.path}"
+                recibidas.add(pedida)
+                return porRuta[pedida] ?: request.path?.let(porRuta::get) ?: enOrden.poll()
+                    ?: respuesta(NO_ENCONTRADO, "")
+            }
         }
         servidor.start()
     }

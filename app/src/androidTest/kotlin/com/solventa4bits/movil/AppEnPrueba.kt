@@ -75,3 +75,8 @@ fun ComposeContentTestRule.continuarDesdeCoberturas() {
 fun ComposeContentTestRule.esperarTexto(texto: String) {
     waitUntil(ESPERA_MS) { onAllNodesWithText(texto).fetchSemanticsNodes().isNotEmpty() }
 }
+
+/** Espera a que un texto ya no este, por ejemplo al cerrarse un modal. */
+fun ComposeContentTestRule.esperarQueDesaparezca(texto: String) {
+    waitUntil(ESPERA_MS) { onAllNodesWithText(texto).fetchSemanticsNodes().isEmpty() }
+}
