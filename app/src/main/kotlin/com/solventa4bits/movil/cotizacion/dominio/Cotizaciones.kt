@@ -56,9 +56,23 @@ sealed interface ResultadoCotizacion {
     data object Fallo : ResultadoCotizacion
 }
 
+/** Lo que puede pasar al declinar la cotizacion activa (BITS-337). */
+sealed interface ResultadoDeclinacion {
+    /** Ya no hay cotizacion activa: se elimino, o no habia (404). */
+    data object Declinada : ResultadoDeclinacion
+
+    data object SesionVencida : ResultadoDeclinacion
+
+    /** No se pudo completar: la cotizacion sigue como estaba. */
+    data object Fallo : ResultadoDeclinacion
+}
+
 interface ServicioDeCotizaciones {
     /** Cotiza y deja la cotizacion como la activa del cliente: reemplaza la anterior. */
     suspend fun cotizar(datos: DatosDelCredito): ResultadoCotizacion
 
     suspend fun consultarActual(): ResultadoCotizacion
+
+    /** Elimina la cotizacion activa: el cliente vuelve a no tener ninguna. */
+    suspend fun declinarActual(): ResultadoDeclinacion
 }

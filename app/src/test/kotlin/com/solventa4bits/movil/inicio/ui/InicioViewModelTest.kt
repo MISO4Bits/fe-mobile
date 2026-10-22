@@ -3,6 +3,7 @@ package com.solventa4bits.movil.inicio.ui
 import com.solventa4bits.movil.cotizacion.dominio.Cotizacion
 import com.solventa4bits.movil.cotizacion.dominio.DatosDelCredito
 import com.solventa4bits.movil.cotizacion.dominio.ResultadoCotizacion
+import com.solventa4bits.movil.cotizacion.dominio.ResultadoDeclinacion
 import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCotizaciones
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -46,6 +47,7 @@ class InicioViewModelTest {
         val cotizaciones = object : ServicioDeCotizaciones {
             override suspend fun cotizar(datos: DatosDelCredito) = ResultadoCotizacion.Fallo
             override suspend fun consultarActual() = resultado
+            override suspend fun declinarActual() = ResultadoDeclinacion.Fallo
         }
         return InicioViewModel(cotizaciones).apply { consultar() }
     }

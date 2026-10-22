@@ -7,6 +7,7 @@ import com.solventa4bits.movil.cotizacion.dominio.EfectoEnElPrecio
 import com.solventa4bits.movil.cotizacion.dominio.FactorDelPrecio
 import com.solventa4bits.movil.cotizacion.dominio.PrecioDeCobertura
 import com.solventa4bits.movil.cotizacion.dominio.ResultadoCotizacion
+import com.solventa4bits.movil.cotizacion.dominio.ResultadoDeclinacion
 import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCotizaciones
 import com.solventa4bits.movil.red.formatoJson
 import com.solventa4bits.movil.sesion.datos.ConSesion
@@ -19,7 +20,7 @@ import java.net.HttpURLConnection.HTTP_BAD_REQUEST
 import java.net.HttpURLConnection.HTTP_NOT_FOUND
 
 /**
- * Cotiza y consulta la cotizacion activa en el BFF. Como los demas
+ * Cotiza, consulta y declina la cotizacion activa en el BFF. Como los demas
  * adaptadores, nunca deja salir una excepcion: deja traza y devuelve una
  * respuesta controlada.
  */
@@ -37,22 +38,46 @@ class AdaptadorCotizaciones(
     override suspend fun consultarActual(): ResultadoCotizacion =
         pedir("consultar la cotizacion activa") { autorizacion -> api.actual(autorizacion) }
 
+    // 404 tambien cuenta como declinada: en los dos casos el cliente queda sin cotizacion.
+    override suspend fun declinarActual(): ResultadoDeclinacion =
+        protegido("declinar la cotizacion activa", ResultadoDeclinacion.Fallo) {
+            when (val resultado = sesion.llamar { autorizacion -> api.declinarActual(autorizacion) }) {
+                is LlamadaConSesion.Respondio -> {
+                    val codigo = resultado.respuesta.code()
+                    if (resultado.respuesta.isSuccessful || codigo == HTTP_NOT_FOUND) {
+                        ResultadoDeclinacion.Declinada
+                    } else {
+                        traza.error(ORIGEN, "El BFF respondio $codigo al declinar la cotizacion activa", null)
+                        ResultadoDeclinacion.Fallo
+                    }
+                }
+                LlamadaConSesion.SesionVencida -> ResultadoDeclinacion.SesionVencida
+                LlamadaConSesion.SinRefresco -> ResultadoDeclinacion.Fallo
+            }
+        }
+
     private suspend fun pedir(
         accion: String,
         llamada: suspend (autorizacion: String) -> Response<CotizacionDto>,
     ): ResultadoCotizacion =
-        try {
+        protegido(accion, ResultadoCotizacion.Fallo) {
             when (val resultado = sesion.llamar(llamada)) {
                 is LlamadaConSesion.Respondio -> traducir(accion, resultado.respuesta)
                 LlamadaConSesion.SesionVencida -> ResultadoCotizacion.SesionVencida
                 LlamadaConSesion.SinRefresco -> ResultadoCotizacion.Fallo
             }
+        }
+
+    /** Sin red o con una respuesta fuera de contrato, deja traza y devuelve [fallo]. */
+    private suspend fun <T> protegido(accion: String, fallo: T, bloque: suspend () -> T): T =
+        try {
+            bloque()
         } catch (e: IOException) {
             traza.error(ORIGEN, "No se pudo llegar al BFF al $accion", e)
-            ResultadoCotizacion.Fallo
+            fallo
         } catch (e: SerializationException) {
             traza.error(ORIGEN, "La respuesta del BFF no cumple el contrato al $accion", e)
-            ResultadoCotizacion.Fallo
+            fallo
         }
 
     private fun traducir(accion: String, respuesta: Response<CotizacionDto>): ResultadoCotizacion {

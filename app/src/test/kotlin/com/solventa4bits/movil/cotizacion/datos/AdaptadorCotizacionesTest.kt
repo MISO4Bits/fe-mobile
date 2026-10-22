@@ -7,6 +7,7 @@ import com.solventa4bits.movil.cotizacion.dominio.EfectoEnElPrecio
 import com.solventa4bits.movil.cotizacion.dominio.FactorDelPrecio
 import com.solventa4bits.movil.cotizacion.dominio.PrecioDeCobertura
 import com.solventa4bits.movil.cotizacion.dominio.ResultadoCotizacion
+import com.solventa4bits.movil.cotizacion.dominio.ResultadoDeclinacion
 import com.solventa4bits.movil.fixtures.RespuestasBff
 import com.solventa4bits.movil.sesion.datos.ConSesion
 import com.solventa4bits.movil.sesion.dominio.AlmacenEnMemoria
@@ -199,6 +200,52 @@ class AdaptadorCotizacionesTest {
         servidor.shutdown()
 
         assertEquals(ResultadoCotizacion.Fallo, adaptador().consultarActual())
+        assertInstanceOf(IOException::class.java, traza.errores.single().causa)
+    }
+
+    @Test
+    @DisplayName("declina con DELETE /v1/cotizaciones/actual y el token de la sesion")
+    fun declina() = runTest {
+        responder(204)
+
+        assertEquals(ResultadoDeclinacion.Declinada, adaptador().declinarActual())
+        val peticion = servidor.takeRequest()
+        assertEquals("DELETE", peticion.method)
+        assertEquals("/mobile/v1/cotizaciones/actual", peticion.path)
+        assertEquals("Bearer jwt-de-acceso", peticion.getHeader("Authorization"))
+    }
+
+    @Test
+    @DisplayName("si no habia cotizacion (404) tambien queda declinada")
+    fun declinarSinCotizacion() = runTest {
+        responder(404)
+
+        assertEquals(ResultadoDeclinacion.Declinada, adaptador().declinarActual())
+    }
+
+    @Test
+    @DisplayName("al declinar, si la sesion no se puede refrescar la da por vencida")
+    fun declinarConSesionVencida() = runTest {
+        responder(401)
+
+        assertEquals(ResultadoDeclinacion.SesionVencida, adaptador().declinarActual())
+    }
+
+    @Test
+    @DisplayName("si el BFF falla al declinar responde controlado y deja traza con el codigo")
+    fun declinarConFalla() = runTest {
+        responder(503)
+
+        assertEquals(ResultadoDeclinacion.Fallo, adaptador().declinarActual())
+        assertTrue(traza.errores.single().mensaje.contains("503"))
+    }
+
+    @Test
+    @DisplayName("si no hay red al declinar responde controlado y deja traza")
+    fun declinarSinRed() = runTest {
+        servidor.shutdown()
+
+        assertEquals(ResultadoDeclinacion.Fallo, adaptador().declinarActual())
         assertInstanceOf(IOException::class.java, traza.errores.single().causa)
     }
 }

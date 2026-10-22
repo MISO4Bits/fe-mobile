@@ -9,6 +9,7 @@ import com.solventa4bits.movil.cotizacion.dominio.EstadoCreditos
 import com.solventa4bits.movil.cotizacion.dominio.OrigenDeDatos
 import com.solventa4bits.movil.cotizacion.dominio.ResultadoCotizacion
 import com.solventa4bits.movil.cotizacion.dominio.ResultadoCreditos
+import com.solventa4bits.movil.cotizacion.dominio.ResultadoDeclinacion
 import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCotizaciones
 import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCreditos
 import kotlinx.coroutines.Dispatchers
@@ -62,6 +63,8 @@ class NuevaCotizacionViewModelTest {
         }
 
         override suspend fun consultarActual() = ResultadoCotizacion.SinCotizacion
+
+        override suspend fun declinarActual() = ResultadoDeclinacion.Fallo
     }
 
     private val cotizaciones = CotizacionesFalsas()
