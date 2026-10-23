@@ -70,6 +70,14 @@ private val TextoClaro = Color(0xFFFFFFFF)
 private val TextoTenue = Color(0xFFB7C9CB)
 
 /**
+ * De donde sale la foto de una cara. En la app es [camaraReal]; las pruebas
+ * de extremo a extremo pasan otra, porque no pueden manejar la camara.
+ */
+typealias Camara = @Composable (alTenerFoto: (ByteArray) -> Unit, modifier: Modifier) -> Unit
+
+val camaraReal: Camara = { alTenerFoto, modifier -> PantallaCamara(alTenerFoto, modifier) }
+
+/**
  * Figma 02: la camara con el marco de la cedula (BITS-275, AC-6). Desde aqui
  * tambien se elige una foto de la galeria. [alTenerFoto] recibe la foto tal
  * como sale: el ViewModel la prepara antes de enviarla.

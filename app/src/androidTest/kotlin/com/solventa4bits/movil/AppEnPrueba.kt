@@ -48,7 +48,7 @@ fun ComposeContentTestRule.abrirApp(bff: BffFalso, almacen: AlmacenDeSesion) {
     val cotizaciones = AdaptadorCotizaciones(crearCotizacionesApi(bff.url), conSesion, sinTraza)
     val evidencias = AdaptadorEvidencias(crearEvidenciasApi(bff.url), conSesion, sinTraza)
     setContent {
-        TemaSolventa { AppSolventa(sesion, almacen, creditos, cotizaciones, evidencias) }
+        TemaSolventa { AppSolventa(sesion, almacen, creditos, cotizaciones, evidencias, camaraDePrueba) }
     }
 }
 

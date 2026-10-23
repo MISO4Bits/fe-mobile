@@ -35,7 +35,8 @@ import com.solventa4bits.movil.identidad.datos.crearEvidenciasApi
 import com.solventa4bits.movil.identidad.dominio.ServicioDeEvidencias
 import com.solventa4bits.movil.identidad.dominio.CaraDeCedula
 import com.solventa4bits.movil.identidad.ui.CedulaViewModel
-import com.solventa4bits.movil.identidad.ui.PantallaCamara
+import com.solventa4bits.movil.identidad.ui.Camara
+import com.solventa4bits.movil.identidad.ui.camaraReal
 import com.solventa4bits.movil.identidad.ui.PantallaCedula
 import com.solventa4bits.movil.inicio.ui.InicioViewModel
 import com.solventa4bits.movil.inicio.ui.PantallaInicio
@@ -84,6 +85,7 @@ fun AppSolventa(
     creditos: ServicioDeCreditos,
     cotizaciones: ServicioDeCotizaciones,
     evidencias: ServicioDeEvidencias,
+    camara: Camara = camaraReal,
 ) {
     val login = viewModel { LoginViewModel(sesion, almacen) }
     val cotizacion = viewModel { NuevaCotizacionViewModel(creditos, cotizaciones) }
@@ -116,6 +118,7 @@ fun AppSolventa(
 
             cotizando && enCedula -> TuCedula(
                 cedula = cedula,
+                camara = camara,
                 alVolver = { enCedula = false },
                 alCerrarSesion = cerrarSesion,
                 modifier = conRelleno,
@@ -226,6 +229,7 @@ private fun LoQuePagas(
 @Composable
 private fun TuCedula(
     cedula: CedulaViewModel,
+    camara: Camara,
     alVolver: () -> Unit,
     alCerrarSesion: () -> Unit,
     modifier: Modifier,
@@ -237,12 +241,12 @@ private fun TuCedula(
     if (cara != null) {
         // El gesto atras cierra la camara sin enviar nada.
         BackHandler { camaraPara = null }
-        PantallaCamara(
-            alTenerFoto = { foto ->
+        camara(
+            { foto ->
                 camaraPara = null
                 cedula.enviar(cara, foto)
             },
-            modifier = modifier,
+            modifier,
         )
         return
     }
