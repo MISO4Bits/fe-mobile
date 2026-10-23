@@ -130,4 +130,42 @@
     <string name="declinar_confirmar">Declinar estas condiciones</string>
     <string name="declinar_volver">Volver</string>
     <string name="declinar_fallo">No pudimos declinar tu cotización. Inténtalo de nuevo.</string>
+
+    <string name="cedula_titulo">Tu cédula</string>
+    <string name="cedula_dos_caras">Tu cédula, por las dos caras</string>
+    <string name="cedula_subtitulo">Toca cada cara para tomarle foto. Te decimos al instante si sirve.</string>
+    <string name="cedula_frente">Frente</string>
+    <string name="cedula_reverso">Reverso</string>
+    <string name="cedula_toca_para_tomar">Toca para tomar la foto</string>
+    <string name="cedula_sin_foto">Sin foto todavía</string>
+    <string name="cedula_revisando">Revisando…</string>
+    <string name="cedula_se_ve_bien">Se ve bien</string>
+    <string name="cedula_revision_manual">La revisará una persona. Puedes seguir.</string>
+    <string name="cedula_no_se_envio">No pudimos enviar la foto. Inténtalo de nuevo.</string>
+    <string name="cedula_reintentar_por">Mejor otra foto: %1$s. %2$s</string>
+    <string name="cedula_reintentar">Mejor otra foto. %1$s</string>
+    <plurals name="cedula_intentos">
+        <item quantity="one">Te queda %d intento.</item>
+        <item quantity="other">Te quedan %d intentos.</item>
+    </plurals>
+    <string name="cedula_motivo_borrosa">está borrosa</string>
+    <string name="cedula_motivo_oscura">está muy oscura</string>
+    <string name="cedula_motivo_reflejo">tiene reflejos</string>
+    <string name="cedula_motivo_recortada">no se ven las cuatro esquinas</string>
+    <string name="cedula_motivo_no_es_cedula">no parece una cédula</string>
+    <string name="cedula_tomar_otra_vez">Tomar otra vez</string>
+    <string name="cedula_que_hacemos_titulo">Qué hacemos con las fotos</string>
+    <string name="cedula_que_hacemos_detalle">Las revisamos al instante. Si no podemos confirmarlas, una persona las revisa y puedes seguir.</string>
+    <string name="cedula_continuar">Continuar</string>
+
+    <string name="camara_titulo">Pon la cédula dentro del marco</string>
+    <string name="camara_subtitulo">Buscamos buena luz y que se vean las cuatro esquinas</string>
+    <string name="camara_consejo_luz">Buena luz</string>
+    <string name="camara_consejo_reflejos">Sin reflejos en el plástico</string>
+    <string name="camara_consejo_esquinas">Las cuatro esquinas visibles</string>
+    <string name="camara_tomar">Tomar la foto</string>
+    <string name="camara_galeria">Prefiero subir una foto de la galería</string>
+    <string name="camara_sin_permiso">Para tomar la foto necesitamos permiso para usar la cámara.</string>
+    <string name="camara_dar_permiso">Dar permiso</string>
+    <string name="camara_fallo">No pudimos tomar la foto. Inténtalo de nuevo.</string>
 </resources>

@@ -37,6 +37,9 @@ kover {
                 // Depende del Keystore del dispositivo: se verifica con una
                 // prueba instrumentada (BovedaKeystoreTest).
                 classes("com.solventa4bits.movil.sesion.datos.BovedaKeystore*")
+                // Usa imagenes reales de Android: se verifica con una prueba
+                // instrumentada (PreparadorDeFotosTest).
+                classes("com.solventa4bits.movil.identidad.datos.PreparadorDeFotos*")
                 // Clases que genera el compilador de Compose.
                 classes("*ComposableSingletons*", "*_Factory*", "*Hilt*")
                 annotatedBy("androidx.compose.runtime.Composable")
@@ -145,6 +148,12 @@ dependencies {
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.kotlinx.serialization)
     implementation(libs.okhttp)
+
+    // Camara de la cedula (BITS-275): CameraX, la libreria oficial de Android.
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
 
     // Reglas de negocio: JUnit 5, como declara la Estrategia de Pruebas.
     testImplementation(libs.junit.jupiter)
