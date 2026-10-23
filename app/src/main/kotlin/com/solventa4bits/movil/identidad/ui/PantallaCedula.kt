@@ -48,7 +48,7 @@ import com.solventa4bits.movil.ui.tema.TemaSolventa
 private val Ambar = Color(0xFF8A5A00)
 
 // Las fotos de la cedula son horizontales, como la tarjeta.
-private const val PROPORCION_DE_CEDULA = 1.6f
+internal const val PROPORCION_DE_CEDULA = 1.6f
 
 // El borde punteado del recuadro sin foto: trazo y espacio, en pixeles.
 private val PUNTEADO = floatArrayOf(12f, 8f)

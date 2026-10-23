@@ -33,7 +33,9 @@ import com.solventa4bits.movil.identidad.datos.AdaptadorEvidencias
 import com.solventa4bits.movil.identidad.datos.PreparadorDeFotos
 import com.solventa4bits.movil.identidad.datos.crearEvidenciasApi
 import com.solventa4bits.movil.identidad.dominio.ServicioDeEvidencias
+import com.solventa4bits.movil.identidad.dominio.CaraDeCedula
 import com.solventa4bits.movil.identidad.ui.CedulaViewModel
+import com.solventa4bits.movil.identidad.ui.PantallaCamara
 import com.solventa4bits.movil.identidad.ui.PantallaCedula
 import com.solventa4bits.movil.inicio.ui.InicioViewModel
 import com.solventa4bits.movil.inicio.ui.PantallaInicio
@@ -229,12 +231,26 @@ private fun TuCedula(
     modifier: Modifier,
 ) {
     LaunchedEffect(cedula.estado.sesionVencida) { if (cedula.estado.sesionVencida) alCerrarSesion() }
+    // La cara a la que se le esta tomando foto (AC-6). Null: se ve "Tu cedula".
+    var camaraPara by rememberSaveable { mutableStateOf<CaraDeCedula?>(null) }
+    val cara = camaraPara
+    if (cara != null) {
+        // El gesto atras cierra la camara sin enviar nada.
+        BackHandler { camaraPara = null }
+        PantallaCamara(
+            alTenerFoto = { foto ->
+                camaraPara = null
+                cedula.enviar(cara, foto)
+            },
+            modifier = modifier,
+        )
+        return
+    }
     // Sin boton "Atras" (AC-6): el gesto del telefono vuelve a "Lo que pagas".
     BackHandler(onBack = alVolver)
     PantallaCedula(
         estado = cedula.estado,
-        // La camara llega en el siguiente paso.
-        alTomarFoto = {},
+        alTomarFoto = { camaraPara = it },
         // Lo que sigue es la selfie (BITS-235): por ahora no hace nada.
         alContinuar = {},
         alCerrarSesion = alCerrarSesion,
