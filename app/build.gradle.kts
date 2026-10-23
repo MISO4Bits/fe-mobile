@@ -37,6 +37,9 @@ kover {
                 // Depende del Keystore del dispositivo: se verifica con una
                 // prueba instrumentada (BovedaKeystoreTest).
                 classes("com.solventa4bits.movil.sesion.datos.BovedaKeystore*")
+                // Usa imagenes reales de Android: se verifica con una prueba
+                // instrumentada (PreparadorDeFotosTest).
+                classes("com.solventa4bits.movil.identidad.datos.PreparadorDeFotos*")
                 // Clases que genera el compilador de Compose.
                 classes("*ComposableSingletons*", "*_Factory*", "*Hilt*")
                 annotatedBy("androidx.compose.runtime.Composable")
