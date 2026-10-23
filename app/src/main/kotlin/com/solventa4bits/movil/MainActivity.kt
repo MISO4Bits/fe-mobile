@@ -21,6 +21,7 @@ import com.solventa4bits.movil.cotizacion.datos.AdaptadorCotizaciones
 import com.solventa4bits.movil.cotizacion.datos.AdaptadorCreditos
 import com.solventa4bits.movil.cotizacion.datos.crearCotizacionesApi
 import com.solventa4bits.movil.cotizacion.datos.crearCreditosApi
+import com.solventa4bits.movil.cotizacion.dominio.Cotizacion
 import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCotizaciones
 import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCreditos
 import com.solventa4bits.movil.cotizacion.ui.Declinacion
@@ -28,6 +29,12 @@ import com.solventa4bits.movil.cotizacion.ui.NuevaCotizacionViewModel
 import com.solventa4bits.movil.cotizacion.ui.PantallaCoberturas
 import com.solventa4bits.movil.cotizacion.ui.PantallaLoQuePagas
 import com.solventa4bits.movil.cotizacion.ui.PantallaNuevaCotizacion
+import com.solventa4bits.movil.identidad.datos.AdaptadorEvidencias
+import com.solventa4bits.movil.identidad.datos.PreparadorDeFotos
+import com.solventa4bits.movil.identidad.datos.crearEvidenciasApi
+import com.solventa4bits.movil.identidad.dominio.ServicioDeEvidencias
+import com.solventa4bits.movil.identidad.ui.CedulaViewModel
+import com.solventa4bits.movil.identidad.ui.PantallaCedula
 import com.solventa4bits.movil.inicio.ui.InicioViewModel
 import com.solventa4bits.movil.inicio.ui.PantallaInicio
 import com.solventa4bits.movil.sesion.datos.AdaptadorSesion
@@ -41,6 +48,8 @@ import com.solventa4bits.movil.sesion.ui.LoginViewModel
 import com.solventa4bits.movil.sesion.ui.PantallaLogin
 import com.solventa4bits.movil.traza.Traza
 import com.solventa4bits.movil.ui.tema.TemaSolventa
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,9 +63,10 @@ class MainActivity : ComponentActivity() {
         val conSesion = ConSesion(almacen, sesion)
         val creditos = AdaptadorCreditos(crearCreditosApi(BuildConfig.URL_BASE_BFF), conSesion, traza)
         val cotizaciones = AdaptadorCotizaciones(crearCotizacionesApi(BuildConfig.URL_BASE_BFF), conSesion, traza)
+        val evidencias = AdaptadorEvidencias(crearEvidenciasApi(BuildConfig.URL_BASE_BFF), conSesion, traza)
 
         setContent {
-            TemaSolventa { AppSolventa(sesion, almacen, creditos, cotizaciones) }
+            TemaSolventa { AppSolventa(sesion, almacen, creditos, cotizaciones, evidencias) }
         }
     }
 }
@@ -71,15 +81,23 @@ fun AppSolventa(
     almacen: AlmacenDeSesion,
     creditos: ServicioDeCreditos,
     cotizaciones: ServicioDeCotizaciones,
+    evidencias: ServicioDeEvidencias,
 ) {
     val login = viewModel { LoginViewModel(sesion, almacen) }
     val cotizacion = viewModel { NuevaCotizacionViewModel(creditos, cotizaciones) }
     val inicio = viewModel { InicioViewModel(cotizaciones) }
+    // Preparar la foto pesa: va en segundo plano para no congelar la pantalla.
+    val cedula = viewModel {
+        CedulaViewModel(evidencias) { foto -> withContext(Dispatchers.Default) { PreparadorDeFotos.preparar(foto) } }
+    }
     var cotizando by rememberSaveable { mutableStateOf(false) }
+    // Acepto las condiciones y esta cargando la cedula (BITS-275).
+    var enCedula by rememberSaveable { mutableStateOf(false) }
     // La cotizacion se retomo desde el Home: "Atras" vuelve al Home.
     var retomada by rememberSaveable { mutableStateOf(false) }
     val cerrarSesion = {
         cotizando = false
+        enCedula = false
         login.cerrarSesion()
     }
 
@@ -91,6 +109,13 @@ fun AppSolventa(
                 alCambiarCorreo = login::cambiarCorreo,
                 alCambiarContrasena = login::cambiarContrasena,
                 alIniciarSesion = login::iniciarSesion,
+                modifier = conRelleno,
+            )
+
+            cotizando && enCedula -> TuCedula(
+                cedula = cedula,
+                alVolver = { enCedula = false },
+                alCerrarSesion = cerrarSesion,
                 modifier = conRelleno,
             )
 
@@ -115,6 +140,11 @@ fun AppSolventa(
             cotizando && cotizacion.estado.cotizacion != null -> LoQuePagas(
                 cotizacion = cotizacion,
                 alInicio = { cotizando = false },
+                // AC-1: aceptar lleva a cargar la cedula.
+                alAceptar = {
+                    cedula.abrir()
+                    enCedula = true
+                },
                 alCerrarSesion = cerrarSesion,
                 modifier = conRelleno,
             )
@@ -138,29 +168,22 @@ fun AppSolventa(
                 )
             }
 
-            else -> {
-                // Cada vez que se muestra el Home se consulta la cotizacion en curso.
-                LaunchedEffect(Unit) { inicio.consultar() }
-                LaunchedEffect(inicio.estado.sesionVencida) {
-                    if (inicio.estado.sesionVencida) cerrarSesion()
-                }
-                PantallaInicio(
-                    cotizacionEnCurso = inicio.estado.cotizacionEnCurso,
-                    // Cada vez que se entra desde el inicio, la cotizacion empieza de cero.
-                    alCotizar = {
-                        cotizacion.empezar()
-                        retomada = false
-                        cotizando = true
-                    },
-                    alVerCotizacion = { enCurso ->
-                        cotizacion.retomar(enCurso)
-                        retomada = true
-                        cotizando = true
-                    },
-                    alCerrarSesion = cerrarSesion,
-                    modifier = conRelleno,
-                )
-            }
+            else -> Inicio(
+                inicio = inicio,
+                // Cada vez que se entra desde el inicio, la cotizacion empieza de cero.
+                alCotizar = {
+                    cotizacion.empezar()
+                    retomada = false
+                    cotizando = true
+                },
+                alVerCotizacion = { enCurso ->
+                    cotizacion.retomar(enCurso)
+                    retomada = true
+                    cotizando = true
+                },
+                alCerrarSesion = cerrarSesion,
+                modifier = conRelleno,
+            )
         }
     }
 }
@@ -170,6 +193,7 @@ fun AppSolventa(
 private fun LoQuePagas(
     cotizacion: NuevaCotizacionViewModel,
     alInicio: () -> Unit,
+    alAceptar: () -> Unit,
     alCerrarSesion: () -> Unit,
     modifier: Modifier,
 ) {
@@ -182,8 +206,7 @@ private fun LoQuePagas(
         cotizacion = checkNotNull(estado.cotizacion),
         sinAutorizacion = estado.sinConsentimiento,
         conTuCasa = estado.conTuCasa,
-        // Lo que sigue es la firma (BITS-278): por ahora no hace nada.
-        alAceptar = {},
+        alAceptar = alAceptar,
         declinacion = Declinacion(
             confirmando = estado.confirmandoDeclinacion,
             declinando = estado.declinando,
@@ -192,6 +215,48 @@ private fun LoQuePagas(
             alDeclinar = cotizacion::declinar,
             alCancelar = cotizacion::cancelarDeclinacion,
         ),
+        alCerrarSesion = alCerrarSesion,
+        modifier = modifier,
+    )
+}
+
+/** "Tu cedula": las dos caras antes de la selfie (BITS-275). */
+@Composable
+private fun TuCedula(
+    cedula: CedulaViewModel,
+    alVolver: () -> Unit,
+    alCerrarSesion: () -> Unit,
+    modifier: Modifier,
+) {
+    LaunchedEffect(cedula.estado.sesionVencida) { if (cedula.estado.sesionVencida) alCerrarSesion() }
+    // Sin boton "Atras" (AC-6): el gesto del telefono vuelve a "Lo que pagas".
+    BackHandler(onBack = alVolver)
+    PantallaCedula(
+        estado = cedula.estado,
+        // La camara llega en el siguiente paso.
+        alTomarFoto = {},
+        // Lo que sigue es la selfie (BITS-235): por ahora no hace nada.
+        alContinuar = {},
+        alCerrarSesion = alCerrarSesion,
+        modifier = modifier,
+    )
+}
+
+/** El Home: cada vez que se muestra consulta la cotizacion en curso. */
+@Composable
+private fun Inicio(
+    inicio: InicioViewModel,
+    alCotizar: () -> Unit,
+    alVerCotizacion: (Cotizacion) -> Unit,
+    alCerrarSesion: () -> Unit,
+    modifier: Modifier,
+) {
+    LaunchedEffect(Unit) { inicio.consultar() }
+    LaunchedEffect(inicio.estado.sesionVencida) { if (inicio.estado.sesionVencida) alCerrarSesion() }
+    PantallaInicio(
+        cotizacionEnCurso = inicio.estado.cotizacionEnCurso,
+        alCotizar = alCotizar,
+        alVerCotizacion = alVerCotizacion,
         alCerrarSesion = alCerrarSesion,
         modifier = modifier,
     )
