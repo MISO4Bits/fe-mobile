@@ -168,4 +168,9 @@
     <string name="camara_sin_permiso">Para tomar la foto necesitamos permiso para usar la cámara.</string>
     <string name="camara_dar_permiso">Dar permiso</string>
     <string name="camara_fallo">No pudimos tomar la foto. Inténtalo de nuevo.</string>
+
+    <string name="selfie_motivo_sin_rostro">no vemos tu cara</string>
+    <string name="selfie_motivo_varios_rostros">sale más de una persona</string>
+    <string name="selfie_motivo_posible_suplantacion">parece la foto de una pantalla o de un papel</string>
+    <string name="selfie_motivo_no_coincide">no se parece a la foto de tu cédula</string>
 </resources>

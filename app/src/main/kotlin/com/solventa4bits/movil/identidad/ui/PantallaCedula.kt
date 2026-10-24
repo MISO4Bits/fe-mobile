@@ -213,6 +213,10 @@ private fun textoDe(motivo: MotivoDeRechazo): Int = when (motivo) {
     MotivoDeRechazo.REFLEJO -> R.string.cedula_motivo_reflejo
     MotivoDeRechazo.RECORTADA -> R.string.cedula_motivo_recortada
     MotivoDeRechazo.NO_ES_CEDULA -> R.string.cedula_motivo_no_es_cedula
+    MotivoDeRechazo.SIN_ROSTRO -> R.string.selfie_motivo_sin_rostro
+    MotivoDeRechazo.VARIOS_ROSTROS -> R.string.selfie_motivo_varios_rostros
+    MotivoDeRechazo.POSIBLE_SUPLANTACION -> R.string.selfie_motivo_posible_suplantacion
+    MotivoDeRechazo.NO_COINCIDE_CON_CEDULA -> R.string.selfie_motivo_no_coincide
 }
 
 @Composable

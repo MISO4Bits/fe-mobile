@@ -215,4 +215,77 @@ class AdaptadorEvidenciasTest {
 
         assertEquals(ResultadoEstado.Fallo, adaptador().consultar())
     }
+
+    // --- BITS-235: la selfie va al mismo endpoint, con tipo = selfie.
+
+    @Test
+    @DisplayName("sube la selfie con tipo selfie, como JPEG y con el token de la sesion")
+    fun subeLaSelfie() = runTest {
+        responder(201, subida("ACEPTADA"))
+
+        assertEquals(ResultadoSubida.Exito(Veredicto.Aceptada), adaptador().subirSelfie(foto))
+
+        val peticion = servidor.takeRequest()
+        val cuerpo = peticion.body.readUtf8()
+        assertEquals("/mobile/v1/cuenta/evidencias-identidad", peticion.path)
+        assertEquals("Bearer jwt-de-acceso", peticion.getHeader("Authorization"))
+        assertTrue(cuerpo.contains("name=\"tipo\""))
+        assertTrue(cuerpo.contains("selfie"))
+        assertTrue(cuerpo.contains("name=\"imagen\"; filename=\"selfie.jpg\""))
+    }
+
+    @Test
+    @DisplayName("lee los cuatro motivos de la selfie")
+    fun motivosDeLaSelfie() = runTest {
+        val motivos = listOf(
+            MotivoDeRechazo.SIN_ROSTRO,
+            MotivoDeRechazo.VARIOS_ROSTROS,
+            MotivoDeRechazo.POSIBLE_SUPLANTACION,
+            MotivoDeRechazo.NO_COINCIDE_CON_CEDULA,
+        )
+        motivos.forEach { responder(200, subida("REINTENTAR", motivo = it.name, intentos = 2)) }
+
+        motivos.forEach { motivo ->
+            assertEquals(
+                ResultadoSubida.Exito(Veredicto.Reintentar(motivo, 2)),
+                adaptador().subirSelfie(foto),
+            )
+        }
+    }
+
+    @Test
+    @DisplayName("si falta una cara vigente de la cedula (422) la selfie queda como fallo, con traza")
+    fun selfieSinCedula() = runTest {
+        responder(422, """{"title": "Regla de negocio", "status": 422}""")
+
+        assertEquals(ResultadoSubida.Fallo, adaptador().subirSelfie(foto))
+        assertTrue(traza.errores.single().mensaje.contains("422"))
+    }
+
+    @Test
+    @DisplayName("la consulta tambien trae el estado guardado de la selfie")
+    fun consultaLaSelfie() = runTest {
+        responder(
+            200,
+            """[
+              {"tipo": "cedula_frente", "estado": "ACEPTADA", "intentosRestantes": 3},
+              {"tipo": "cedula_reverso", "estado": "ACEPTADA", "intentosRestantes": 3},
+              {"tipo": "selfie", "estado": "REVISION_MANUAL", "intentosRestantes": 0}
+            ]""",
+        )
+
+        val resultado = adaptador().consultar() as ResultadoEstado.Exito
+
+        assertEquals(EstadoGuardado.REVISION_MANUAL, resultado.selfie)
+    }
+
+    @Test
+    @DisplayName("si la selfie no viene en la consulta queda pendiente")
+    fun selfieQueNoViene() = runTest {
+        responder(200, "[]")
+
+        val resultado = adaptador().consultar() as ResultadoEstado.Exito
+
+        assertEquals(EstadoGuardado.PENDIENTE, resultado.selfie)
+    }
 }
