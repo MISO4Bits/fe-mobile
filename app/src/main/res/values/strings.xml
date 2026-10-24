@@ -173,4 +173,20 @@
     <string name="selfie_motivo_varios_rostros">sale más de una persona</string>
     <string name="selfie_motivo_posible_suplantacion">parece la foto de una pantalla o de un papel</string>
     <string name="selfie_motivo_no_coincide">no se parece a la foto de tu cédula</string>
+
+    <string name="selfie_titulo">Tu selfie</string>
+    <string name="selfie_confirma">Confirma que eres tú</string>
+    <string name="selfie_para_que">Así sabemos que eres tú quien pide el cambio de seguro.</string>
+    <string name="selfie_al_instante">Te decimos al instante si sirve.</string>
+    <string name="selfie_pon_tu_cara">Pon tu cara dentro del óvalo</string>
+    <string name="selfie_para_que_salga_bien">PARA QUE SALGA BIEN</string>
+    <string name="selfie_consejo_frente">Mira de frente a la cámara</string>
+    <string name="selfie_consejo_luz">Busca buena luz</string>
+    <string name="selfie_consejo_sin_accesorios">Quítate gafas, gorra y tapabocas</string>
+    <string name="selfie_que_hacemos_titulo">Qué hacemos con tu selfie</string>
+    <string name="selfie_que_hacemos_detalle">La comparamos con la foto de tu cédula y la guardamos protegida, como respaldo de tu solicitud.</string>
+    <string name="selfie_tomar">Tomar la selfie</string>
+    <string name="selfie_volver_a_cedula">Volver a tu cédula</string>
+    <string name="selfie_tu_selfie">Tu selfie</string>
+    <string name="selfie_tomarla_otra_vez">Tomarla otra vez</string>
 </resources>
