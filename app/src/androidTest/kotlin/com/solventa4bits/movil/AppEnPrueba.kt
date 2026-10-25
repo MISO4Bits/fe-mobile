@@ -19,7 +19,11 @@ import com.solventa4bits.movil.sesion.datos.AlmacenDeSesionSeguro
 import com.solventa4bits.movil.sesion.datos.BovedaKeystore
 import com.solventa4bits.movil.sesion.datos.ConSesion
 import com.solventa4bits.movil.sesion.datos.crearSesionApi
+import com.solventa4bits.movil.sesion.dominio.AlmacenDePreferencias
 import com.solventa4bits.movil.sesion.dominio.AlmacenDeSesion
+import com.solventa4bits.movil.sesion.dominio.AutenticadorDeHuella
+import com.solventa4bits.movil.sesion.dominio.AutenticadorFalso
+import com.solventa4bits.movil.sesion.dominio.PreferenciasEnMemoria
 import com.solventa4bits.movil.traza.Traza
 import com.solventa4bits.movil.ui.tema.TemaSolventa
 
@@ -38,7 +42,14 @@ fun almacenDelDispositivo(): AlmacenDeSesion {
     return AlmacenDeSesionSeguro(BovedaKeystore(contexto, sinTraza), sinTraza)
 }
 
-fun ComposeContentTestRule.abrirApp(bff: BffFalso, almacen: AlmacenDeSesion) {
+fun ComposeContentTestRule.abrirApp(
+    bff: BffFalso,
+    almacen: AlmacenDeSesion,
+    // Por defecto el telefono de prueba no tiene sensor de huella: el inicio
+    // de sesion de siempre. HuellaTest le pone uno falso.
+    autenticador: AutenticadorDeHuella = AutenticadorFalso(disponible = false),
+    preferencias: AlmacenDePreferencias = PreferenciasEnMemoria(),
+) {
     // Por defecto el cliente no tiene cotizacion en curso. Una prueba que la
     // necesite responde otra cosa en la misma ruta.
     bff.responderSiempreEn("/v1/cotizaciones/actual", 404)
@@ -48,7 +59,9 @@ fun ComposeContentTestRule.abrirApp(bff: BffFalso, almacen: AlmacenDeSesion) {
     val cotizaciones = AdaptadorCotizaciones(crearCotizacionesApi(bff.url), conSesion, sinTraza)
     val evidencias = AdaptadorEvidencias(crearEvidenciasApi(bff.url), conSesion, sinTraza)
     setContent {
-        TemaSolventa { AppSolventa(sesion, almacen, creditos, cotizaciones, evidencias, camaraDePrueba) }
+        TemaSolventa {
+            AppSolventa(sesion, almacen, creditos, cotizaciones, evidencias, autenticador, preferencias, camaraDePrueba)
+        }
     }
 }
 

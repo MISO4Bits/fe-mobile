@@ -37,6 +37,13 @@ kover {
                 // Depende del Keystore del dispositivo: se verifica con una
                 // prueba instrumentada (BovedaKeystoreTest).
                 classes("com.solventa4bits.movil.sesion.datos.BovedaKeystore*")
+                // El dialogo biometrico del sistema no se automatiza; las
+                // preferencias del dispositivo se verifican con una prueba
+                // instrumentada (PreferenciasDelTelefonoTest).
+                classes(
+                    "com.solventa4bits.movil.sesion.datos.AutenticadorBiometrico*",
+                    "com.solventa4bits.movil.sesion.datos.PreferenciasDelTelefono*",
+                )
                 // Usa imagenes reales de Android: se verifica con una prueba
                 // instrumentada (PreparadorDeFotosTest).
                 classes("com.solventa4bits.movil.identidad.datos.PreparadorDeFotos*")
@@ -154,6 +161,9 @@ dependencies {
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
+
+    // Huella (BITS-353): el dialogo biometrico del sistema.
+    implementation(libs.androidx.biometric)
 
     // Reglas de negocio: JUnit 5, como declara la Estrategia de Pruebas.
     testImplementation(libs.junit.jupiter)
