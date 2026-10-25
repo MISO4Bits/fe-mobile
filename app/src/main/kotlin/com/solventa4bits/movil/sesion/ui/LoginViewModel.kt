@@ -27,6 +27,10 @@ data class EstadoLogin(
 ) {
     val puedeEnviar: Boolean
         get() = correo.isNotBlank() && contrasena.isNotBlank() && !cargando
+
+    /** Si entra con la huella; null cuando el telefono no tiene sensor. */
+    val huellaActivada: Boolean?
+        get() = huella?.let { it == PreferenciaDeHuella.ACTIVADA }
 }
 
 enum class ErrorLogin { CREDENCIALES_INVALIDAS, FALLO }
@@ -42,18 +46,23 @@ enum class PasoLogin {
     ENTRAR_CON_HUELLA,
 }
 
-/** Decide que pasa en la pantalla de inicio de sesion. La pantalla solo dibuja. */
+/**
+ * Decide que pasa en la pantalla de inicio de sesion. La pantalla solo dibuja.
+ *
+ * El [AutenticadorDeHuella] llega en cada llamada y no se guarda: el dialogo
+ * biometrico pertenece a la Activity, que Android recrea al rotar, y el
+ * ViewModel sobrevive a eso.
+ *
+ * @param conHuella el telefono tiene sensor y una huella registrada. Sin
+ * sensor no se habla de huella: el inicio con credenciales funciona igual (AC-3).
+ */
 class LoginViewModel(
     private val servicio: ServicioDeSesion,
     private val almacen: AlmacenDeSesion,
-    private val autenticador: AutenticadorDeHuella,
     private val preferencias: AlmacenDePreferencias,
+    private val conHuella: Boolean,
 ) : ViewModel() {
 
-    private val conHuella = autenticador.disponible()
-
-    // Sin sensor no se habla de huella: el inicio con credenciales funciona
-    // igual (AC-3).
     private val huella: PreferenciaDeHuella?
         get() = preferencias.huella().takeIf { conHuella }
 
@@ -69,19 +78,25 @@ class LoginViewModel(
         private set
 
     init {
-        if (estado.sesionIniciada) refrescar()
+        if (estado.sesionIniciada) viewModelScope.launch { refrescar() }
     }
 
     // Renueva la sesion por debajo, sin que el cliente lo note. Si no hay red
-    // se conserva la sesion que habia.
-    private fun refrescar() {
-        val guardada = almacen.leer() ?: return
-        viewModelScope.launch {
-            when (val resultado = servicio.refrescar(guardada.tokenDeRefresco)) {
-                is ResultadoInicioSesion.Exito -> almacen.guardar(resultado.sesion)
-                ResultadoInicioSesion.CredencialesInvalidas -> cerrarSesion()
-                ResultadoInicioSesion.Fallo -> Unit
+    // se conserva la sesion que habia. Responde si la sesion sigue sirviendo.
+    private suspend fun refrescar(): Boolean {
+        val guardada = almacen.leer() ?: return false
+        return when (val resultado = servicio.refrescar(guardada.tokenDeRefresco)) {
+            is ResultadoInicioSesion.Exito -> {
+                almacen.guardar(resultado.sesion)
+                true
             }
+            // Mas de 24 horas sin abrir la app: se piden credenciales, pero la
+            // huella sigue activada; solo cerrar sesion la apaga (AC-6).
+            ResultadoInicioSesion.CredencialesInvalidas -> {
+                cerrarSesion(olvidarHuella = false)
+                false
+            }
+            ResultadoInicioSesion.Fallo -> true
         }
     }
 
@@ -119,7 +134,7 @@ class LoginViewModel(
     }
 
     /** Respuesta a la oferta de activar la huella: si o "ahora no" (AC-1). */
-    fun decidirHuella(activar: Boolean) {
+    fun decidirHuella(activar: Boolean, autenticador: AutenticadorDeHuella) {
         if (estado.cargando) return
         if (!activar) {
             preferencias.guardarHuella(PreferenciaDeHuella.RECHAZADA)
@@ -138,17 +153,17 @@ class LoginViewModel(
     }
 
     /** El cliente toco el sensor en "Entrar con tu huella" (AC-2). */
-    fun entrarConHuella() {
+    fun entrarConHuella(autenticador: AutenticadorDeHuella) {
         if (estado.cargando) return
         estado = estado.copy(cargando = true)
         viewModelScope.launch {
-            if (autenticador.autenticar() == ResultadoHuella.EXITO) {
-                entrar()
-                refrescar()
-            } else {
-                // El telefono no la reconocio: entra con sus credenciales. La
-                // sesion guardada se conserva por si vuelve a intentarlo.
-                estado = estado.copy(cargando = false, paso = PasoLogin.CREDENCIALES)
+            when (autenticador.autenticar()) {
+                ResultadoHuella.EXITO -> if (refrescar()) entrar()
+                // Cerro el dialogo: puede tocar el icono otra vez o usar la contrasena.
+                ResultadoHuella.CANCELADO -> estado = estado.copy(cargando = false)
+                // El sensor no la reconocio o esta bloqueado: entra con sus
+                // credenciales. La sesion guardada se conserva.
+                ResultadoHuella.FALLO -> estado = estado.copy(cargando = false, paso = PasoLogin.CREDENCIALES)
             }
         }
     }
@@ -159,18 +174,19 @@ class LoginViewModel(
     }
 
     /** Prende o apaga la huella desde el menu, ya adentro. */
-    fun alternarHuella() {
-        if (!conHuella) return
+    fun alternarHuella(autenticador: AutenticadorDeHuella) {
+        if (!conHuella || estado.cargando) return
         if (preferencias.huella() == PreferenciaDeHuella.ACTIVADA) {
             preferencias.guardarHuella(PreferenciaDeHuella.RECHAZADA)
             estado = estado.copy(huella = huella)
             return
         }
+        estado = estado.copy(cargando = true)
         viewModelScope.launch {
             if (autenticador.autenticar() == ResultadoHuella.EXITO) {
                 preferencias.guardarHuella(PreferenciaDeHuella.ACTIVADA)
             }
-            estado = estado.copy(huella = huella)
+            estado = estado.copy(cargando = false, huella = huella)
         }
     }
 
@@ -178,12 +194,14 @@ class LoginViewModel(
         estado = estado.copy(cargando = false, sesionIniciada = true, paso = PasoLogin.CREDENCIALES, huella = huella)
     }
 
-    /** Borra los datos locales de sesion y vuelve al inicio de sesion. */
-    fun cerrarSesion() {
+    /**
+     * Borra los datos locales de sesion y vuelve al inicio de sesion. Al
+     * cerrarla el cliente, la huella queda desactivada en este telefono y se
+     * vuelve a ofrecer al entrar con contrasena (AC-6).
+     */
+    fun cerrarSesion(olvidarHuella: Boolean = true) {
         almacen.borrar()
-        // La huella queda desactivada en este telefono y se vuelve a ofrecer
-        // al entrar con contrasena (AC-6).
-        preferencias.guardarHuella(PreferenciaDeHuella.SIN_DECIDIR)
+        if (olvidarHuella) preferencias.guardarHuella(PreferenciaDeHuella.SIN_DECIDIR)
         estado = EstadoLogin(huella = huella)
     }
 }

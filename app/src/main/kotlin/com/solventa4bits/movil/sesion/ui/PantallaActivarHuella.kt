@@ -25,7 +25,7 @@ import com.solventa4bits.movil.ui.tema.TemaSolventa
 
 /**
  * Figma 02 "Activar huella": se muestra una sola vez, justo despues de entrar
- * con contrasena en un telefono con sensor (BITS-235, AC-1). Solo dibuja;
+ * con contrasena en un telefono con sensor (BITS-353, AC-1). Solo dibuja;
  * las decisiones estan en [LoginViewModel].
  */
 @Composable

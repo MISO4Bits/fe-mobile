@@ -26,7 +26,7 @@ import com.solventa4bits.movil.ui.tema.TemaSolventa
 
 /**
  * Figma 01 "Entrar con tu huella": la app abrio con la huella activada y la
- * sesion guardada espera detras del sensor (BITS-235, AC-2). Al abrirse
+ * sesion guardada espera detras del sensor (BITS-353, AC-2). Al abrirse
  * lanza el dialogo del sistema; el icono lo vuelve a lanzar si se cerro.
  */
 @Composable

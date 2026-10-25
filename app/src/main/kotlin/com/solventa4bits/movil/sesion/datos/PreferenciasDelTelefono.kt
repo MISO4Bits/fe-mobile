@@ -9,8 +9,8 @@ import com.solventa4bits.movil.sesion.dominio.PreferenciaDeHuella
  * Preferencias en el archivo privado de la app. Van en claro: no son un
  * secreto, solo recuerdan lo que el cliente eligio. Se borran al desinstalar.
  *
- * Depende del dispositivo, asi que no entra en Kover: se verifica en el
- * emulador con HuellaTest.
+ * Depende del dispositivo, asi que no entra en Kover: se verifica con
+ * PreferenciasDelTelefonoTest, instrumentada.
  */
 class PreferenciasDelTelefono(contexto: Context) : AlmacenDePreferencias {
 

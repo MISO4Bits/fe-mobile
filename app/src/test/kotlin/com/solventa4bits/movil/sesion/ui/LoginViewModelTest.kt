@@ -1,7 +1,6 @@
 package com.solventa4bits.movil.sesion.ui
 
 import com.solventa4bits.movil.sesion.dominio.AlmacenEnMemoria
-import com.solventa4bits.movil.sesion.dominio.AutenticadorDeHuella
 import com.solventa4bits.movil.sesion.dominio.AutenticadorFalso
 import com.solventa4bits.movil.sesion.dominio.PreferenciaDeHuella
 import com.solventa4bits.movil.sesion.dominio.PreferenciasEnMemoria
@@ -157,7 +156,7 @@ class LoginViewModelTest {
         @Test
         @DisplayName("con sensor y sin decision previa, al entrar ofrece activar la huella en vez de pasar")
         fun ofreceAlEntrar() {
-            val viewModel = viewModelQueResponde(ResultadoInicioSesion.Exito(sesion), autenticador = sensor)
+            val viewModel = viewModelQueResponde(ResultadoInicioSesion.Exito(sesion), conHuella = true)
 
             viewModel.escribirCredencialesEIniciar()
 
@@ -181,7 +180,7 @@ class LoginViewModelTest {
         @DisplayName("si ya dijo ahora no, entra directo sin volver a preguntar")
         fun rechazadaNoOfrece() {
             preferencias.guardarHuella(PreferenciaDeHuella.RECHAZADA)
-            val viewModel = viewModelQueResponde(ResultadoInicioSesion.Exito(sesion), autenticador = sensor)
+            val viewModel = viewModelQueResponde(ResultadoInicioSesion.Exito(sesion), conHuella = true)
 
             viewModel.escribirCredencialesEIniciar()
 
@@ -192,10 +191,10 @@ class LoginViewModelTest {
         @Test
         @DisplayName("al activarla, el sensor la confirma, queda activada y entra")
         fun activar() {
-            val viewModel = viewModelQueResponde(ResultadoInicioSesion.Exito(sesion), autenticador = sensor)
+            val viewModel = viewModelQueResponde(ResultadoInicioSesion.Exito(sesion), conHuella = true)
             viewModel.escribirCredencialesEIniciar()
 
-            viewModel.decidirHuella(activar = true)
+            viewModel.decidirHuella(activar = true, sensor)
 
             assertEquals(1, sensor.veces)
             assertEquals(PreferenciaDeHuella.ACTIVADA, preferencias.huella())
@@ -207,10 +206,10 @@ class LoginViewModelTest {
         @DisplayName("si el sensor no la confirma al activarla, entra igual y queda sin decidir")
         fun activarSinConfirmar() {
             sensor.respuesta = ResultadoHuella.CANCELADO
-            val viewModel = viewModelQueResponde(ResultadoInicioSesion.Exito(sesion), autenticador = sensor)
+            val viewModel = viewModelQueResponde(ResultadoInicioSesion.Exito(sesion), conHuella = true)
             viewModel.escribirCredencialesEIniciar()
 
-            viewModel.decidirHuella(activar = true)
+            viewModel.decidirHuella(activar = true, sensor)
 
             assertEquals(PreferenciaDeHuella.SIN_DECIDIR, preferencias.huella())
             assertTrue(viewModel.estado.sesionIniciada)
@@ -219,10 +218,10 @@ class LoginViewModelTest {
         @Test
         @DisplayName("con ahora no entra sin tocar el sensor y queda rechazada")
         fun ahoraNo() {
-            val viewModel = viewModelQueResponde(ResultadoInicioSesion.Exito(sesion), autenticador = sensor)
+            val viewModel = viewModelQueResponde(ResultadoInicioSesion.Exito(sesion), conHuella = true)
             viewModel.escribirCredencialesEIniciar()
 
-            viewModel.decidirHuella(activar = false)
+            viewModel.decidirHuella(activar = false, sensor)
 
             assertEquals(0, sensor.veces)
             assertEquals(PreferenciaDeHuella.RECHAZADA, preferencias.huella())
@@ -243,7 +242,7 @@ class LoginViewModelTest {
         @Test
         @DisplayName("abre pidiendo la huella, sin entrar ni refrescar todavia")
         fun abreEnLaHuella() {
-            val viewModel = viewModelQueResponde(refresco = ResultadoInicioSesion.Exito(sesion), autenticador = sensor)
+            val viewModel = viewModelQueResponde(refresco = ResultadoInicioSesion.Exito(sesion), conHuella = true)
 
             assertEquals(PasoLogin.ENTRAR_CON_HUELLA, viewModel.estado.paso)
             assertFalse(viewModel.estado.sesionIniciada)
@@ -263,9 +262,9 @@ class LoginViewModelTest {
         @DisplayName("con la huella correcta entra y renueva la sesion por debajo")
         fun huellaCorrecta() {
             val nueva = Sesion("jwt-nuevo", "refresco-nuevo", 3600)
-            val viewModel = viewModelQueResponde(refresco = ResultadoInicioSesion.Exito(nueva), autenticador = sensor)
+            val viewModel = viewModelQueResponde(refresco = ResultadoInicioSesion.Exito(nueva), conHuella = true)
 
-            viewModel.entrarConHuella()
+            viewModel.entrarConHuella(sensor)
 
             assertTrue(viewModel.estado.sesionIniciada)
             assertEquals(nueva, almacen.leer())
@@ -275,22 +274,37 @@ class LoginViewModelTest {
         @DisplayName("con la huella correcta pero mas de 24 horas sin abrir, pide credenciales")
         fun huellaCorrectaSesionVencida() {
             val viewModel =
-                viewModelQueResponde(refresco = ResultadoInicioSesion.CredencialesInvalidas, autenticador = sensor)
+                viewModelQueResponde(refresco = ResultadoInicioSesion.CredencialesInvalidas, conHuella = true)
 
-            viewModel.entrarConHuella()
+            viewModel.entrarConHuella(sensor)
 
             assertFalse(viewModel.estado.sesionIniciada)
             assertEquals(PasoLogin.CREDENCIALES, viewModel.estado.paso)
             assertNull(almacen.leer())
+            // Vencer no es cerrar sesion: la huella sigue activada.
+            assertEquals(PreferenciaDeHuella.ACTIVADA, preferencias.huella())
+        }
+
+        @Test
+        @DisplayName("si cierra el dialogo se queda en la huella, para tocar el sensor otra vez")
+        fun dialogoCerrado() {
+            sensor.respuesta = ResultadoHuella.CANCELADO
+            val viewModel = viewModelQueResponde(refresco = ResultadoInicioSesion.Exito(sesion), conHuella = true)
+
+            viewModel.entrarConHuella(sensor)
+
+            assertEquals(PasoLogin.ENTRAR_CON_HUELLA, viewModel.estado.paso)
+            assertFalse(viewModel.estado.cargando)
+            assertEquals(0, refrescosPedidos)
         }
 
         @Test
         @DisplayName("si el telefono no la reconoce pasa a credenciales y conserva la sesion guardada")
         fun huellaNoReconocida() {
             sensor.respuesta = ResultadoHuella.FALLO
-            val viewModel = viewModelQueResponde(refresco = ResultadoInicioSesion.Exito(sesion), autenticador = sensor)
+            val viewModel = viewModelQueResponde(refresco = ResultadoInicioSesion.Exito(sesion), conHuella = true)
 
-            viewModel.entrarConHuella()
+            viewModel.entrarConHuella(sensor)
 
             assertFalse(viewModel.estado.sesionIniciada)
             assertEquals(PasoLogin.CREDENCIALES, viewModel.estado.paso)
@@ -301,7 +315,7 @@ class LoginViewModelTest {
         @Test
         @DisplayName("si prefiere la contrasena, entra con ella y no se le vuelve a ofrecer la huella")
         fun prefiereContrasena() {
-            val viewModel = viewModelQueResponde(ResultadoInicioSesion.Exito(sesion), autenticador = sensor)
+            val viewModel = viewModelQueResponde(ResultadoInicioSesion.Exito(sesion), conHuella = true)
 
             viewModel.entrarConContrasena()
             assertEquals(PasoLogin.CREDENCIALES, viewModel.estado.paso)
@@ -320,7 +334,7 @@ class LoginViewModelTest {
         @DisplayName("al cerrar sesion la huella queda desactivada y se ofrece otra vez al entrar")
         fun cerrarSesionLaDesactiva() {
             preferencias.guardarHuella(PreferenciaDeHuella.ACTIVADA)
-            val viewModel = viewModelQueResponde(ResultadoInicioSesion.Exito(sesion), autenticador = sensor)
+            val viewModel = viewModelQueResponde(ResultadoInicioSesion.Exito(sesion), conHuella = true)
 
             viewModel.cerrarSesion()
 
@@ -335,9 +349,9 @@ class LoginViewModelTest {
         @DisplayName("desde el menu la apaga sin tocar el sensor")
         fun apagarDesdeElMenu() {
             preferencias.guardarHuella(PreferenciaDeHuella.ACTIVADA)
-            val viewModel = viewModelQueResponde(autenticador = sensor)
+            val viewModel = viewModelQueResponde(conHuella = true)
 
-            viewModel.alternarHuella()
+            viewModel.alternarHuella(sensor)
 
             assertEquals(0, sensor.veces)
             assertEquals(PreferenciaDeHuella.RECHAZADA, preferencias.huella())
@@ -348,14 +362,14 @@ class LoginViewModelTest {
         @DisplayName("desde el menu la prende solo si el sensor la confirma")
         fun prenderDesdeElMenu() {
             preferencias.guardarHuella(PreferenciaDeHuella.RECHAZADA)
-            val viewModel = viewModelQueResponde(autenticador = sensor)
+            val viewModel = viewModelQueResponde(conHuella = true)
 
             sensor.respuesta = ResultadoHuella.CANCELADO
-            viewModel.alternarHuella()
+            viewModel.alternarHuella(sensor)
             assertEquals(PreferenciaDeHuella.RECHAZADA, preferencias.huella())
 
             sensor.respuesta = ResultadoHuella.EXITO
-            viewModel.alternarHuella()
+            viewModel.alternarHuella(sensor)
             assertEquals(PreferenciaDeHuella.ACTIVADA, preferencias.huella())
             assertEquals(PreferenciaDeHuella.ACTIVADA, viewModel.estado.huella)
         }
@@ -365,7 +379,7 @@ class LoginViewModelTest {
         fun sinSensorNoHaceNada() {
             val viewModel = viewModelQueResponde()
 
-            viewModel.alternarHuella()
+            viewModel.alternarHuella(sensor)
 
             assertEquals(PreferenciaDeHuella.SIN_DECIDIR, preferencias.huella())
             assertNull(viewModel.estado.huella)
@@ -379,7 +393,7 @@ class LoginViewModelTest {
     private fun viewModelQueResponde(
         inicio: ResultadoInicioSesion = ResultadoInicioSesion.Fallo,
         refresco: ResultadoInicioSesion = ResultadoInicioSesion.Fallo,
-        autenticador: AutenticadorDeHuella = AutenticadorFalso(disponible = false),
+        conHuella: Boolean = false,
     ): LoginViewModel {
         val servicio = object : ServicioDeSesion {
             override suspend fun iniciarSesion(correo: String, contrasena: String): ResultadoInicioSesion {
@@ -393,7 +407,7 @@ class LoginViewModelTest {
                 return refresco
             }
         }
-        return LoginViewModel(servicio, almacen, autenticador, preferencias)
+        return LoginViewModel(servicio, almacen, preferencias, conHuella)
     }
 
     private fun LoginViewModel.escribirCredencialesEIniciar() {

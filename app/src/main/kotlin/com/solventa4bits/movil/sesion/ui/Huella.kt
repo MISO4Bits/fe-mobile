@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -18,14 +16,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.solventa4bits.movil.R
 
-/*
- * Piezas que comparten las dos pantallas de la huella (Figma 01 "Entrar con
- * tu huella" y 02 "Activar huella"): el icono grande y la nota de seguridad.
- */
+// Piezas que comparten las dos pantallas de la huella (Figma 01 "Entrar con
+// tu huella" y 02 "Activar huella"): el icono grande y la nota de seguridad.
 
 /** El icono de la huella dentro de un circulo. Con [alTocar], invita a tocarlo. */
 @Composable
@@ -39,8 +36,8 @@ internal fun IconoDeHuella(alTocar: (() -> Unit)? = null) {
         contentAlignment = Alignment.Center,
     ) {
         Icon(
-            imageVector = Icons.Outlined.Fingerprint,
-            contentDescription = stringResource(R.string.huella_icono),
+            painter = painterResource(R.drawable.ic_huella),
+            contentDescription = if (alTocar == null) null else stringResource(R.string.huella_toca_el_sensor),
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(60.dp),
         )

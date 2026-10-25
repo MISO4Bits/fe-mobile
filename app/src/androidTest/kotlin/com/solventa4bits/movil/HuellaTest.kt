@@ -3,6 +3,7 @@ package com.solventa4bits.movil
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -23,7 +24,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Entrar con la huella (BITS-235, AC-1, AC-2 y AC-3) de extremo a extremo,
+ * Entrar con la huella (BITS-353: AC-1, AC-2, AC-3 y AC-6) de extremo a extremo,
  * con el sensor reemplazado por un doble: el dialogo del sistema no se puede
  * automatizar. Las preferencias van en memoria, nuevas en cada prueba.
  */
@@ -103,6 +104,24 @@ class HuellaTest {
         composeRule.onNodeWithText("Correo electrónico").assertIsDisplayed()
         assertNotNull(almacen.leer())
         assertEquals(PreferenciaDeHuella.ACTIVADA, preferencias.huella())
+    }
+
+    @Test
+    fun alCerrarSesionDesdeElMenuLaHuellaQuedaDesactivada() {
+        bff.responder(200, RespuestasBff.sesionValida())
+        composeRule.abrirApp(bff, almacen, AutenticadorFalso(), preferencias)
+        composeRule.escribirCredencialesYEntrar()
+        composeRule.esperarTexto("Entra más rápido con tu huella")
+        composeRule.onNodeWithText("Activar huella").performClick()
+        composeRule.esperarTexto("Nueva cotización")
+
+        composeRule.onNodeWithContentDescription("Menú").performClick()
+        composeRule.onNodeWithText("Cerrar sesión").performClick()
+        composeRule.esperarTexto("¿Quieres cerrar sesión?")
+        composeRule.onNodeWithText("Cerrar sesión").performClick()
+
+        composeRule.esperarTexto("Iniciar sesión")
+        assertEquals(PreferenciaDeHuella.SIN_DECIDIR, preferencias.huella())
     }
 
     /** Como [iniciarSesion], pero sin esperar el inicio: lo que sigue es la oferta de la huella. */

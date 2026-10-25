@@ -197,7 +197,6 @@
 
     <string name="huella_dialogo_titulo">Entra con tu huella</string>
     <string name="huella_entrar_con_contrasena">Entrar con contraseña</string>
-    <string name="huella_icono">Huella</string>
     <string name="huella_nota_titulo">Tu huella no sale del teléfono</string>
     <string name="huella_nota_detalle">El teléfono nos confirma que eres tú. Nosotros nunca vemos ni guardamos tu huella. Si cambias de teléfono, te pedimos la contraseña otra vez.</string>
     <string name="huella_activar_titulo">Entra más rápido con tu huella</string>

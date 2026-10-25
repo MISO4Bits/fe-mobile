@@ -19,8 +19,8 @@ import kotlin.coroutines.resume
  * registro en Ajustes y a la app solo le llega el resultado. BiometricPrompt
  * exige una FragmentActivity.
  *
- * Depende del dispositivo, asi que no entra en Kover: se verifica en el
- * emulador con HuellaTest.
+ * Depende del dispositivo y el dialogo del sistema no se automatiza, asi que
+ * no entra en Kover: se prueba a mano en el emulador o en un telefono.
  */
 class AutenticadorBiometrico(private val activity: FragmentActivity) : AutenticadorDeHuella {
 
@@ -49,7 +49,8 @@ class AutenticadorBiometrico(private val activity: FragmentActivity) : Autentica
         val dialogo = BiometricPrompt(activity, ContextCompat.getMainExecutor(activity), respuesta)
         val descripcion = BiometricPrompt.PromptInfo.Builder()
             .setTitle(activity.getString(R.string.huella_dialogo_titulo))
-            .setNegativeButtonText(activity.getString(R.string.huella_entrar_con_contrasena))
+            // Solo cierra el dialogo: la pantalla de abajo ofrece la contrasena.
+            .setNegativeButtonText(activity.getString(R.string.barra_cancelar))
             .setAllowedAuthenticators(BIOMETRIC_STRONG)
             .build()
         dialogo.authenticate(descripcion)

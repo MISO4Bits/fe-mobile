@@ -53,7 +53,6 @@ import com.solventa4bits.movil.sesion.datos.crearSesionApi
 import com.solventa4bits.movil.sesion.dominio.AlmacenDePreferencias
 import com.solventa4bits.movil.sesion.dominio.AlmacenDeSesion
 import com.solventa4bits.movil.sesion.dominio.AutenticadorDeHuella
-import com.solventa4bits.movil.sesion.dominio.PreferenciaDeHuella
 import com.solventa4bits.movil.sesion.dominio.ServicioDeSesion
 import com.solventa4bits.movil.sesion.ui.LoginViewModel
 import com.solventa4bits.movil.sesion.ui.PantallaActivarHuella
@@ -79,7 +78,6 @@ class MainActivity : FragmentActivity() {
         val creditos = AdaptadorCreditos(crearCreditosApi(BuildConfig.URL_BASE_BFF), conSesion, traza)
         val cotizaciones = AdaptadorCotizaciones(crearCotizacionesApi(BuildConfig.URL_BASE_BFF), conSesion, traza)
         val evidencias = AdaptadorEvidencias(crearEvidenciasApi(BuildConfig.URL_BASE_BFF), conSesion, traza)
-        // Huella (BITS-353): el sensor del telefono y lo que el cliente decidio.
         val autenticador = AutenticadorBiometrico(this)
         val preferencias = PreferenciasDelTelefono(applicationContext)
 
@@ -106,7 +104,7 @@ fun AppSolventa(
     preferencias: AlmacenDePreferencias,
     camara: Camara = camaraReal,
 ) {
-    val login = viewModel { LoginViewModel(sesion, almacen, autenticador, preferencias) }
+    val login = viewModel { LoginViewModel(sesion, almacen, preferencias, conHuella = autenticador.disponible()) }
     val cotizacion = viewModel { NuevaCotizacionViewModel(creditos, cotizaciones) }
     val inicio = viewModel { InicioViewModel(cotizaciones) }
     // Preparar la foto pesa: va en segundo plano para no congelar la pantalla.
@@ -129,7 +127,12 @@ fun AppSolventa(
     Scaffold(modifier = Modifier.fillMaxSize()) { relleno ->
         val conRelleno = Modifier.padding(relleno)
         when {
-            !login.estado.sesionIniciada -> AntesDeEntrar(login, alUsarOtraCuenta = cerrarSesion, modifier = conRelleno)
+            !login.estado.sesionIniciada -> AntesDeEntrar(
+                login = login,
+                autenticador = autenticador,
+                alUsarOtraCuenta = cerrarSesion,
+                modifier = conRelleno,
+            )
 
             cotizando && enCedula -> TuCedula(
                 cedula = cedula,
@@ -191,7 +194,8 @@ fun AppSolventa(
 
             else -> Inicio(
                 inicio = inicio,
-                login = login,
+                huellaActivada = login.estado.huellaActivada,
+                alAlternarHuella = { login.alternarHuella(autenticador) },
                 // Cada vez que se entra desde el inicio, la cotizacion empieza de cero.
                 alCotizar = {
                     cotizacion.empezar()
@@ -294,17 +298,22 @@ private fun TuCedula(
  * oferta de activarla tras entrar y la pantalla de entrar con ella (BITS-353).
  */
 @Composable
-private fun AntesDeEntrar(login: LoginViewModel, alUsarOtraCuenta: () -> Unit, modifier: Modifier) {
+private fun AntesDeEntrar(
+    login: LoginViewModel,
+    autenticador: AutenticadorDeHuella,
+    alUsarOtraCuenta: () -> Unit,
+    modifier: Modifier,
+) {
     when (login.estado.paso) {
         PasoLogin.OFRECER_HUELLA -> PantallaActivarHuella(
             cargando = login.estado.cargando,
-            alActivar = { login.decidirHuella(activar = true) },
-            alAhoraNo = { login.decidirHuella(activar = false) },
+            alActivar = { login.decidirHuella(activar = true, autenticador) },
+            alAhoraNo = { login.decidirHuella(activar = false, autenticador) },
             modifier = modifier,
         )
 
         PasoLogin.ENTRAR_CON_HUELLA -> PantallaEntrarConHuella(
-            alTocarSensor = login::entrarConHuella,
+            alTocarSensor = { login.entrarConHuella(autenticador) },
             alEntrarConContrasena = login::entrarConContrasena,
             alUsarOtraCuenta = alUsarOtraCuenta,
             modifier = modifier,
@@ -324,7 +333,8 @@ private fun AntesDeEntrar(login: LoginViewModel, alUsarOtraCuenta: () -> Unit, m
 @Composable
 private fun Inicio(
     inicio: InicioViewModel,
-    login: LoginViewModel,
+    huellaActivada: Boolean?,
+    alAlternarHuella: () -> Unit,
     alCotizar: () -> Unit,
     alVerCotizacion: (Cotizacion) -> Unit,
     alCerrarSesion: () -> Unit,
@@ -338,9 +348,8 @@ private fun Inicio(
         alVerCotizacion = alVerCotizacion,
         alCerrarSesion = alCerrarSesion,
         modifier = modifier,
-        // Null cuando el telefono no tiene sensor: el menu no muestra la opcion.
-        huellaActivada = login.estado.huella?.let { it == PreferenciaDeHuella.ACTIVADA },
-        alAlternarHuella = login::alternarHuella,
+        huellaActivada = huellaActivada,
+        alAlternarHuella = alAlternarHuella,
     )
 }
 

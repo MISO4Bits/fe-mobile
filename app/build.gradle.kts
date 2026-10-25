@@ -37,8 +37,9 @@ kover {
                 // Depende del Keystore del dispositivo: se verifica con una
                 // prueba instrumentada (BovedaKeystoreTest).
                 classes("com.solventa4bits.movil.sesion.datos.BovedaKeystore*")
-                // Dependen del sensor de huella y de las preferencias del
-                // dispositivo: se verifican en el emulador (HuellaTest).
+                // El dialogo biometrico del sistema no se automatiza; las
+                // preferencias del dispositivo se verifican con una prueba
+                // instrumentada (PreferenciasDelTelefonoTest).
                 classes(
                     "com.solventa4bits.movil.sesion.datos.AutenticadorBiometrico*",
                     "com.solventa4bits.movil.sesion.datos.PreferenciasDelTelefono*",
@@ -144,8 +145,6 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.core)
-    // El icono de la huella no esta en el juego basico. R8 deja solo los que se usan.
-    implementation(libs.androidx.material.icons.extended)
 
     // Estado de pantalla.
     implementation(libs.androidx.lifecycle.viewmodel.compose)
