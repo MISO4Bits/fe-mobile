@@ -189,4 +189,9 @@
     <string name="selfie_volver_a_cedula">Volver a tu cédula</string>
     <string name="selfie_tu_selfie">Tu selfie</string>
     <string name="selfie_tomarla_otra_vez">Tomarla otra vez</string>
+
+    <string name="camara_selfie_titulo">Pon tu cara dentro del óvalo</string>
+    <string name="camara_selfie_subtitulo">Mira de frente, con buena luz.</string>
+    <string name="camara_selfie_consejo_una_persona">Una sola persona</string>
+    <string name="camara_selfie_consejo_sin_accesorios">Sin gafas, gorra ni tapabocas</string>
 </resources>

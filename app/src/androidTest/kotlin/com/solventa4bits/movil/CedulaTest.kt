@@ -137,7 +137,7 @@ class CedulaTest {
 private const val USAR_FOTO = "Usar foto de prueba"
 
 /** En lugar de la camara: un boton que entrega una foto JPEG generada en el momento. */
-val camaraDePrueba: Camara = { alTenerFoto, _ ->
+val camaraDePrueba: Camara = { _, alTenerFoto, _ ->
     Button(onClick = { alTenerFoto(fotoGenerada()) }) { Text(USAR_FOTO) }
 }
 

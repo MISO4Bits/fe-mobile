@@ -36,6 +36,7 @@ import com.solventa4bits.movil.identidad.dominio.ServicioDeEvidencias
 import com.solventa4bits.movil.identidad.dominio.CaraDeCedula
 import com.solventa4bits.movil.identidad.ui.CedulaViewModel
 import com.solventa4bits.movil.identidad.ui.PantallaSelfie
+import com.solventa4bits.movil.identidad.ui.QueFoto
 import com.solventa4bits.movil.identidad.ui.SelfieViewModel
 import com.solventa4bits.movil.identidad.ui.Camara
 import com.solventa4bits.movil.identidad.ui.camaraReal
@@ -244,7 +245,7 @@ private fun TuCedula(
     // Las dos caras estan listas y el cliente paso a la selfie (BITS-235).
     var enSelfie by rememberSaveable { mutableStateOf(false) }
     if (enSelfie) {
-        TuSelfie(selfie, alVolver = { enSelfie = false }, alCerrarSesion = alCerrarSesion, modifier = modifier)
+        TuSelfie(selfie, camara, alVolver = { enSelfie = false }, alCerrarSesion = alCerrarSesion, modifier = modifier)
         return
     }
     // La cara a la que se le esta tomando foto (AC-6). Null: se ve "Tu cedula".
@@ -254,6 +255,7 @@ private fun TuCedula(
         // El gesto atras cierra la camara sin enviar nada.
         BackHandler { camaraPara = null }
         camara(
+            QueFoto.CEDULA,
             { foto ->
                 camaraPara = null
                 cedula.enviar(cara, foto)
@@ -300,17 +302,32 @@ private fun Inicio(
 @Composable
 private fun TuSelfie(
     selfie: SelfieViewModel,
+    camara: Camara,
     alVolver: () -> Unit,
     alCerrarSesion: () -> Unit,
     modifier: Modifier,
 ) {
     LaunchedEffect(selfie.estado.sesionVencida) { if (selfie.estado.sesionVencida) alCerrarSesion() }
+    // Tomando la selfie con la camara frontal (AC-4).
+    var tomando by rememberSaveable { mutableStateOf(false) }
+    if (tomando) {
+        // El gesto atras cierra la camara sin enviar nada.
+        BackHandler { tomando = false }
+        camara(
+            QueFoto.SELFIE,
+            { foto ->
+                tomando = false
+                selfie.enviar(foto)
+            },
+            modifier,
+        )
+        return
+    }
     BackHandler(onBack = alVolver)
     PantallaSelfie(
         estado = selfie.estado,
         miniatura = selfie.miniatura,
-        // La camara frontal llega en el siguiente paso.
-        alTomarSelfie = {},
+        alTomarSelfie = { tomando = true },
         alVolverACedula = alVolver,
         // Lo que sigue es enviar la solicitud (BITS-278): por ahora no hace nada.
         alContinuar = {},
