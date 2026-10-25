@@ -37,6 +37,10 @@ sealed interface EstadoDeCara {
 val EstadoDeCara.lista: Boolean
     get() = this == EstadoDeCara.Aceptada || this == EstadoDeCara.RevisionManual
 
+/** Despues de enviar se puede repetir la foto, salvo si sirvio o si aun se revisa. */
+val EstadoDeCara.sePuedeRepetir: Boolean
+    get() = this is EstadoDeCara.Reintentar || this == EstadoDeCara.RevisionManual || this == EstadoDeCara.NoSeEnvio
+
 data class EstadoCedula(
     /** Consultando lo que ya estaba guardado al abrir el paso. */
     val cargando: Boolean = true,

@@ -27,13 +27,18 @@ class AdaptadorEvidencias(
     private val traza: Traza,
 ) : ServicioDeEvidencias {
 
-    override suspend fun subir(cara: CaraDeCedula, imagen: ByteArray): ResultadoSubida =
+    override suspend fun subir(cara: CaraDeCedula, imagen: ByteArray): ResultadoSubida = subirComo(cara.tipo, imagen)
+
+    override suspend fun subirSelfie(imagen: ByteArray): ResultadoSubida = subirComo(TIPO_SELFIE, imagen)
+
+    // La cedula y la selfie van al mismo endpoint; solo cambia el tipo.
+    private suspend fun subirComo(tipo: String, imagen: ByteArray): ResultadoSubida =
         protegido("subir la foto", ResultadoSubida.Fallo) {
             val llamada = sesion.llamar { autorizacion ->
                 api.subir(
                     autorizacion,
-                    cara.tipo.toRequestBody(TEXTO),
-                    MultipartBody.Part.createFormData("imagen", "${cara.tipo}.jpg", imagen.toRequestBody(JPEG)),
+                    tipo.toRequestBody(TEXTO),
+                    MultipartBody.Part.createFormData("imagen", "$tipo.jpg", imagen.toRequestBody(JPEG)),
                 )
             }
             when (llamada) {
@@ -57,7 +62,7 @@ class AdaptadorEvidencias(
                 is LlamadaConSesion.Respondio -> {
                     val cuerpo = llamada.respuesta.body()
                     if (llamada.respuesta.isSuccessful && cuerpo != null) {
-                        ResultadoEstado.Exito(cuerpo.aCaras())
+                        cuerpo.aEstado()
                     } else {
                         traza.error(ORIGEN, "El BFF respondio ${llamada.respuesta.code()} al consultar las fotos", null)
                         ResultadoEstado.Fallo
@@ -90,15 +95,21 @@ class AdaptadorEvidencias(
         else -> Veredicto.RevisionManual
     }
 
-    // El GET trae tambien la selfie: aqui solo importan las dos caras.
-    private fun List<EstadoEvidenciaDto>.aCaras(): Map<CaraDeCedula, EstadoGuardado> =
-        CaraDeCedula.entries.associateWith { cara ->
-            val guardado = find { it.tipo == cara.tipo }?.estado
-            EstadoGuardado.entries.find { it.name == guardado } ?: EstadoGuardado.PENDIENTE
+    // Un tipo que no viene en la respuesta queda pendiente.
+    private fun List<EstadoEvidenciaDto>.aEstado(): ResultadoEstado.Exito {
+        fun guardadoDe(tipo: String): EstadoGuardado {
+            val guardado = find { it.tipo == tipo }?.estado
+            return EstadoGuardado.entries.find { it.name == guardado } ?: EstadoGuardado.PENDIENTE
         }
+        return ResultadoEstado.Exito(
+            caras = CaraDeCedula.entries.associateWith { guardadoDe(it.tipo) },
+            selfie = guardadoDe(TIPO_SELFIE),
+        )
+    }
 
     private companion object {
         const val ORIGEN = "AdaptadorEvidencias"
+        const val TIPO_SELFIE = "selfie"
         val TEXTO = "text/plain".toMediaType()
         val JPEG = "image/jpeg".toMediaType()
     }

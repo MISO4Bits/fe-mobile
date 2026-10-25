@@ -42,6 +42,8 @@ class CedulaViewModelTest {
             return subida
         }
 
+        override suspend fun subirSelfie(imagen: ByteArray) = subida
+
         override suspend fun consultar() = estado
     }
 

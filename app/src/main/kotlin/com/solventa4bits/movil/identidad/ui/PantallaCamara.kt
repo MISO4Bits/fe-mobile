@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -46,7 +47,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -69,21 +73,33 @@ private val TarjetaDeConsejos = Color(0xFF173B3E)
 private val TextoClaro = Color(0xFFFFFFFF)
 private val TextoTenue = Color(0xFFB7C9CB)
 
+// La selfie se encuadra en vertical, con un ovalo punteado (Figma 08).
+private const val PROPORCION_DE_SELFIE_EN_CAMARA = 0.8f
+private const val ALTO_DEL_OVALO = 0.85f
+private const val PROPORCION_DEL_OVALO = 0.72f
+private val PUNTEADO_DEL_OVALO = floatArrayOf(18f, 12f)
+
+/** Para que es la foto: cambia la camara, la guia, los consejos y si hay galeria. */
+enum class QueFoto { CEDULA, SELFIE }
+
 /**
  * De donde sale la foto de una cara. En la app es [camaraReal]; las pruebas
  * de extremo a extremo pasan otra, porque no pueden manejar la camara.
  */
-typealias Camara = @Composable (alTenerFoto: (ByteArray) -> Unit, modifier: Modifier) -> Unit
+typealias Camara = @Composable (queFoto: QueFoto, alTenerFoto: (ByteArray) -> Unit, modifier: Modifier) -> Unit
 
-val camaraReal: Camara = { alTenerFoto, modifier -> PantallaCamara(alTenerFoto, modifier) }
+val camaraReal: Camara = { queFoto, alTenerFoto, modifier -> PantallaCamara(queFoto, alTenerFoto, modifier) }
 
 /**
- * Figma 02: la camara con el marco de la cedula (BITS-275, AC-6). Desde aqui
- * tambien se elige una foto de la galeria. [alTenerFoto] recibe la foto tal
- * como sale: el ViewModel la prepara antes de enviarla.
+ * Figma 02: la camara trasera con el marco de la cedula (BITS-275, AC-6);
+ * desde aqui tambien se elige una foto de la galeria. Figma 08: la camara
+ * frontal con el ovalo de la selfie (BITS-235, AC-4), sin galeria porque la
+ * selfie es en vivo. [alTenerFoto] recibe la foto tal como sale: el
+ * ViewModel la prepara antes de enviarla.
  */
 @Composable
-fun PantallaCamara(alTenerFoto: (ByteArray) -> Unit, modifier: Modifier = Modifier) {
+fun PantallaCamara(queFoto: QueFoto, alTenerFoto: (ByteArray) -> Unit, modifier: Modifier = Modifier) {
+    val selfie = queFoto == QueFoto.SELFIE
     val contexto = LocalContext.current
     val alcance = rememberCoroutineScope()
     var conPermiso by remember { mutableStateOf(tienePermiso(contexto)) }
@@ -111,29 +127,41 @@ fun PantallaCamara(alTenerFoto: (ByteArray) -> Unit, modifier: Modifier = Modifi
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(
-            text = stringResource(R.string.camara_titulo),
+            text = stringResource(if (selfie) R.string.camara_selfie_titulo else R.string.camara_titulo),
             style = MaterialTheme.typography.titleLarge,
             color = TextoClaro,
             textAlign = TextAlign.Center,
         )
         Text(
-            text = stringResource(R.string.camara_subtitulo),
+            text = stringResource(if (selfie) R.string.camara_selfie_subtitulo else R.string.camara_subtitulo),
             style = MaterialTheme.typography.bodyMedium,
             color = TextoTenue,
             textAlign = TextAlign.Center,
         )
         Box(
-            modifier = Modifier.fillMaxWidth().aspectRatio(PROPORCION_DE_CEDULA),
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(if (selfie) PROPORCION_DE_SELFIE_EN_CAMARA else PROPORCION_DE_CEDULA),
             contentAlignment = Alignment.Center,
         ) {
             if (conPermiso) {
-                VistaDeCamara(captura)
-                Marco()
+                VistaDeCamara(captura, frontal = selfie)
+                if (selfie) OvaloGuia() else Marco()
             } else {
                 SinPermiso { pedirPermiso.launch(Manifest.permission.CAMERA) }
             }
         }
-        Consejos()
+        Consejos(
+            if (selfie) {
+                listOf(
+                    R.string.camara_consejo_luz,
+                    R.string.camara_selfie_consejo_una_persona,
+                    R.string.camara_selfie_consejo_sin_accesorios,
+                )
+            } else {
+                listOf(R.string.camara_consejo_luz, R.string.camara_consejo_reflejos, R.string.camara_consejo_esquinas)
+            },
+        )
         if (fallo) {
             Text(
                 text = stringResource(R.string.camara_fallo),
@@ -148,20 +176,22 @@ fun PantallaCamara(alTenerFoto: (ByteArray) -> Unit, modifier: Modifier = Modifi
                 tomarFoto(contexto, captura, alTenerFoto) { fallo = true }
             }
         }
-        TextButton(
-            onClick = {
-                fallo = false
-                galeria.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-            },
-        ) {
-            Text(stringResource(R.string.camara_galeria), color = MaterialTheme.colorScheme.inversePrimary)
+        if (!selfie) {
+            TextButton(
+                onClick = {
+                    fallo = false
+                    galeria.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                },
+            ) {
+                Text(stringResource(R.string.camara_galeria), color = MaterialTheme.colorScheme.inversePrimary)
+            }
         }
     }
 }
 
-/** La imagen de la camara trasera en vivo, ligada a la pantalla: se apaga al salir. */
+/** La imagen de la camara en vivo, ligada a la pantalla: se apaga al salir. */
 @Composable
-private fun VistaDeCamara(captura: ImageCapture) {
+private fun VistaDeCamara(captura: ImageCapture, frontal: Boolean) {
     val contexto = LocalContext.current
     val ciclo = LocalLifecycleOwner.current
     val vista = remember { PreviewView(contexto) }
@@ -172,7 +202,9 @@ private fun VistaDeCamara(captura: ImageCapture) {
                 val vivo = Preview.Builder().build().also { it.surfaceProvider = vista.surfaceProvider }
                 proveedor.get().run {
                     unbindAll()
-                    bindToLifecycle(ciclo, CameraSelector.DEFAULT_BACK_CAMERA, vivo, captura)
+                    val camara =
+                        if (frontal) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
+                    bindToLifecycle(ciclo, camara, vivo, captura)
                 }
             },
             ContextCompat.getMainExecutor(contexto),
@@ -196,6 +228,23 @@ private fun BoxScope.Marco() {
     }
 }
 
+/** El ovalo punteado de la selfie, sobre la camara frontal. */
+@Composable
+private fun BoxScope.OvaloGuia() {
+    Box(
+        Modifier
+            .align(Alignment.Center)
+            .fillMaxHeight(ALTO_DEL_OVALO)
+            .aspectRatio(PROPORCION_DEL_OVALO)
+            .drawBehind {
+                drawOval(
+                    color = TextoClaro,
+                    style = Stroke(width = 3.dp.toPx(), pathEffect = PathEffect.dashPathEffect(PUNTEADO_DEL_OVALO)),
+                )
+            },
+    )
+}
+
 @Composable
 private fun SinPermiso(alDarPermiso: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -211,7 +260,7 @@ private fun SinPermiso(alDarPermiso: () -> Unit) {
 
 /** Los consejos del Figma, como texto fijo: no hay deteccion automatica. */
 @Composable
-private fun Consejos() {
+private fun Consejos(consejos: List<Int>) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -219,8 +268,7 @@ private fun Consejos() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        listOf(R.string.camara_consejo_luz, R.string.camara_consejo_reflejos, R.string.camara_consejo_esquinas)
-            .forEach { consejo ->
+        consejos.forEach { consejo ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),

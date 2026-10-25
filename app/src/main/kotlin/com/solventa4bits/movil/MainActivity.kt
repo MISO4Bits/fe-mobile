@@ -35,6 +35,9 @@ import com.solventa4bits.movil.identidad.datos.crearEvidenciasApi
 import com.solventa4bits.movil.identidad.dominio.ServicioDeEvidencias
 import com.solventa4bits.movil.identidad.dominio.CaraDeCedula
 import com.solventa4bits.movil.identidad.ui.CedulaViewModel
+import com.solventa4bits.movil.identidad.ui.PantallaSelfie
+import com.solventa4bits.movil.identidad.ui.QueFoto
+import com.solventa4bits.movil.identidad.ui.SelfieViewModel
 import com.solventa4bits.movil.identidad.ui.Camara
 import com.solventa4bits.movil.identidad.ui.camaraReal
 import com.solventa4bits.movil.identidad.ui.PantallaCedula
@@ -91,9 +94,11 @@ fun AppSolventa(
     val cotizacion = viewModel { NuevaCotizacionViewModel(creditos, cotizaciones) }
     val inicio = viewModel { InicioViewModel(cotizaciones) }
     // Preparar la foto pesa: va en segundo plano para no congelar la pantalla.
-    val cedula = viewModel {
-        CedulaViewModel(evidencias) { foto -> withContext(Dispatchers.Default) { PreparadorDeFotos.preparar(foto) } }
+    val preparar: suspend (ByteArray) -> ByteArray? = { foto ->
+        withContext(Dispatchers.Default) { PreparadorDeFotos.preparar(foto) }
     }
+    val cedula = viewModel { CedulaViewModel(evidencias, preparar) }
+    val selfie = viewModel { SelfieViewModel(evidencias, preparar) }
     var cotizando by rememberSaveable { mutableStateOf(false) }
     // Acepto las condiciones y esta cargando la cedula (BITS-275).
     var enCedula by rememberSaveable { mutableStateOf(false) }
@@ -118,6 +123,7 @@ fun AppSolventa(
 
             cotizando && enCedula -> TuCedula(
                 cedula = cedula,
+                selfie = selfie,
                 camara = camara,
                 alVolver = { enCedula = false },
                 alCerrarSesion = cerrarSesion,
@@ -229,12 +235,19 @@ private fun LoQuePagas(
 @Composable
 private fun TuCedula(
     cedula: CedulaViewModel,
+    selfie: SelfieViewModel,
     camara: Camara,
     alVolver: () -> Unit,
     alCerrarSesion: () -> Unit,
     modifier: Modifier,
 ) {
     LaunchedEffect(cedula.estado.sesionVencida) { if (cedula.estado.sesionVencida) alCerrarSesion() }
+    // Las dos caras estan listas y el cliente paso a la selfie (BITS-235).
+    var enSelfie by rememberSaveable { mutableStateOf(false) }
+    if (enSelfie) {
+        TuSelfie(selfie, camara, alVolver = { enSelfie = false }, alCerrarSesion = alCerrarSesion, modifier = modifier)
+        return
+    }
     // La cara a la que se le esta tomando foto (AC-6). Null: se ve "Tu cedula".
     var camaraPara by rememberSaveable { mutableStateOf<CaraDeCedula?>(null) }
     val cara = camaraPara
@@ -242,6 +255,7 @@ private fun TuCedula(
         // El gesto atras cierra la camara sin enviar nada.
         BackHandler { camaraPara = null }
         camara(
+            QueFoto.CEDULA,
             { foto ->
                 camaraPara = null
                 cedula.enviar(cara, foto)
@@ -255,8 +269,10 @@ private fun TuCedula(
     PantallaCedula(
         estado = cedula.estado,
         alTomarFoto = { camaraPara = it },
-        // Lo que sigue es la selfie (BITS-235): por ahora no hace nada.
-        alContinuar = {},
+        alContinuar = {
+            selfie.abrir()
+            enSelfie = true
+        },
         alCerrarSesion = alCerrarSesion,
         modifier = modifier,
     )
@@ -277,6 +293,44 @@ private fun Inicio(
         cotizacionEnCurso = inicio.estado.cotizacionEnCurso,
         alCotizar = alCotizar,
         alVerCotizacion = alVerCotizacion,
+        alCerrarSesion = alCerrarSesion,
+        modifier = modifier,
+    )
+}
+
+/** "Tu selfie": confirmar la identidad despues de la cedula (BITS-235). */
+@Composable
+private fun TuSelfie(
+    selfie: SelfieViewModel,
+    camara: Camara,
+    alVolver: () -> Unit,
+    alCerrarSesion: () -> Unit,
+    modifier: Modifier,
+) {
+    LaunchedEffect(selfie.estado.sesionVencida) { if (selfie.estado.sesionVencida) alCerrarSesion() }
+    // Tomando la selfie con la camara frontal (AC-4).
+    var tomando by rememberSaveable { mutableStateOf(false) }
+    if (tomando) {
+        // El gesto atras cierra la camara sin enviar nada.
+        BackHandler { tomando = false }
+        camara(
+            QueFoto.SELFIE,
+            { foto ->
+                tomando = false
+                selfie.enviar(foto)
+            },
+            modifier,
+        )
+        return
+    }
+    BackHandler(onBack = alVolver)
+    PantallaSelfie(
+        estado = selfie.estado,
+        miniatura = selfie.miniatura,
+        alTomarSelfie = { tomando = true },
+        alVolverACedula = alVolver,
+        // Lo que sigue es enviar la solicitud (BITS-278): por ahora no hace nada.
+        alContinuar = {},
         alCerrarSesion = alCerrarSesion,
         modifier = modifier,
     )

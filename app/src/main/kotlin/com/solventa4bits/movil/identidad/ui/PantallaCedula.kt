@@ -1,7 +1,6 @@
 package com.solventa4bits.movil.identidad.ui
 
 import android.graphics.BitmapFactory
-import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,12 +27,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -43,9 +40,6 @@ import com.solventa4bits.movil.identidad.dominio.CaraDeCedula
 import com.solventa4bits.movil.identidad.dominio.MotivoDeRechazo
 import com.solventa4bits.movil.ui.BarraSolventa
 import com.solventa4bits.movil.ui.tema.TemaSolventa
-
-// El tema no trae un ambar: es el de "revision manual" en Figma 03D.
-private val Ambar = Color(0xFF8A5A00)
 
 // Las fotos de la cedula son horizontales, como la tarjeta.
 internal const val PROPORCION_DE_CEDULA = 1.6f
@@ -135,11 +129,9 @@ private fun Cara(
             text = stringResource(if (cara == CaraDeCedula.FRENTE) R.string.cedula_frente else R.string.cedula_reverso),
             style = MaterialTheme.typography.titleSmall,
         )
-        Text(text = mensaje(estado), style = MaterialTheme.typography.bodySmall, color = colorDe(estado))
+        Text(text = mensajeDe(estado), style = MaterialTheme.typography.bodySmall, color = colorDe(estado))
         // Revisando, sin foto o aceptada no se repite desde el texto: se toca el recuadro.
-        if (estado is EstadoDeCara.Reintentar || estado == EstadoDeCara.RevisionManual ||
-            estado == EstadoDeCara.NoSeEnvio
-        ) {
+        if (estado.sePuedeRepetir) {
             TextButton(onClick = alTomarFoto, contentPadding = PaddingValues(0.dp)) {
                 Text(stringResource(R.string.cedula_tomar_otra_vez))
             }
@@ -189,38 +181,6 @@ private fun Recuadro(estado: EstadoDeCara, miniatura: ByteArray?, alTomarFoto: (
         }
         else -> Box(base.background(MaterialTheme.colorScheme.surfaceVariant))
     }
-}
-
-@Composable
-private fun mensaje(estado: EstadoDeCara): String = when (estado) {
-    EstadoDeCara.SinFoto -> stringResource(R.string.cedula_sin_foto)
-    EstadoDeCara.Revisando -> stringResource(R.string.cedula_revisando)
-    EstadoDeCara.Aceptada -> stringResource(R.string.cedula_se_ve_bien)
-    EstadoDeCara.RevisionManual -> stringResource(R.string.cedula_revision_manual)
-    EstadoDeCara.NoSeEnvio -> stringResource(R.string.cedula_no_se_envio)
-    is EstadoDeCara.Reintentar -> {
-        val quedan = estado.intentosRestantes
-        val intentos = pluralStringResource(R.plurals.cedula_intentos, quedan, quedan)
-        estado.motivo?.let { stringResource(R.string.cedula_reintentar_por, stringResource(textoDe(it)), intentos) }
-            ?: stringResource(R.string.cedula_reintentar, intentos)
-    }
-}
-
-@StringRes
-private fun textoDe(motivo: MotivoDeRechazo): Int = when (motivo) {
-    MotivoDeRechazo.BORROSA -> R.string.cedula_motivo_borrosa
-    MotivoDeRechazo.OSCURA -> R.string.cedula_motivo_oscura
-    MotivoDeRechazo.REFLEJO -> R.string.cedula_motivo_reflejo
-    MotivoDeRechazo.RECORTADA -> R.string.cedula_motivo_recortada
-    MotivoDeRechazo.NO_ES_CEDULA -> R.string.cedula_motivo_no_es_cedula
-}
-
-@Composable
-private fun colorDe(estado: EstadoDeCara): Color = when (estado) {
-    EstadoDeCara.Aceptada -> MaterialTheme.colorScheme.primary
-    EstadoDeCara.RevisionManual -> Ambar
-    is EstadoDeCara.Reintentar, EstadoDeCara.NoSeEnvio -> MaterialTheme.colorScheme.error
-    EstadoDeCara.SinFoto, EstadoDeCara.Revisando -> MaterialTheme.colorScheme.onSurfaceVariant
 }
 
 @Preview(showBackground = true)
