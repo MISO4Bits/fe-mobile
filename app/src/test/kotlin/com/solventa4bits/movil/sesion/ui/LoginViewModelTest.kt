@@ -375,6 +375,29 @@ class LoginViewModelTest {
         }
 
         @Test
+        @DisplayName("el menu sabe si la huella esta activada, y sin sensor no muestra la opcion")
+        fun estadoDelMenu() {
+            assertNull(viewModelQueResponde().estado.huellaActivada)
+            assertEquals(false, viewModelQueResponde(conHuella = true).estado.huellaActivada)
+
+            preferencias.guardarHuella(PreferenciaDeHuella.ACTIVADA)
+            assertEquals(true, viewModelQueResponde(conHuella = true).estado.huellaActivada)
+        }
+
+        @Test
+        @DisplayName("mientras el dialogo esta abierto, un segundo toque en el menu no abre otro")
+        fun dobleToqueEnElMenu() {
+            preferencias.guardarHuella(PreferenciaDeHuella.RECHAZADA)
+            val viewModel = viewModelQueResponde(conHuella = true)
+            viewModel.escribirCredencialesEIniciar()
+
+            viewModel.alternarHuella(sensor)
+            viewModel.alternarHuella(sensor)
+
+            assertEquals(1, sensor.veces)
+        }
+
+        @Test
         @DisplayName("sin sensor el menu no hace nada")
         fun sinSensorNoHaceNada() {
             val viewModel = viewModelQueResponde()
