@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.solventa4bits.movil.fixtures.BffFalso
 import com.solventa4bits.movil.fixtures.SesionLimpia
@@ -96,6 +97,26 @@ class SelfieTest {
 
         composeRule.esperarTexto("No pudimos enviar la foto. Inténtalo de nuevo.")
         composeRule.onNodeWithText("Tomarla otra vez").assertIsDisplayed()
+    }
+
+    @Test
+    fun trasUnRechazoVolverALaCedulaYRegresarDejaTomarLaSelfie() {
+        bff.responderSiempreEn(
+            RUTA_EVIDENCIAS,
+            200,
+            subida("REINTENTAR", motivo = "SIN_ROSTRO", intentos = 2, tipo = "selfie"),
+            metodo = "POST",
+        )
+        llegarATuSelfie()
+        tomarLaSelfie()
+        composeRule.esperarTexto("Tomarla otra vez")
+
+        // El caso de la revision del PR: vuelve a la cedula con el gesto atras y regresa.
+        Espresso.pressBack()
+        composeRule.esperarTexto("Tu cédula, por las dos caras")
+        composeRule.onNodeWithText("Continuar").performClick()
+
+        composeRule.esperarTexto("Tomar la selfie")
     }
 
     // Las dos caras ya estan aceptadas: "Continuar" en la cedula lleva a la selfie.

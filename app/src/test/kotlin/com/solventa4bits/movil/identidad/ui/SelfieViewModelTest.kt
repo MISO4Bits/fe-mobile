@@ -17,6 +17,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -203,5 +204,29 @@ class SelfieViewModelTest {
         val viewModel = abierto().apply { enviar(foto) }
 
         assertTrue(viewModel.estado.sesionVencida)
+    }
+
+    @Test
+    @DisplayName("al volver despues de un rechazo no queda la miniatura: se puede tomar la selfie otra vez")
+    fun volverTrasUnRechazo() {
+        evidencias.subida = ResultadoSubida.Exito(Veredicto.Reintentar(MotivoDeRechazo.SIN_ROSTRO, 2))
+        val viewModel = abierto().apply { enviar(foto) }
+
+        // El servidor no guarda una selfie rechazada: el GET la sigue dando pendiente.
+        viewModel.abrir()
+
+        assertNull(viewModel.miniatura)
+        assertEquals(EstadoDeCara.SinFoto, viewModel.estado.selfie)
+    }
+
+    @Test
+    @DisplayName("solo se repite la foto cuando hay que repetirla, quedo en revision o no se envio")
+    fun cuandoSePuedeRepetir() {
+        assertTrue(EstadoDeCara.Reintentar(MotivoDeRechazo.BORROSA, 1).sePuedeRepetir)
+        assertTrue(EstadoDeCara.RevisionManual.sePuedeRepetir)
+        assertTrue(EstadoDeCara.NoSeEnvio.sePuedeRepetir)
+        assertFalse(EstadoDeCara.SinFoto.sePuedeRepetir)
+        assertFalse(EstadoDeCara.Revisando.sePuedeRepetir)
+        assertFalse(EstadoDeCara.Aceptada.sePuedeRepetir)
     }
 }

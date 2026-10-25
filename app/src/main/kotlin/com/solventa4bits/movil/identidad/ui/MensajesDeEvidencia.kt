@@ -37,10 +37,6 @@ internal fun colorDe(estado: EstadoDeCara): Color = when (estado) {
     EstadoDeCara.SinFoto, EstadoDeCara.Revisando -> MaterialTheme.colorScheme.onSurfaceVariant
 }
 
-/** Despues de enviar se puede repetir la foto, salvo si sirvio o si aun se revisa. */
-internal val EstadoDeCara.sePuedeRepetir: Boolean
-    get() = this is EstadoDeCara.Reintentar || this == EstadoDeCara.RevisionManual || this == EstadoDeCara.NoSeEnvio
-
 @StringRes
 private fun textoDe(motivo: MotivoDeRechazo): Int = when (motivo) {
     MotivoDeRechazo.BORROSA -> R.string.cedula_motivo_borrosa

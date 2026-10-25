@@ -40,9 +40,14 @@ class SelfieViewModel(
     var miniatura by mutableStateOf<ByteArray?>(null)
         private set
 
-    /** Al entrar al paso: si ya habia una selfie guardada. */
+    /**
+     * Al entrar al paso: si ya habia una selfie guardada. La miniatura de un
+     * intento anterior se borra: si el servidor no la guardo, sin ella vuelve
+     * a verse "Tomar la selfie".
+     */
     fun abrir() {
         estado = EstadoSelfie()
+        miniatura = null
         viewModelScope.launch {
             estado = when (val resultado = evidencias.consultar()) {
                 is ResultadoEstado.Exito -> estado.copy(cargando = false, selfie = resultado.selfie.aEstado())
