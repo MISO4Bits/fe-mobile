@@ -37,9 +37,11 @@ fun PantallaInicio(
     alVerCotizacion: (Cotizacion) -> Unit,
     alCerrarSesion: () -> Unit,
     modifier: Modifier = Modifier,
+    huellaActivada: Boolean? = null,
+    alAlternarHuella: () -> Unit = {},
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        BarraSolventa(stringResource(R.string.inicio_titulo), alCerrarSesion)
+        BarraSolventa(stringResource(R.string.inicio_titulo), alCerrarSesion, huellaActivada, alAlternarHuella)
         Column(
             modifier = Modifier.padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),

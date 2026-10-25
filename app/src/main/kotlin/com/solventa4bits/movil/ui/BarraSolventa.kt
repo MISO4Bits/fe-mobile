@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -30,10 +31,19 @@ import com.solventa4bits.movil.R
 
 /**
  * Barra superior de las pantallas con sesion: el menu, el titulo de la
- * pantalla y el monograma. El menu tiene una sola opcion, cerrar sesion.
+ * pantalla y el monograma. El menu permite cerrar sesion y, si el telefono
+ * tiene sensor, prender o apagar la huella (BITS-353).
+ *
+ * @param huellaActivada si entra con la huella; null cuando el telefono no
+ * tiene sensor y la opcion no se muestra.
  */
 @Composable
-fun BarraSolventa(titulo: String, alCerrarSesion: () -> Unit) {
+fun BarraSolventa(
+    titulo: String,
+    alCerrarSesion: () -> Unit,
+    huellaActivada: Boolean? = null,
+    alAlternarHuella: () -> Unit = {},
+) {
     var menuAbierto by remember { mutableStateOf(false) }
     // La sesion solo se cierra despues de que el cliente confirma.
     var confirmando by remember { mutableStateOf(false) }
@@ -47,6 +57,18 @@ fun BarraSolventa(titulo: String, alCerrarSesion: () -> Unit) {
                 Icon(Icons.Filled.Menu, contentDescription = stringResource(R.string.barra_menu))
             }
             DropdownMenu(expanded = menuAbierto, onDismissRequest = { menuAbierto = false }) {
+                if (huellaActivada != null) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.barra_entrar_con_huella)) },
+                        trailingIcon = {
+                            if (huellaActivada) Icon(Icons.Filled.Check, contentDescription = null)
+                        },
+                        onClick = {
+                            menuAbierto = false
+                            alAlternarHuella()
+                        },
+                    )
+                }
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.barra_cerrar_sesion)) },
                     onClick = {

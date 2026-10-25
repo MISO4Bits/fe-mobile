@@ -194,4 +194,19 @@
     <string name="camara_selfie_subtitulo">Mira de frente, con buena luz.</string>
     <string name="camara_selfie_consejo_una_persona">Una sola persona</string>
     <string name="camara_selfie_consejo_sin_accesorios">Sin gafas, gorra ni tapabocas</string>
+
+    <string name="huella_dialogo_titulo">Entra con tu huella</string>
+    <string name="huella_entrar_con_contrasena">Entrar con contraseña</string>
+    <string name="huella_icono">Huella</string>
+    <string name="huella_nota_titulo">Tu huella no sale del teléfono</string>
+    <string name="huella_nota_detalle">El teléfono nos confirma que eres tú. Nosotros nunca vemos ni guardamos tu huella. Si cambias de teléfono, te pedimos la contraseña otra vez.</string>
+    <string name="huella_activar_titulo">Entra más rápido con tu huella</string>
+    <string name="huella_activar_detalle">La próxima vez entras sin escribir la contraseña.</string>
+    <string name="huella_activar">Activar huella</string>
+    <string name="huella_ahora_no">Ahora no</string>
+    <string name="huella_hola">Hola de nuevo</string>
+    <string name="huella_entrar_detalle">Entra con tu huella. No tienes que escribir la contraseña.</string>
+    <string name="huella_toca_el_sensor">Toca el sensor</string>
+    <string name="huella_usar_otra_cuenta">Usar otra cuenta</string>
+    <string name="barra_entrar_con_huella">Entrar con huella</string>
 </resources>

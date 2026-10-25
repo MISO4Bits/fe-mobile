@@ -37,6 +37,12 @@ kover {
                 // Depende del Keystore del dispositivo: se verifica con una
                 // prueba instrumentada (BovedaKeystoreTest).
                 classes("com.solventa4bits.movil.sesion.datos.BovedaKeystore*")
+                // Dependen del sensor de huella y de las preferencias del
+                // dispositivo: se verifican en el emulador (HuellaTest).
+                classes(
+                    "com.solventa4bits.movil.sesion.datos.AutenticadorBiometrico*",
+                    "com.solventa4bits.movil.sesion.datos.PreferenciasDelTelefono*",
+                )
                 // Usa imagenes reales de Android: se verifica con una prueba
                 // instrumentada (PreparadorDeFotosTest).
                 classes("com.solventa4bits.movil.identidad.datos.PreparadorDeFotos*")
@@ -138,6 +144,8 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.core)
+    // El icono de la huella no esta en el juego basico. R8 deja solo los que se usan.
+    implementation(libs.androidx.material.icons.extended)
 
     // Estado de pantalla.
     implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -154,6 +162,9 @@ dependencies {
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
+
+    // Huella (BITS-353): el dialogo biometrico del sistema.
+    implementation(libs.androidx.biometric)
 
     // Reglas de negocio: JUnit 5, como declara la Estrategia de Pruebas.
     testImplementation(libs.junit.jupiter)
