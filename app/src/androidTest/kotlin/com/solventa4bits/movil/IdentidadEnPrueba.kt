@@ -46,6 +46,43 @@ fun ComposeContentTestRule.llegarATuCedula(bff: BffFalso, almacen: AlmacenDeSesi
     esperarTexto("Tu cédula, por las dos caras")
 }
 
+/** La ruta de las condiciones del seguro, tal como la pide la app. */
+const val RUTA_CONDICIONES = "/v1/documentos-legales?tipo=poliza&mercado=CO"
+
+const val RUTA_POLIZAS = "/v1/cuenta/polizas"
+
+/** Las condiciones de la poliza que responde el BFF. */
+const val CONDICIONES_DEL_SEGURO = """[
+    {"tipo": "poliza", "version": "V1", "titulo": "Condiciones de tu seguro",
+     "baseLegal": "Ley 1328 de 2009",
+     "contenido": "<h3>1 · Qué estás aceptando</h3><p>Que Solventa le envíe a tu banco tu solicitud.</p>",
+     "notaPie": "Aceptar estas condiciones no contrata todavía."}
+]"""
+
+/** Lo que responde el POST de la solicitud. */
+fun polizaEnviada(estado: String = "PENDIENTE") = """{
+    "polizaId": "7c0f2a52-3b6f-4a0e-9e7e-2f6c9d1a8b11", "numero": null, "estado": "$estado",
+    "producto": "VIDA_HIPOTECARIO", "pendientes": []
+}"""
+
+/**
+ * Con la cedula y la selfie ya aceptadas, llega a "Revisa y envia tu
+ * solicitud". Las condiciones responden lo que diga [condiciones].
+ */
+fun ComposeContentTestRule.llegarATuSolicitud(
+    bff: BffFalso,
+    almacen: AlmacenDeSesion,
+    condiciones: Pair<Int, String> = 200 to CONDICIONES_DEL_SEGURO,
+) {
+    bff.responderSiempreEn(RUTA_CONDICIONES, condiciones.first, condiciones.second, metodo = "GET")
+    llegarATuCedula(bff, almacen, estadoGuardado(frente = "ACEPTADA", reverso = "ACEPTADA", selfie = "ACEPTADA"))
+    esperarTexto("Se ve bien")
+    onNodeWithText("Continuar").performClick()
+    esperarTexto("Confirma que eres tú")
+    onNodeWithText("Continuar").performClick()
+    esperarTexto("Revisa y envía tu solicitud")
+}
+
 /** En la camara de prueba, entrega la foto. */
 fun ComposeContentTestRule.usarFotoDePrueba() {
     esperarTexto(USAR_FOTO)

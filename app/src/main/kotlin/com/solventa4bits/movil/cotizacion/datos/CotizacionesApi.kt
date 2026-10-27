@@ -46,6 +46,7 @@ data class CotizacionDto(
     val origenDatos: String,
     val oferta: OfertaDto,
     val perfilRiesgo: PerfilRiesgoDto? = null,
+    val creadaEn: String,
 )
 
 @Serializable

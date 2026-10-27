@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.solventa4bits.movil.R
+import com.solventa4bits.movil.identidad.dominio.EstadoGuardado
 import com.solventa4bits.movil.identidad.dominio.MotivoDeRechazo
 
 // El tema no trae un ambar: es el de "revision manual" en Figma 03D y 08.
@@ -35,6 +36,21 @@ internal fun colorDe(estado: EstadoDeCara): Color = when (estado) {
     EstadoDeCara.RevisionManual -> Ambar
     is EstadoDeCara.Reintentar, EstadoDeCara.NoSeEnvio -> MaterialTheme.colorScheme.error
     EstadoDeCara.SinFoto, EstadoDeCara.Revisando -> MaterialTheme.colorScheme.onSurfaceVariant
+}
+
+/** Lo que dice una foto ya guardada en el servidor. */
+@Composable
+internal fun mensajeDe(guardado: EstadoGuardado): String = when (guardado) {
+    EstadoGuardado.ACEPTADA -> stringResource(R.string.cedula_se_ve_bien)
+    EstadoGuardado.REVISION_MANUAL -> stringResource(R.string.cedula_revision_manual)
+    EstadoGuardado.PENDIENTE -> stringResource(R.string.cedula_sin_foto)
+}
+
+@Composable
+internal fun colorDe(guardado: EstadoGuardado): Color = when (guardado) {
+    EstadoGuardado.ACEPTADA -> MaterialTheme.colorScheme.primary
+    EstadoGuardado.REVISION_MANUAL -> Ambar
+    EstadoGuardado.PENDIENTE -> MaterialTheme.colorScheme.onSurfaceVariant
 }
 
 @StringRes

@@ -122,7 +122,6 @@ fun PantallaSelfie(
                     Text(stringResource(R.string.selfie_volver_a_cedula))
                 }
             } else {
-                // Lo que sigue es enviar la solicitud (BITS-278): por ahora "Continuar" no hace nada.
                 Button(onClick = alContinuar, enabled = estado.puedeContinuar, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.cedula_continuar))
                 }

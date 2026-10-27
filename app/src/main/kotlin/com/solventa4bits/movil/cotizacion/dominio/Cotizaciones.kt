@@ -38,6 +38,8 @@ data class Cotizacion(
     val factores: List<FactorDelPrecio>,
     /** El precio de cada cobertura (BITS-96). Vacio si el backend no trae el desglose. */
     val coberturas: List<PrecioDeCobertura> = emptyList(),
+    /** Cuando se creo, tal como lo manda el backend (ISO 8601). Viaja de vuelta al enviar la solicitud. */
+    val creadaEn: String = "",
 )
 
 /** Todo lo que puede pasar al cotizar o al consultar la cotizacion activa. */

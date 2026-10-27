@@ -1,0 +1,61 @@
+package com.solventa4bits.movil.solicitud.datos
+
+import com.solventa4bits.movil.red.crearRetrofit
+import kotlinx.serialization.Serializable
+import okhttp3.OkHttpClient
+import retrofit2.Response
+import retrofit2.http.Body
+import retrofit2.http.GET
+import retrofit2.http.Header
+import retrofit2.http.POST
+import retrofit2.http.Query
+
+/** Condiciones del seguro y solicitud de la poliza. El contrato vive en bff-mobile, openapi/openapi.yaml. */
+interface SolicitudesApi {
+    /** Publico: no lleva token. */
+    @GET("v1/documentos-legales")
+    suspend fun documentosLegales(
+        @Query("tipo") tipo: String,
+        @Query("mercado") mercado: String,
+    ): Response<List<DocumentoLegalDto>>
+
+    /** 201 si se creo, 200 si ya existia una solicitud de esa cotizacion. */
+    @POST("v1/cuenta/polizas")
+    suspend fun solicitar(
+        @Header("Authorization") autorizacion: String,
+        @Body solicitud: SolicitarPolizaDto,
+    ): Response<PolizaDto>
+}
+
+/** Los nombres de los campos son los del contrato. */
+@Serializable
+data class DocumentoLegalDto(
+    val tipo: String,
+    val version: String,
+    val titulo: String,
+    val contenido: String,
+    val notaPie: String? = null,
+)
+
+@Serializable
+data class SolicitarPolizaDto(
+    val coberturas: List<String>,
+    val cotizacionCreadaEn: String,
+    val documentosAceptados: List<DocumentoAceptadoDto>,
+)
+
+@Serializable
+data class DocumentoAceptadoDto(val tipo: String, val version: String)
+
+@Serializable
+data class PolizaDto(
+    val polizaId: String,
+    val estado: String,
+    val pendientes: List<PendienteDto> = emptyList(),
+)
+
+@Serializable
+data class PendienteDto(val mensaje: String)
+
+fun crearSolicitudesApi(urlBase: String, cliente: OkHttpClient = OkHttpClient()): SolicitudesApi =
+    crearRetrofit(urlBase, cliente).create(SolicitudesApi::class.java)
