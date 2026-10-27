@@ -208,4 +208,22 @@
     <string name="huella_toca_el_sensor">Toca el sensor</string>
     <string name="huella_usar_otra_cuenta">Usar otra cuenta</string>
     <string name="barra_entrar_con_huella">Entrar con huella</string>
+
+    <string name="solicitud_titulo">Tu solicitud</string>
+    <string name="solicitud_revisa">Revisa y envía tu solicitud</string>
+    <string name="solicitud_revisa_detalle">Esto es lo que revisamos para aprobarla.</string>
+    <string name="solicitud_frente">Frente de tu cédula</string>
+    <string name="solicitud_reverso">Reverso de tu cédula</string>
+    <string name="solicitud_selfie">Tu selfie</string>
+    <string name="solicitud_acepto">He leído y acepto las condiciones del seguro.</string>
+    <string name="solicitud_leer_condiciones">Leer las condiciones</string>
+    <string name="solicitud_autorizas">Al enviarla, autorizas a Solventa a pedirle a %1$s el cambio del seguro de tu crédito.</string>
+    <string name="solicitud_enviar">Enviar solicitud</string>
+    <string name="solicitud_fallo_carga">No pudimos cargar tu solicitud. Inténtalo de nuevo.</string>
+    <string name="solicitud_fallo_envio">No pudimos enviar tu solicitud. Inténtalo de nuevo.</string>
+    <string name="solicitud_cotizar_de_nuevo">Tu cotización cambió o venció. Cotiza de nuevo para continuar.</string>
+    <string name="solicitud_ir_al_inicio">Ir al inicio</string>
+    <string name="condiciones_etiqueta">SOLICITUD DE CAMBIO DE SEGURO</string>
+    <string name="condiciones_acepto">Acepto estas condiciones</string>
+    <string name="condiciones_volver">Volver</string>
 </resources>

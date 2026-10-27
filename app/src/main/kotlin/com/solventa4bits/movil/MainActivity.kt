@@ -42,6 +42,12 @@ import com.solventa4bits.movil.identidad.ui.Camara
 import com.solventa4bits.movil.identidad.ui.camaraReal
 import com.solventa4bits.movil.identidad.ui.PantallaCedula
 import com.solventa4bits.movil.inicio.ui.InicioViewModel
+import com.solventa4bits.movil.solicitud.datos.AdaptadorSolicitudes
+import com.solventa4bits.movil.solicitud.datos.crearSolicitudesApi
+import com.solventa4bits.movil.solicitud.dominio.ServicioDeSolicitudes
+import com.solventa4bits.movil.solicitud.ui.AccionesDeSolicitud
+import com.solventa4bits.movil.solicitud.ui.PantallaSolicitud
+import com.solventa4bits.movil.solicitud.ui.SolicitudViewModel
 import com.solventa4bits.movil.inicio.ui.PantallaInicio
 import com.solventa4bits.movil.sesion.datos.AdaptadorSesion
 import com.solventa4bits.movil.sesion.datos.AlmacenDeSesionSeguro
@@ -78,12 +84,22 @@ class MainActivity : FragmentActivity() {
         val creditos = AdaptadorCreditos(crearCreditosApi(BuildConfig.URL_BASE_BFF), conSesion, traza)
         val cotizaciones = AdaptadorCotizaciones(crearCotizacionesApi(BuildConfig.URL_BASE_BFF), conSesion, traza)
         val evidencias = AdaptadorEvidencias(crearEvidenciasApi(BuildConfig.URL_BASE_BFF), conSesion, traza)
+        val solicitudes = AdaptadorSolicitudes(crearSolicitudesApi(BuildConfig.URL_BASE_BFF), conSesion, traza)
         val autenticador = AutenticadorBiometrico(this)
         val preferencias = PreferenciasDelTelefono(applicationContext)
 
         setContent {
             TemaSolventa {
-                AppSolventa(sesion, almacen, creditos, cotizaciones, evidencias, autenticador, preferencias)
+                AppSolventa(
+                    sesion,
+                    almacen,
+                    creditos,
+                    cotizaciones,
+                    evidencias,
+                    solicitudes,
+                    autenticador,
+                    preferencias,
+                )
             }
         }
     }
@@ -100,6 +116,7 @@ fun AppSolventa(
     creditos: ServicioDeCreditos,
     cotizaciones: ServicioDeCotizaciones,
     evidencias: ServicioDeEvidencias,
+    solicitudes: ServicioDeSolicitudes,
     autenticador: AutenticadorDeHuella,
     preferencias: AlmacenDePreferencias,
     camara: Camara = camaraReal,
@@ -113,6 +130,7 @@ fun AppSolventa(
     }
     val cedula = viewModel { CedulaViewModel(evidencias, preparar) }
     val selfie = viewModel { SelfieViewModel(evidencias, preparar) }
+    val solicitud = viewModel { SolicitudViewModel(evidencias, solicitudes) }
     var cotizando by rememberSaveable { mutableStateOf(false) }
     // Acepto las condiciones y esta cargando la cedula (BITS-275).
     var enCedula by rememberSaveable { mutableStateOf(false) }
@@ -137,7 +155,16 @@ fun AppSolventa(
             cotizando && enCedula -> TuCedula(
                 cedula = cedula,
                 selfie = selfie,
+                solicitud = solicitud,
                 camara = camara,
+                // La solicitud va con la cotizacion que el cliente vio y las coberturas que eligio.
+                alAbrirSolicitud = {
+                    solicitud.abrir(checkNotNull(cotizacion.estado.cotizacion), cotizacion.estado.conTuCasa)
+                },
+                alInicio = {
+                    enCedula = false
+                    cotizando = false
+                },
                 alVolver = { enCedula = false },
                 alCerrarSesion = cerrarSesion,
                 modifier = conRelleno,
@@ -251,7 +278,10 @@ private fun LoQuePagas(
 private fun TuCedula(
     cedula: CedulaViewModel,
     selfie: SelfieViewModel,
+    solicitud: SolicitudViewModel,
     camara: Camara,
+    alAbrirSolicitud: () -> Unit,
+    alInicio: () -> Unit,
     alVolver: () -> Unit,
     alCerrarSesion: () -> Unit,
     modifier: Modifier,
@@ -260,7 +290,16 @@ private fun TuCedula(
     // Las dos caras estan listas y el cliente paso a la selfie (BITS-235).
     var enSelfie by rememberSaveable { mutableStateOf(false) }
     if (enSelfie) {
-        TuSelfie(selfie, camara, alVolver = { enSelfie = false }, alCerrarSesion = alCerrarSesion, modifier = modifier)
+        TuSelfie(
+            selfie = selfie,
+            solicitud = solicitud,
+            camara = camara,
+            alAbrirSolicitud = alAbrirSolicitud,
+            alInicio = alInicio,
+            alVolver = { enSelfie = false },
+            alCerrarSesion = alCerrarSesion,
+            modifier = modifier,
+        )
         return
     }
     // La cara a la que se le esta tomando foto (AC-6). Null: se ve "Tu cedula".
@@ -357,12 +396,27 @@ private fun Inicio(
 @Composable
 private fun TuSelfie(
     selfie: SelfieViewModel,
+    solicitud: SolicitudViewModel,
     camara: Camara,
+    alAbrirSolicitud: () -> Unit,
+    alInicio: () -> Unit,
     alVolver: () -> Unit,
     alCerrarSesion: () -> Unit,
     modifier: Modifier,
 ) {
     LaunchedEffect(selfie.estado.sesionVencida) { if (selfie.estado.sesionVencida) alCerrarSesion() }
+    // Con la cedula y la selfie listas, el cliente revisa y envia su solicitud (BITS-278).
+    var enSolicitud by rememberSaveable { mutableStateOf(false) }
+    if (enSolicitud) {
+        TuSolicitud(
+            solicitud = solicitud,
+            alInicio = alInicio,
+            alVolver = { enSolicitud = false },
+            alCerrarSesion = alCerrarSesion,
+            modifier = modifier,
+        )
+        return
+    }
     // Tomando la selfie con la camara frontal (AC-4).
     var tomando by rememberSaveable { mutableStateOf(false) }
     if (tomando) {
@@ -384,8 +438,39 @@ private fun TuSelfie(
         miniatura = selfie.miniatura,
         alTomarSelfie = { tomando = true },
         alVolverACedula = alVolver,
-        // Lo que sigue es enviar la solicitud (BITS-278): por ahora no hace nada.
-        alContinuar = {},
+        alContinuar = {
+            alAbrirSolicitud()
+            enSolicitud = true
+        },
+        alCerrarSesion = alCerrarSesion,
+        modifier = modifier,
+    )
+}
+
+/** "Revisa y envia tu solicitud": con la solicitud registrada, vuelve al Inicio. */
+@Composable
+private fun TuSolicitud(
+    solicitud: SolicitudViewModel,
+    alInicio: () -> Unit,
+    alVolver: () -> Unit,
+    alCerrarSesion: () -> Unit,
+    modifier: Modifier,
+) {
+    val estado = solicitud.estado
+    LaunchedEffect(estado.sesionVencida) { if (estado.sesionVencida) alCerrarSesion() }
+    LaunchedEffect(estado.enviada) { if (estado.enviada != null) alInicio() }
+    BackHandler(onBack = alVolver)
+    PantallaSolicitud(
+        estado = estado,
+        acciones = AccionesDeSolicitud(
+            alCambiarAceptacion = solicitud::cambiarAceptacion,
+            alVerCondiciones = solicitud::verCondiciones,
+            alCerrarCondiciones = solicitud::cerrarCondiciones,
+            alAceptarCondiciones = solicitud::aceptarDesdeCondiciones,
+            alEnviar = solicitud::enviar,
+            alReintentar = solicitud::reintentar,
+            alIrAlInicio = alInicio,
+        ),
         alCerrarSesion = alCerrarSesion,
         modifier = modifier,
     )

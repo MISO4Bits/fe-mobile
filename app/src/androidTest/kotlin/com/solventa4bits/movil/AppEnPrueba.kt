@@ -14,6 +14,8 @@ import com.solventa4bits.movil.fixtures.BffFalso
 import com.solventa4bits.movil.fixtures.UsuarioDemo
 import com.solventa4bits.movil.identidad.datos.AdaptadorEvidencias
 import com.solventa4bits.movil.identidad.datos.crearEvidenciasApi
+import com.solventa4bits.movil.solicitud.datos.AdaptadorSolicitudes
+import com.solventa4bits.movil.solicitud.datos.crearSolicitudesApi
 import com.solventa4bits.movil.sesion.datos.AdaptadorSesion
 import com.solventa4bits.movil.sesion.datos.AlmacenDeSesionSeguro
 import com.solventa4bits.movil.sesion.datos.BovedaKeystore
@@ -58,9 +60,20 @@ fun ComposeContentTestRule.abrirApp(
     val creditos = AdaptadorCreditos(crearCreditosApi(bff.url), conSesion, sinTraza)
     val cotizaciones = AdaptadorCotizaciones(crearCotizacionesApi(bff.url), conSesion, sinTraza)
     val evidencias = AdaptadorEvidencias(crearEvidenciasApi(bff.url), conSesion, sinTraza)
+    val solicitudes = AdaptadorSolicitudes(crearSolicitudesApi(bff.url), conSesion, sinTraza)
     setContent {
         TemaSolventa {
-            AppSolventa(sesion, almacen, creditos, cotizaciones, evidencias, autenticador, preferencias, camaraDePrueba)
+            AppSolventa(
+                sesion,
+                almacen,
+                creditos,
+                cotizaciones,
+                evidencias,
+                solicitudes,
+                autenticador,
+                preferencias,
+                camaraDePrueba,
+            )
         }
     }
 }
