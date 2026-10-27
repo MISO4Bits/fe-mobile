@@ -140,6 +140,7 @@ class AdaptadorCotizaciones(
                 )
             }
         },
+        creadaEn = creadaEn,
     )
 
     private companion object {

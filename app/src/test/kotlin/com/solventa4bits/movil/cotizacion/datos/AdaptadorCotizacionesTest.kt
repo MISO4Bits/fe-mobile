@@ -113,6 +113,7 @@ class AdaptadorCotizacionesTest {
                     PrecioDeCobertura(CodigoCobertura.VIDA, 238_500_000.0, 39_734.0, 0.0, 39_734.0),
                     PrecioDeCobertura(CodigoCobertura.HOGAR, 240_000_000.0, 23_760.0, 4_514.0, 28_274.0),
                 ),
+                creadaEn = "2026-10-06T14:35:00Z",
             ),
             assertInstanceOf(ResultadoCotizacion.Exito::class.java, resultado).cotizacion,
         )

@@ -104,7 +104,6 @@ fun PantallaCedula(
                 Text(stringResource(R.string.cedula_que_hacemos_detalle), style = MaterialTheme.typography.bodySmall)
             }
         }
-        // Lo que sigue es la selfie (BITS-235): por ahora "Continuar" no hace nada.
         Button(
             onClick = alContinuar,
             enabled = estado.puedeContinuar,
