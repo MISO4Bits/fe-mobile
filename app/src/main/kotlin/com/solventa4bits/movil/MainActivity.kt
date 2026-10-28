@@ -123,7 +123,7 @@ fun AppSolventa(
 ) {
     val login = viewModel { LoginViewModel(sesion, almacen, preferencias, conHuella = autenticador.disponible()) }
     val cotizacion = viewModel { NuevaCotizacionViewModel(creditos, cotizaciones) }
-    val inicio = viewModel { InicioViewModel(cotizaciones) }
+    val inicio = viewModel { InicioViewModel(cotizaciones, solicitudes) }
     // Preparar la foto pesa: va en segundo plano para no congelar la pantalla.
     val preparar: suspend (ByteArray) -> ByteArray? = { foto ->
         withContext(Dispatchers.Default) { PreparadorDeFotos.preparar(foto) }
