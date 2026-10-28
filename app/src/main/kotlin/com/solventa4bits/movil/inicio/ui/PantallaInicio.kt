@@ -23,12 +23,15 @@ import androidx.compose.ui.unit.dp
 import com.solventa4bits.movil.R
 import com.solventa4bits.movil.cotizacion.dominio.Cotizacion
 import com.solventa4bits.movil.cotizacion.ui.enPesos
+import com.solventa4bits.movil.solicitud.dominio.EstadoDeSolicitud
+import com.solventa4bits.movil.solicitud.dominio.Solicitud
 import com.solventa4bits.movil.ui.BarraSolventa
 import com.solventa4bits.movil.ui.tema.TemaSolventa
 
 /**
  * Inicio del cliente: sin cotizaciones ofrece cotizar (Figma 02A); con una
- * cotizacion en curso la muestra para retomarla (02B, BITS-95 AC-6).
+ * cotizacion en curso la muestra para retomarla (02B, BITS-95 AC-6). Con
+ * una solicitud enviada, ofrece volver a verla (BITS-97, AC-2).
  */
 @Composable
 fun PantallaInicio(
@@ -38,6 +41,8 @@ fun PantallaInicio(
     alCerrarSesion: () -> Unit,
     huellaActivada: Boolean? = null,
     alAlternarHuella: () -> Unit = {},
+    solicitudReciente: Solicitud? = null,
+    alVerSolicitud: (Solicitud) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
@@ -58,12 +63,43 @@ fun PantallaInicio(
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
+            solicitudReciente?.let { TarjetaSolicitud(it) { alVerSolicitud(it) } }
             if (cotizacionEnCurso == null) {
                 TarjetaCotizar(alCotizar)
             } else {
                 TarjetaCotizacionEnCurso(cotizacionEnCurso) { alVerCotizacion(cotizacionEnCurso) }
             }
             TarjetaNuevaCotizacion(alCotizar)
+        }
+    }
+}
+
+@Composable
+private fun TarjetaSolicitud(solicitud: Solicitud, alVer: () -> Unit) {
+    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.inicio_tu_solicitud),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = stringResource(
+                    when (solicitud.estado) {
+                        EstadoDeSolicitud.EMITIDA -> R.string.inicio_solicitud_aprobada
+                        EstadoDeSolicitud.RECHAZADA -> R.string.inicio_solicitud_no_aprobada
+                        EstadoDeSolicitud.PENDIENTE, EstadoDeSolicitud.VENCIDA -> R.string.inicio_solicitud_en_revision
+                    },
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(8.dp))
+            Button(onClick = alVer) {
+                Text(stringResource(R.string.inicio_ver_solicitud))
+            }
         }
     }
 }
