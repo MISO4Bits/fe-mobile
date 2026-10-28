@@ -62,14 +62,14 @@ class SolicitudTest {
     }
 
     @Test
-    fun alEnviarQuedaRegistradaYVuelveAlInicio() {
+    fun alEnviarQuedaRegistradaYMuestraSuResultado() {
         bff.responderSiempreEn(RUTA_POLIZAS, 201, polizaEnviada(), metodo = "POST")
         composeRule.llegarATuSolicitud(bff, almacen)
         aceptarDesdeLaHoja()
 
         composeRule.onNodeWithText(ENVIAR).performClick()
 
-        composeRule.esperarTexto("Cotizar mi seguro")
+        composeRule.esperarTexto("Revisamos tu solicitud")
         assertTrue(bff.recibidas.contains("POST $RUTA_POLIZAS"))
     }
 
@@ -118,8 +118,9 @@ class SolicitudTest {
         composeRule.onNodeWithText("Leer las condiciones").performClick()
         composeRule.esperarTexto("Condiciones de tu seguro")
         composeRule.onNodeWithText("Qué estás aceptando", substring = true).assertIsDisplayed()
-        composeRule.onNodeWithText("Acepto estas condiciones").performClick()
+        composeRule.onNodeWithText("Volver").performClick()
         composeRule.esperarQueDesaparezca("Acepto estas condiciones")
+        composeRule.aceptarLasCondiciones()
     }
 
     private companion object {
