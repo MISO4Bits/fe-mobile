@@ -8,6 +8,7 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 /** Condiciones del seguro y solicitud de la poliza. El contrato vive en bff-mobile, openapi/openapi.yaml. */
@@ -25,6 +26,17 @@ interface SolicitudesApi {
         @Header("Authorization") autorizacion: String,
         @Body solicitud: SolicitarPolizaDto,
     ): Response<PolizaDto>
+
+    /** Si esta pendiente, el servidor la revisa de nuevo antes de responder. */
+    @GET("v1/cuenta/polizas/{polizaId}")
+    suspend fun poliza(
+        @Header("Authorization") autorizacion: String,
+        @Path("polizaId") polizaId: String,
+    ): Response<PolizaDto>
+
+    /** De la mas reciente a la mas antigua. */
+    @GET("v1/cuenta/polizas")
+    suspend fun polizas(@Header("Authorization") autorizacion: String): Response<List<PolizaDto>>
 }
 
 /** Los nombres de los campos son los del contrato. */
@@ -51,11 +63,20 @@ data class DocumentoAceptadoDto(val tipo: String, val version: String)
 data class PolizaDto(
     val polizaId: String,
     val estado: String,
+    val creadaEn: String,
+    val emitidaEn: String? = null,
     val pendientes: List<PendienteDto> = emptyList(),
+    val rechazo: RechazoDto? = null,
 )
 
 @Serializable
-data class PendienteDto(val mensaje: String)
+data class PendienteDto(val codigo: String, val mensaje: String)
+
+@Serializable
+data class RechazoDto(val motivos: List<MotivoDto>)
+
+@Serializable
+data class MotivoDto(val mensaje: String)
 
 fun crearSolicitudesApi(urlBase: String, cliente: OkHttpClient = OkHttpClient()): SolicitudesApi =
     crearRetrofit(urlBase, cliente).create(SolicitudesApi::class.java)

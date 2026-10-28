@@ -8,10 +8,14 @@ import com.solventa4bits.movil.sesion.dominio.ServicioDeSesion
 import com.solventa4bits.movil.sesion.dominio.Sesion
 import com.solventa4bits.movil.solicitud.dominio.CondicionesDelSeguro
 import com.solventa4bits.movil.solicitud.dominio.DatosDeLaSolicitud
+import com.solventa4bits.movil.solicitud.dominio.CodigoDePendiente
 import com.solventa4bits.movil.solicitud.dominio.EstadoDeSolicitud
+import com.solventa4bits.movil.solicitud.dominio.Pendiente
+import com.solventa4bits.movil.solicitud.dominio.ResultadoConsulta
+import com.solventa4bits.movil.solicitud.dominio.ResultadoLista
 import com.solventa4bits.movil.solicitud.dominio.ResultadoCondiciones
 import com.solventa4bits.movil.solicitud.dominio.ResultadoEnvio
-import com.solventa4bits.movil.solicitud.dominio.SolicitudEnviada
+import com.solventa4bits.movil.solicitud.dominio.Solicitud
 import com.solventa4bits.movil.traza.TrazaFalsa
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse
@@ -73,9 +77,17 @@ class AdaptadorSolicitudesTest {
          "notaPie": "Aceptar estas condiciones no contrata todavía."}
     ]"""
 
-    private fun poliza(estado: String, pendientes: String = "[]") = """{
-        "polizaId": "7c0f2a52-3b6f-4a0e-9e7e-2f6c9d1a8b11", "numero": null, "estado": "$estado",
-        "producto": "VIDA_HIPOTECARIO", "pendientes": $pendientes
+    private fun poliza(
+        estado: String,
+        pendientes: String = "[]",
+        emitidaEn: String? = null,
+        rechazo: String = "null",
+        id: String = ID,
+    ) = """{
+        "polizaId": "$id", "numero": null, "estado": "$estado",
+        "producto": "VIDA_HIPOTECARIO", "creadaEn": "2026-10-27T14:41:00Z",
+        "emitidaEn": ${emitidaEn?.let { "\"$it\"" } ?: "null"},
+        "pendientes": $pendientes, "rechazo": $rechazo
     }"""
 
     @Test
@@ -151,11 +163,18 @@ class AdaptadorSolicitudesTest {
     @Test
     @DisplayName("una solicitud emitida no tiene pendientes")
     fun emitida() = runTest {
-        responder(201, poliza("EMITIDA"))
+        responder(201, poliza("EMITIDA", emitidaEn = "2026-10-27T14:41:05Z"))
 
         assertEquals(
             ResultadoEnvio.Enviada(
-                SolicitudEnviada("7c0f2a52-3b6f-4a0e-9e7e-2f6c9d1a8b11", EstadoDeSolicitud.EMITIDA, emptyList()),
+                Solicitud(
+                    id = ID,
+                    estado = EstadoDeSolicitud.EMITIDA,
+                    creadaEn = "2026-10-27T14:41:00Z",
+                    emitidaEn = "2026-10-27T14:41:05Z",
+                    pendientes = emptyList(),
+                    motivosDeRechazo = emptyList(),
+                ),
             ),
             adaptador().enviar(soloVida),
         )
@@ -177,7 +196,12 @@ class AdaptadorSolicitudesTest {
 
         assertEquals(EstadoDeSolicitud.PENDIENTE, enviada.solicitud.estado)
         assertEquals(
-            listOf("Los datos de tu crédito deben ser verificados por un agente."),
+            listOf(
+                Pendiente(
+                    CodigoDePendiente.CREDITO_NO_VERIFICADO,
+                    "Los datos de tu crédito deben ser verificados por un agente.",
+                ),
+            ),
             enviada.solicitud.pendientes,
         )
     }
@@ -214,5 +238,119 @@ class AdaptadorSolicitudesTest {
 
         assertEquals(ResultadoEnvio.Fallo, adaptador().enviar(soloVida))
         assertInstanceOf(IOException::class.java, traza.errores.single().causa)
+    }
+
+    // --- BITS-97: el resultado de la solicitud, al enviarla y al volver a verla.
+
+    @Test
+    @DisplayName("un pendiente con un codigo que la app no conoce queda sin codigo, con su mensaje")
+    fun codigoDesconocido() = runTest {
+        responder(
+            201,
+            poliza(
+                "PENDIENTE",
+                """[{"codigo": "CORREO_SIN_CONFIRMAR", "tipo": "USUARIO", "mensaje": "Revisa el enlace en tu correo"},
+                    {"codigo": "ALGO_NUEVO", "tipo": "AGENTE", "mensaje": "Otra revision"}]""",
+            ),
+        )
+
+        val enviada = assertInstanceOf(ResultadoEnvio.Enviada::class.java, adaptador().enviar(soloVida))
+
+        assertEquals(
+            listOf(
+                Pendiente(CodigoDePendiente.CORREO_SIN_CONFIRMAR, "Revisa el enlace en tu correo"),
+                Pendiente(null, "Otra revision"),
+            ),
+            enviada.solicitud.pendientes,
+        )
+    }
+
+    @Test
+    @DisplayName("un estado que la app no conoce se trata como pendiente")
+    fun estadoDesconocido() = runTest {
+        responder(201, poliza("ESTADO_NUEVO"))
+
+        val enviada = assertInstanceOf(ResultadoEnvio.Enviada::class.java, adaptador().enviar(soloVida))
+
+        assertEquals(EstadoDeSolicitud.PENDIENTE, enviada.solicitud.estado)
+    }
+
+    @Test
+    @DisplayName("consulta una solicitud por su id, con el token, y lee su rechazo")
+    fun consultaRechazada() = runTest {
+        responder(
+            200,
+            poliza(
+                "RECHAZADA",
+                rechazo = """{"motivos": [{"codigo": "CREDITO_NO_VERIFICADO",
+                    "mensaje": "Los datos de tu crédito no coinciden con los de tu banco."}],
+                    "rechazadaEn": "2026-10-28T10:00:00Z"}""",
+            ),
+        )
+
+        val resultado = assertInstanceOf(ResultadoConsulta.Exito::class.java, adaptador().consultar(ID))
+
+        assertEquals(EstadoDeSolicitud.RECHAZADA, resultado.solicitud.estado)
+        assertEquals(
+            listOf("Los datos de tu crédito no coinciden con los de tu banco."),
+            resultado.solicitud.motivosDeRechazo,
+        )
+        val peticion = servidor.takeRequest()
+        assertEquals("GET", peticion.method)
+        assertEquals("/mobile/v1/cuenta/polizas/$ID", peticion.path)
+        assertEquals("Bearer jwt-de-acceso", peticion.getHeader("Authorization"))
+    }
+
+    @Test
+    @DisplayName("una solicitud que no existe (404) se informa como tal")
+    fun consultaInexistente() = runTest {
+        responder(404)
+
+        assertEquals(ResultadoConsulta.NoExiste, adaptador().consultar(ID))
+    }
+
+    @Test
+    @DisplayName("al consultar, sesion vencida, error del servidor y sin red responden controlado")
+    fun consultaConFallas() = runTest {
+        responder(401)
+        assertEquals(ResultadoConsulta.SesionVencida, adaptador().consultar(ID))
+
+        responder(503)
+        assertEquals(ResultadoConsulta.Fallo, adaptador().consultar(ID))
+        assertTrue(traza.errores.single().mensaje.contains("503"))
+
+        servidor.shutdown()
+        assertEquals(ResultadoConsulta.Fallo, adaptador().consultar(ID))
+    }
+
+    @Test
+    @DisplayName("lista las solicitudes del cliente en el orden en que llegan, con el token")
+    fun lista() = runTest {
+        responder(200, "[${poliza("PENDIENTE", id = "nueva")}, ${poliza("RECHAZADA", id = "vieja")}]")
+
+        val resultado = assertInstanceOf(ResultadoLista.Exito::class.java, adaptador().listar())
+
+        assertEquals(listOf("nueva", "vieja"), resultado.solicitudes.map { it.id })
+        val peticion = servidor.takeRequest()
+        assertEquals("/mobile/v1/cuenta/polizas", peticion.path)
+        assertEquals("Bearer jwt-de-acceso", peticion.getHeader("Authorization"))
+    }
+
+    @Test
+    @DisplayName("al listar, sesion vencida, error del servidor y sin red responden controlado")
+    fun listaConFallas() = runTest {
+        responder(401)
+        assertEquals(ResultadoLista.SesionVencida, adaptador().listar())
+
+        responder(503)
+        assertEquals(ResultadoLista.Fallo, adaptador().listar())
+        assertTrue(traza.errores.single().mensaje.contains("503"))
+
+        servidor.shutdown()
+        assertEquals(ResultadoLista.Fallo, adaptador().listar())
+    }
+
+    private companion object {
+        const val ID = "7c0f2a52-3b6f-4a0e-9e7e-2f6c9d1a8b11"
     }
 }

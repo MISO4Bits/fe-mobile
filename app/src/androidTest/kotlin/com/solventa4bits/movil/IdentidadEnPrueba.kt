@@ -62,7 +62,7 @@ const val CONDICIONES_DEL_SEGURO = """[
 /** Lo que responde el POST de la solicitud. */
 fun polizaEnviada(estado: String = "PENDIENTE") = """{
     "polizaId": "7c0f2a52-3b6f-4a0e-9e7e-2f6c9d1a8b11", "numero": null, "estado": "$estado",
-    "producto": "VIDA_HIPOTECARIO", "pendientes": []
+    "producto": "VIDA_HIPOTECARIO", "creadaEn": "2026-10-27T14:41:00Z", "pendientes": []
 }"""
 
 /**
