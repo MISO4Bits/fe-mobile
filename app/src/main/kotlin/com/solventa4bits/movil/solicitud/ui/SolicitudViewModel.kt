@@ -16,7 +16,7 @@ import com.solventa4bits.movil.solicitud.dominio.DatosDeLaSolicitud
 import com.solventa4bits.movil.solicitud.dominio.ResultadoCondiciones
 import com.solventa4bits.movil.solicitud.dominio.ResultadoEnvio
 import com.solventa4bits.movil.solicitud.dominio.ServicioDeSolicitudes
-import com.solventa4bits.movil.solicitud.dominio.SolicitudEnviada
+import com.solventa4bits.movil.solicitud.dominio.Solicitud
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 
@@ -45,7 +45,7 @@ data class EstadoSolicitud(
     val enviando: Boolean = false,
     val errorAlEnviar: ErrorAlEnviar? = null,
     /** La solicitud quedo registrada: la pantalla sale de aqui. */
-    val enviada: SolicitudEnviada? = null,
+    val enviada: Solicitud? = null,
     val sesionVencida: Boolean = false,
 ) {
     /** AC-2: solo con las condiciones aceptadas, y con su version a la mano para enviarla. */

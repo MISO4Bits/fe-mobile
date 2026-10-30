@@ -55,6 +55,8 @@ fun ComposeContentTestRule.abrirApp(
     // Por defecto el cliente no tiene cotizacion en curso. Una prueba que la
     // necesite responde otra cosa en la misma ruta.
     bff.responderSiempreEn("/v1/cotizaciones/actual", 404)
+    // Ni solicitudes enviadas: el Inicio las consulta cada vez que se muestra.
+    bff.responderSiempreEn("/v1/cuenta/polizas", 200, "[]", metodo = "GET")
     val sesion = AdaptadorSesion(crearSesionApi(bff.url), sinTraza)
     val conSesion = ConSesion(almacen, sesion)
     val creditos = AdaptadorCreditos(crearCreditosApi(bff.url), conSesion, sinTraza)

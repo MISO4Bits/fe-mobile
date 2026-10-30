@@ -5,6 +5,14 @@ import com.solventa4bits.movil.cotizacion.dominio.DatosDelCredito
 import com.solventa4bits.movil.cotizacion.dominio.ResultadoCotizacion
 import com.solventa4bits.movil.cotizacion.dominio.ResultadoDeclinacion
 import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCotizaciones
+import com.solventa4bits.movil.solicitud.dominio.DatosDeLaSolicitud
+import com.solventa4bits.movil.solicitud.dominio.EstadoDeSolicitud
+import com.solventa4bits.movil.solicitud.dominio.ResultadoCondiciones
+import com.solventa4bits.movil.solicitud.dominio.ResultadoConsulta
+import com.solventa4bits.movil.solicitud.dominio.ResultadoEnvio
+import com.solventa4bits.movil.solicitud.dominio.ResultadoLista
+import com.solventa4bits.movil.solicitud.dominio.ServicioDeSolicitudes
+import com.solventa4bits.movil.solicitud.dominio.Solicitud
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -33,6 +41,9 @@ class InicioViewModelTest {
         factores = emptyList(),
     )
 
+    private fun solicitud(id: String, estado: EstadoDeSolicitud) =
+        Solicitud(id, estado, "2026-10-27T14:41:00Z", null, emptyList(), emptyList())
+
     @BeforeEach
     fun preparar() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -43,13 +54,22 @@ class InicioViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun inicioQueRecibe(resultado: ResultadoCotizacion): InicioViewModel {
+    private fun inicioQueRecibe(
+        resultado: ResultadoCotizacion,
+        lista: ResultadoLista = ResultadoLista.Exito(emptyList()),
+    ): InicioViewModel {
         val cotizaciones = object : ServicioDeCotizaciones {
             override suspend fun cotizar(datos: DatosDelCredito) = ResultadoCotizacion.Fallo
             override suspend fun consultarActual() = resultado
             override suspend fun declinarActual() = ResultadoDeclinacion.Fallo
         }
-        return InicioViewModel(cotizaciones).apply { consultar() }
+        val solicitudes = object : ServicioDeSolicitudes {
+            override suspend fun condiciones() = ResultadoCondiciones.Fallo
+            override suspend fun enviar(datos: DatosDeLaSolicitud) = ResultadoEnvio.Fallo
+            override suspend fun consultar(id: String) = ResultadoConsulta.Fallo
+            override suspend fun listar() = lista
+        }
+        return InicioViewModel(cotizaciones, solicitudes).apply { consultar() }
     }
 
     @Test
@@ -77,5 +97,43 @@ class InicioViewModelTest {
     @DisplayName("si la sesion vencio lo informa para volver al inicio de sesion")
     fun sesionVencida() {
         assertTrue(inicioQueRecibe(ResultadoCotizacion.SesionVencida).estado.sesionVencida)
+    }
+
+    @Test
+    @DisplayName("BITS-97, AC-2: con solicitudes, el Home ofrece volver a ver la mas reciente")
+    fun solicitudReciente() {
+        val lista = ResultadoLista.Exito(
+            listOf(solicitud("nueva", EstadoDeSolicitud.PENDIENTE), solicitud("vieja", EstadoDeSolicitud.RECHAZADA)),
+        )
+
+        val estado = inicioQueRecibe(ResultadoCotizacion.Exito(vigente), lista).estado
+
+        assertEquals("nueva", estado.solicitudReciente?.id)
+        assertEquals(vigente, estado.cotizacionEnCurso)
+    }
+
+    @Test
+    @DisplayName("sin solicitudes, o si la mas reciente vencio, el Home no la muestra")
+    fun sinSolicitudVigente() {
+        assertNull(inicioQueRecibe(ResultadoCotizacion.SinCotizacion).estado.solicitudReciente)
+        val vencida = ResultadoLista.Exito(listOf(solicitud("vieja", EstadoDeSolicitud.VENCIDA)))
+        assertNull(inicioQueRecibe(ResultadoCotizacion.SinCotizacion, vencida).estado.solicitudReciente)
+    }
+
+    @Test
+    @DisplayName("si la lista de solicitudes falla, el Home se ve igual que sin solicitudes")
+    fun listaQueFalla() {
+        val estado = inicioQueRecibe(ResultadoCotizacion.Exito(vigente), ResultadoLista.Fallo).estado
+
+        assertNull(estado.solicitudReciente)
+        assertEquals(vigente, estado.cotizacionEnCurso)
+    }
+
+    @Test
+    @DisplayName("si la sesion vencio al listar las solicitudes tambien lo informa")
+    fun sesionVencidaAlListar() {
+        val inicio = inicioQueRecibe(ResultadoCotizacion.SinCotizacion, ResultadoLista.SesionVencida)
+
+        assertTrue(inicio.estado.sesionVencida)
     }
 }

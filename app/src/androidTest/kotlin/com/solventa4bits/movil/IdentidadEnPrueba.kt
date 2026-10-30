@@ -59,11 +59,27 @@ const val CONDICIONES_DEL_SEGURO = """[
      "notaPie": "Aceptar estas condiciones no contrata todavía."}
 ]"""
 
-/** Lo que responde el POST de la solicitud. */
-fun polizaEnviada(estado: String = "PENDIENTE") = """{
-    "polizaId": "7c0f2a52-3b6f-4a0e-9e7e-2f6c9d1a8b11", "numero": null, "estado": "$estado",
-    "producto": "VIDA_HIPOTECARIO", "pendientes": []
+const val ID_DE_POLIZA = "7c0f2a52-3b6f-4a0e-9e7e-2f6c9d1a8b11"
+
+/** Una solicitud como la responde el BFF al enviarla, consultarla o listarla. */
+fun polizaEnviada(
+    estado: String = "PENDIENTE",
+    pendientes: String = "[]",
+    rechazo: String = "null",
+) = """{
+    "polizaId": "$ID_DE_POLIZA", "numero": null, "estado": "$estado",
+    "producto": "VIDA_HIPOTECARIO", "creadaEn": "2026-10-27T14:41:00Z",
+    "emitidaEn": ${if (estado == "EMITIDA") "\"2026-10-28T16:20:00Z\"" else "null"},
+    "pendientes": $pendientes, "rechazo": $rechazo
 }"""
+
+/** En "Revisa y envia tu solicitud", acepta las condiciones desde su hoja. */
+fun ComposeContentTestRule.aceptarLasCondiciones() {
+    onNodeWithText("Leer las condiciones").performClick()
+    esperarTexto("Condiciones de tu seguro")
+    onNodeWithText("Acepto estas condiciones").performClick()
+    esperarQueDesaparezca("Acepto estas condiciones")
+}
 
 /**
  * Con la cedula y la selfie ya aceptadas, llega a "Revisa y envia tu

@@ -26,17 +26,40 @@ data class DatosDeLaSolicitud(
     val versionDeCondiciones: String,
 )
 
-enum class EstadoDeSolicitud { EMITIDA, PENDIENTE }
+/** Lo decide el servidor: la app solo lo muestra (BITS-97). */
+enum class EstadoDeSolicitud {
+    EMITIDA,
 
-/** La solicitud ya registrada. [pendientes] son los mensajes de lo que falta, listos para mostrar. */
-data class SolicitudEnviada(
-    val polizaId: String,
+    /** Falta algo: lo dicen sus [Solicitud.pendientes]. */
+    PENDIENTE,
+
+    /** La rechazo un agente: lo dicen sus [Solicitud.motivosDeRechazo]. */
+    RECHAZADA,
+
+    /** Seguia pendiente cuando vencio la cotizacion: el cliente cotiza de nuevo. */
+    VENCIDA,
+}
+
+/** Por que la solicitud sigue pendiente. */
+enum class CodigoDePendiente { CORREO_SIN_CONFIRMAR, EVIDENCIA_FALTANTE, EVIDENCIA_EN_REVISION, CREDITO_NO_VERIFICADO }
+
+/** Lo que falta para emitir. [codigo] es null si el servidor mando uno que la app no conoce. */
+data class Pendiente(val codigo: CodigoDePendiente?, val mensaje: String)
+
+/** La solicitud de cambio de seguro, tal como la tiene el servidor. Fechas en ISO 8601. */
+data class Solicitud(
+    val id: String,
     val estado: EstadoDeSolicitud,
-    val pendientes: List<String>,
+    val creadaEn: String,
+    /** Solo cuando esta emitida. */
+    val emitidaEn: String?,
+    val pendientes: List<Pendiente>,
+    /** Los mensajes de por que no se aprobo, listos para mostrar. Solo cuando esta rechazada. */
+    val motivosDeRechazo: List<String>,
 )
 
 sealed interface ResultadoEnvio {
-    data class Enviada(val solicitud: SolicitudEnviada) : ResultadoEnvio
+    data class Enviada(val solicitud: Solicitud) : ResultadoEnvio
 
     /** La cotizacion vencio, cambio o ya no admite solicitud: el cliente cotiza de nuevo. */
     data object CotizarDeNuevo : ResultadoEnvio
@@ -47,8 +70,32 @@ sealed interface ResultadoEnvio {
     data object Fallo : ResultadoEnvio
 }
 
+sealed interface ResultadoConsulta {
+    data class Exito(val solicitud: Solicitud) : ResultadoConsulta
+
+    data object NoExiste : ResultadoConsulta
+
+    data object SesionVencida : ResultadoConsulta
+
+    data object Fallo : ResultadoConsulta
+}
+
+sealed interface ResultadoLista {
+    /** De la mas reciente a la mas antigua. */
+    data class Exito(val solicitudes: List<Solicitud>) : ResultadoLista
+
+    data object SesionVencida : ResultadoLista
+
+    data object Fallo : ResultadoLista
+}
+
 interface ServicioDeSolicitudes {
     suspend fun condiciones(): ResultadoCondiciones
 
     suspend fun enviar(datos: DatosDeLaSolicitud): ResultadoEnvio
+
+    /** El estado actual: si estaba pendiente, el servidor la revisa de nuevo antes de responder. */
+    suspend fun consultar(id: String): ResultadoConsulta
+
+    suspend fun listar(): ResultadoLista
 }

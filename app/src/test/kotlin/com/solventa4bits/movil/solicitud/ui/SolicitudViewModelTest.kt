@@ -12,9 +12,11 @@ import com.solventa4bits.movil.solicitud.dominio.CondicionesDelSeguro
 import com.solventa4bits.movil.solicitud.dominio.DatosDeLaSolicitud
 import com.solventa4bits.movil.solicitud.dominio.EstadoDeSolicitud
 import com.solventa4bits.movil.solicitud.dominio.ResultadoCondiciones
+import com.solventa4bits.movil.solicitud.dominio.ResultadoConsulta
 import com.solventa4bits.movil.solicitud.dominio.ResultadoEnvio
+import com.solventa4bits.movil.solicitud.dominio.ResultadoLista
 import com.solventa4bits.movil.solicitud.dominio.ServicioDeSolicitudes
-import com.solventa4bits.movil.solicitud.dominio.SolicitudEnviada
+import com.solventa4bits.movil.solicitud.dominio.Solicitud
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -46,7 +48,14 @@ class SolicitudViewModelTest {
         creadaEn = "2026-10-06T14:35:00Z",
     )
     private val condiciones = CondicionesDelSeguro("V2", "Condiciones de tu seguro", "<p>Texto</p>", null)
-    private val enviada = SolicitudEnviada("poliza-1", EstadoDeSolicitud.EMITIDA, emptyList())
+    private val enviada = Solicitud(
+        id = "poliza-1",
+        estado = EstadoDeSolicitud.EMITIDA,
+        creadaEn = "2026-10-27T14:41:00Z",
+        emitidaEn = "2026-10-27T14:41:05Z",
+        pendientes = emptyList(),
+        motivosDeRechazo = emptyList(),
+    )
 
     private class EvidenciasFalsas : ServicioDeEvidencias {
         var estado: ResultadoEstado = ResultadoEstado.Exito(
@@ -78,6 +87,10 @@ class SolicitudViewModelTest {
         val enviados = mutableListOf<DatosDeLaSolicitud>()
 
         override suspend fun condiciones() = condiciones
+
+        override suspend fun consultar(id: String) = ResultadoConsulta.Fallo
+
+        override suspend fun listar() = ResultadoLista.Fallo
 
         override suspend fun enviar(datos: DatosDeLaSolicitud): ResultadoEnvio {
             enviados += datos

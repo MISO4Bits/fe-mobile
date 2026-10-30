@@ -46,7 +46,10 @@ import com.solventa4bits.movil.solicitud.datos.AdaptadorSolicitudes
 import com.solventa4bits.movil.solicitud.datos.crearSolicitudesApi
 import com.solventa4bits.movil.solicitud.dominio.ServicioDeSolicitudes
 import com.solventa4bits.movil.solicitud.ui.AccionesDeSolicitud
+import com.solventa4bits.movil.solicitud.dominio.Solicitud
+import com.solventa4bits.movil.solicitud.ui.PantallaResultado
 import com.solventa4bits.movil.solicitud.ui.PantallaSolicitud
+import com.solventa4bits.movil.solicitud.ui.ResultadoViewModel
 import com.solventa4bits.movil.solicitud.ui.SolicitudViewModel
 import com.solventa4bits.movil.inicio.ui.PantallaInicio
 import com.solventa4bits.movil.sesion.datos.AdaptadorSesion
@@ -123,7 +126,7 @@ fun AppSolventa(
 ) {
     val login = viewModel { LoginViewModel(sesion, almacen, preferencias, conHuella = autenticador.disponible()) }
     val cotizacion = viewModel { NuevaCotizacionViewModel(creditos, cotizaciones) }
-    val inicio = viewModel { InicioViewModel(cotizaciones) }
+    val inicio = viewModel { InicioViewModel(cotizaciones, solicitudes) }
     // Preparar la foto pesa: va en segundo plano para no congelar la pantalla.
     val preparar: suspend (ByteArray) -> ByteArray? = { foto ->
         withContext(Dispatchers.Default) { PreparadorDeFotos.preparar(foto) }
@@ -131,14 +134,18 @@ fun AppSolventa(
     val cedula = viewModel { CedulaViewModel(evidencias, preparar) }
     val selfie = viewModel { SelfieViewModel(evidencias, preparar) }
     val solicitud = viewModel { SolicitudViewModel(evidencias, solicitudes) }
+    val resultado = viewModel { ResultadoViewModel(solicitudes) }
     var cotizando by rememberSaveable { mutableStateOf(false) }
     // Acepto las condiciones y esta cargando la cedula (BITS-275).
     var enCedula by rememberSaveable { mutableStateOf(false) }
+    // Viendo el resultado de la solicitud, al enviarla o desde el Inicio (BITS-97).
+    var viendoSolicitud by rememberSaveable { mutableStateOf(false) }
     // La cotizacion se retomo desde el Home: "Atras" vuelve al Home.
     var retomada by rememberSaveable { mutableStateOf(false) }
     val cerrarSesion = {
         cotizando = false
         enCedula = false
+        viendoSolicitud = false
         login.cerrarSesion()
     }
 
@@ -149,6 +156,13 @@ fun AppSolventa(
                 login = login,
                 autenticador = autenticador,
                 alUsarOtraCuenta = cerrarSesion,
+                modifier = conRelleno,
+            )
+
+            viendoSolicitud -> TuResultado(
+                resultado = resultado,
+                alInicio = { viendoSolicitud = false },
+                alCerrarSesion = cerrarSesion,
                 modifier = conRelleno,
             )
 
@@ -165,28 +179,24 @@ fun AppSolventa(
                     enCedula = false
                     cotizando = false
                 },
+                alVerResultado = { enviada ->
+                    resultado.mostrar(enviada)
+                    enCedula = false
+                    cotizando = false
+                    viendoSolicitud = true
+                },
                 alVolver = { enCedula = false },
                 alCerrarSesion = cerrarSesion,
                 modifier = conRelleno,
             )
 
-            cotizando && cotizacion.estado.cotizacion != null && !cotizacion.estado.coberturasElegidas -> {
-                val alInicio = {
-                    cotizacion.volverAlCredito()
-                    cotizando = false
-                }
-                val atras = if (retomada) alInicio else cotizacion::volverAlCredito
-                BackHandler(onBack = atras)
-                PantallaCoberturas(
-                    cotizacion = checkNotNull(cotizacion.estado.cotizacion),
-                    conTuCasa = cotizacion.estado.conTuCasa,
-                    alCambiarTuCasa = cotizacion::cambiarTuCasa,
-                    alContinuar = cotizacion::continuarALoQuePagas,
-                    alVolver = atras,
-                    alCerrarSesion = cerrarSesion,
-                    modifier = conRelleno,
-                )
-            }
+            cotizando && cotizacion.estado.cotizacion != null && !cotizacion.estado.coberturasElegidas -> TusCoberturas(
+                cotizacion = cotizacion,
+                retomada = retomada,
+                alInicio = { cotizando = false },
+                alCerrarSesion = cerrarSesion,
+                modifier = conRelleno,
+            )
 
             cotizando && cotizacion.estado.cotizacion != null -> LoQuePagas(
                 cotizacion = cotizacion,
@@ -233,6 +243,10 @@ fun AppSolventa(
                     cotizacion.retomar(enCurso)
                     retomada = true
                     cotizando = true
+                },
+                alVerSolicitud = { enviada ->
+                    resultado.abrir(enviada.id)
+                    viendoSolicitud = true
                 },
                 alCerrarSesion = cerrarSesion,
                 modifier = conRelleno,
@@ -282,6 +296,7 @@ private fun TuCedula(
     camara: Camara,
     alAbrirSolicitud: () -> Unit,
     alInicio: () -> Unit,
+    alVerResultado: (Solicitud) -> Unit,
     alVolver: () -> Unit,
     alCerrarSesion: () -> Unit,
     modifier: Modifier,
@@ -296,6 +311,7 @@ private fun TuCedula(
             camara = camara,
             alAbrirSolicitud = alAbrirSolicitud,
             alInicio = alInicio,
+            alVerResultado = alVerResultado,
             alVolver = { enSelfie = false },
             alCerrarSesion = alCerrarSesion,
             modifier = modifier,
@@ -376,6 +392,7 @@ private fun Inicio(
     alAlternarHuella: () -> Unit,
     alCotizar: () -> Unit,
     alVerCotizacion: (Cotizacion) -> Unit,
+    alVerSolicitud: (Solicitud) -> Unit,
     alCerrarSesion: () -> Unit,
     modifier: Modifier,
 ) {
@@ -389,6 +406,8 @@ private fun Inicio(
         modifier = modifier,
         huellaActivada = huellaActivada,
         alAlternarHuella = alAlternarHuella,
+        solicitudReciente = inicio.estado.solicitudReciente,
+        alVerSolicitud = alVerSolicitud,
     )
 }
 
@@ -400,6 +419,7 @@ private fun TuSelfie(
     camara: Camara,
     alAbrirSolicitud: () -> Unit,
     alInicio: () -> Unit,
+    alVerResultado: (Solicitud) -> Unit,
     alVolver: () -> Unit,
     alCerrarSesion: () -> Unit,
     modifier: Modifier,
@@ -411,6 +431,7 @@ private fun TuSelfie(
         TuSolicitud(
             solicitud = solicitud,
             alInicio = alInicio,
+            alVerResultado = alVerResultado,
             alVolver = { enSolicitud = false },
             alCerrarSesion = alCerrarSesion,
             modifier = modifier,
@@ -447,18 +468,19 @@ private fun TuSelfie(
     )
 }
 
-/** "Revisa y envia tu solicitud": con la solicitud registrada, vuelve al Inicio. */
+/** "Revisa y envia tu solicitud": con la solicitud registrada, muestra su resultado. */
 @Composable
 private fun TuSolicitud(
     solicitud: SolicitudViewModel,
     alInicio: () -> Unit,
+    alVerResultado: (Solicitud) -> Unit,
     alVolver: () -> Unit,
     alCerrarSesion: () -> Unit,
     modifier: Modifier,
 ) {
     val estado = solicitud.estado
     LaunchedEffect(estado.sesionVencida) { if (estado.sesionVencida) alCerrarSesion() }
-    LaunchedEffect(estado.enviada) { if (estado.enviada != null) alInicio() }
+    LaunchedEffect(estado.enviada) { estado.enviada?.let(alVerResultado) }
     BackHandler(onBack = alVolver)
     PantallaSolicitud(
         estado = estado,
@@ -471,6 +493,56 @@ private fun TuSolicitud(
             alReintentar = solicitud::reintentar,
             alIrAlInicio = alInicio,
         ),
+        alCerrarSesion = alCerrarSesion,
+        modifier = modifier,
+    )
+}
+
+/** El resultado de la solicitud: en revision, no aprobada o aprobada (BITS-97). */
+@Composable
+private fun TuResultado(
+    resultado: ResultadoViewModel,
+    alInicio: () -> Unit,
+    alCerrarSesion: () -> Unit,
+    modifier: Modifier,
+) {
+    val estado = resultado.estado
+    LaunchedEffect(estado.sesionVencida) { if (estado.sesionVencida) alCerrarSesion() }
+    LaunchedEffect(estado.noExiste) { if (estado.noExiste) alInicio() }
+    BackHandler(onBack = alInicio)
+    PantallaResultado(
+        estado = estado,
+        alReintentar = resultado::reintentar,
+        alInicio = alInicio,
+        alCerrarSesion = alCerrarSesion,
+        modifier = modifier,
+    )
+}
+
+/** "Tus coberturas" (BITS-96). Si se retomo desde el Inicio, "Atras" vuelve al Inicio. */
+@Composable
+private fun TusCoberturas(
+    cotizacion: NuevaCotizacionViewModel,
+    retomada: Boolean,
+    alInicio: () -> Unit,
+    alCerrarSesion: () -> Unit,
+    modifier: Modifier,
+) {
+    val atras = if (retomada) {
+        {
+            cotizacion.volverAlCredito()
+            alInicio()
+        }
+    } else {
+        cotizacion::volverAlCredito
+    }
+    BackHandler(onBack = atras)
+    PantallaCoberturas(
+        cotizacion = checkNotNull(cotizacion.estado.cotizacion),
+        conTuCasa = cotizacion.estado.conTuCasa,
+        alCambiarTuCasa = cotizacion::cambiarTuCasa,
+        alContinuar = cotizacion::continuarALoQuePagas,
+        alVolver = atras,
         alCerrarSesion = alCerrarSesion,
         modifier = modifier,
     )
