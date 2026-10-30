@@ -122,7 +122,7 @@ val camaraDePrueba: Camara = { _, alTenerFoto, _ ->
     Button(onClick = { alTenerFoto(fotoGenerada()) }) { Text(USAR_FOTO) }
 }
 
-private fun fotoGenerada(): ByteArray {
+fun fotoGenerada(): ByteArray {
     val bitmap = Bitmap.createBitmap(ANCHO_DE_PRUEBA, ALTO_DE_PRUEBA, Bitmap.Config.ARGB_8888)
     bitmap.eraseColor(Color.GRAY)
     return ByteArrayOutputStream().use { salida ->

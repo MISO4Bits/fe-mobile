@@ -57,12 +57,22 @@ fun ComposeContentTestRule.abrirApp(
     bff.responderSiempreEn("/v1/cotizaciones/actual", 404)
     // Ni solicitudes enviadas: el Inicio las consulta cada vez que se muestra.
     bff.responderSiempreEn("/v1/cuenta/polizas", 200, "[]", metodo = "GET")
-    val sesion = AdaptadorSesion(crearSesionApi(bff.url), sinTraza)
+    abrirApp(bff.url, almacen, autenticador, preferencias)
+}
+
+/** La misma app contra un BFF de verdad, como el de dev (BITS-146). */
+fun ComposeContentTestRule.abrirApp(
+    urlBff: String,
+    almacen: AlmacenDeSesion,
+    autenticador: AutenticadorDeHuella = AutenticadorFalso(disponible = false),
+    preferencias: AlmacenDePreferencias = PreferenciasEnMemoria(),
+) {
+    val sesion = AdaptadorSesion(crearSesionApi(urlBff), sinTraza)
     val conSesion = ConSesion(almacen, sesion)
-    val creditos = AdaptadorCreditos(crearCreditosApi(bff.url), conSesion, sinTraza)
-    val cotizaciones = AdaptadorCotizaciones(crearCotizacionesApi(bff.url), conSesion, sinTraza)
-    val evidencias = AdaptadorEvidencias(crearEvidenciasApi(bff.url), conSesion, sinTraza)
-    val solicitudes = AdaptadorSolicitudes(crearSolicitudesApi(bff.url), conSesion, sinTraza)
+    val creditos = AdaptadorCreditos(crearCreditosApi(urlBff), conSesion, sinTraza)
+    val cotizaciones = AdaptadorCotizaciones(crearCotizacionesApi(urlBff), conSesion, sinTraza)
+    val evidencias = AdaptadorEvidencias(crearEvidenciasApi(urlBff), conSesion, sinTraza)
+    val solicitudes = AdaptadorSolicitudes(crearSolicitudesApi(urlBff), conSesion, sinTraza)
     setContent {
         TemaSolventa {
             AppSolventa(
@@ -80,13 +90,17 @@ fun ComposeContentTestRule.abrirApp(
     }
 }
 
-/** Escribe las credenciales del usuario de demostracion y entra hasta el inicio. */
-fun ComposeContentTestRule.iniciarSesion() {
-    onNodeWithText("Correo electrónico").performTextInput(UsuarioDemo.CORREO)
-    onNodeWithText("Contraseña").performTextInput(UsuarioDemo.CONTRASENA)
+/** Escribe las credenciales (por defecto, las del usuario de demostracion) y entra hasta el inicio. */
+fun ComposeContentTestRule.iniciarSesion(
+    correo: String = UsuarioDemo.CORREO,
+    contrasena: String = UsuarioDemo.CONTRASENA,
+    esperaMs: Long = ESPERA_MS,
+) {
+    onNodeWithText("Correo electrónico").performTextInput(correo)
+    onNodeWithText("Contraseña").performTextInput(contrasena)
     onNodeWithText("Iniciar sesión").performClick()
     // "Nueva cotizacion" esta en el Home con y sin cotizacion en curso.
-    esperarTexto("Nueva cotización")
+    esperarTexto("Nueva cotización", esperaMs)
 }
 
 /** Abre la lista de bancos de la nueva cotizacion y elige uno. */
@@ -103,8 +117,9 @@ fun ComposeContentTestRule.continuarDesdeCoberturas() {
     onNodeWithText("Continuar").performClick()
 }
 
-fun ComposeContentTestRule.esperarTexto(texto: String) {
-    waitUntil(ESPERA_MS) { onAllNodesWithText(texto).fetchSemanticsNodes().isNotEmpty() }
+// Contra dev se espera mas que contra el BFF falso: la respuesta viaja por la red.
+fun ComposeContentTestRule.esperarTexto(texto: String, esperaMs: Long = ESPERA_MS) {
+    waitUntil(esperaMs) { onAllNodesWithText(texto).fetchSemanticsNodes().isNotEmpty() }
 }
 
 /** Espera a que un texto ya no este, por ejemplo al cerrarse un modal. */
