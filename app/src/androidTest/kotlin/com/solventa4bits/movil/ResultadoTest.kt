@@ -68,7 +68,7 @@ class ResultadoTest {
         bff.responderSiempreEn("$RUTA_POLIZAS/$ID_DE_POLIZA", 200, polizaEnviada("EMITIDA"), metodo = "GET")
 
         // AC-2: tambien se ve al volver a la cuenta.
-        composeRule.esperarTexto("Tu solicitud")
+        composeRule.esperarTexto("Tu solicitud está en revisión")
         composeRule.onNodeWithText("En revisión").assertIsDisplayed()
         composeRule.onNodeWithText("Ver mi solicitud").performClick()
 

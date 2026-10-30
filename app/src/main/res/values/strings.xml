@@ -251,4 +251,14 @@
     <string name="inicio_solicitud_no_aprobada">No aprobada</string>
     <string name="inicio_solicitud_aprobada">Aprobada</string>
     <string name="inicio_ver_solicitud">Ver mi solicitud</string>
+    <string name="inicio_revision_titulo">Tu solicitud está en revisión</string>
+    <string name="inicio_seccion_cotizacion">TU COTIZACIÓN</string>
+    <string name="inicio_seccion_seguros">MIS SEGUROS</string>
+    <string name="inicio_vida_para_tu_credito">Vida para tu crédito</string>
+    <string name="inicio_al_mes">%1$s al mes.</string>
+    <string name="inicio_seguros_al_aprobar">Todavía no tienes seguros. Aparecen aquí cuando aprobemos tu solicitud.</string>
+    <string name="inicio_nueva_titulo">¿Quieres hacer una nueva cotización?</string>
+    <string name="inicio_nueva_detalle">Si cotizas de nuevo, borramos tu solicitud en revisión y tendrás que enviarla otra vez con la nueva cotización.</string>
+    <string name="inicio_cotizar_de_nuevo">Cotizar de nuevo</string>
+    <string name="inicio_nueva_volver">Volver</string>
 </resources>
