@@ -5,6 +5,8 @@
     <!-- Foto de la cedula (BITS-275). Sin camara, el cliente elige de la galeria. -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+    <!-- Spike BITS-352: avisos locales. Desde Android 13 hay que pedirlo. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="false"

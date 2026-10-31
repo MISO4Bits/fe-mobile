@@ -165,6 +165,9 @@ dependencies {
     // Huella (BITS-353): el dialogo biometrico del sistema.
     implementation(libs.androidx.biometric)
 
+    // Spike BITS-352: avisos locales consultando el BFF en segundo plano.
+    implementation(libs.androidx.work.runtime.ktx)
+
     // Reglas de negocio: JUnit 5, como declara la Estrategia de Pruebas.
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)

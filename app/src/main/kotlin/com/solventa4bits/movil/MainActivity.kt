@@ -1,5 +1,8 @@
 package com.solventa4bits.movil
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.compose.BackHandler
@@ -17,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.solventa4bits.movil.avisos.datos.Avisos
 import com.solventa4bits.movil.cotizacion.datos.AdaptadorCotizaciones
 import com.solventa4bits.movil.cotizacion.datos.AdaptadorCreditos
 import com.solventa4bits.movil.cotizacion.datos.crearCotizacionesApi
@@ -91,6 +95,11 @@ class MainActivity : FragmentActivity() {
         val autenticador = AutenticadorBiometrico(this)
         val preferencias = PreferenciasDelTelefono(applicationContext)
 
+        // Spike BITS-352: permiso, revision en segundo plano y aviso que abre su solicitud.
+        pedirPermisoDeAvisos()
+        Avisos.programar(applicationContext)
+        val solicitudDelAviso = intent.getStringExtra(Avisos.EXTRA_SOLICITUD)
+
         setContent {
             TemaSolventa {
                 AppSolventa(
@@ -102,9 +111,31 @@ class MainActivity : FragmentActivity() {
                     solicitudes,
                     autenticador,
                     preferencias,
+                    solicitudDelAviso = solicitudDelAviso,
                 )
             }
         }
+    }
+
+    // Con la FragmentActivity de la huella, el lanzador de resultados usa un
+    // codigo de solicitud que no cabe en 16 bits: se pide a la manera antigua.
+    private fun pedirPermisoDeAvisos() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return
+        requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), PERMISO_DE_AVISOS)
+    }
+
+    @Deprecated("Solo para el spike BITS-352")
+    override fun onRequestPermissionsResult(codigo: Int, permisos: Array<out String>, resultados: IntArray) {
+        super.onRequestPermissionsResult(codigo, permisos, resultados)
+        if (codigo == PERMISO_DE_AVISOS) {
+            val concedido = resultados.firstOrNull() == PackageManager.PERMISSION_GRANTED
+            Log.i(Avisos.ETIQUETA, "permiso de notificaciones: concedido=$concedido")
+        }
+    }
+
+    private companion object {
+        const val PERMISO_DE_AVISOS = 52
     }
 }
 
@@ -123,6 +154,7 @@ fun AppSolventa(
     autenticador: AutenticadorDeHuella,
     preferencias: AlmacenDePreferencias,
     camara: Camara = camaraReal,
+    solicitudDelAviso: String? = null,
 ) {
     val login = viewModel { LoginViewModel(sesion, almacen, preferencias, conHuella = autenticador.disponible()) }
     val cotizacion = viewModel { NuevaCotizacionViewModel(creditos, cotizaciones) }
@@ -147,6 +179,15 @@ fun AppSolventa(
         enCedula = false
         viendoSolicitud = false
         login.cerrarSesion()
+    }
+    // Spike BITS-352: tocar el aviso abre esa solicitud, una sola vez y ya con sesion.
+    var avisoAbierto by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(login.estado.sesionIniciada) {
+        if (login.estado.sesionIniciada && solicitudDelAviso != null && !avisoAbierto) {
+            avisoAbierto = true
+            resultado.abrir(solicitudDelAviso)
+            viendoSolicitud = true
+        }
     }
 
     Scaffold(modifier = Modifier.fillMaxSize()) { relleno ->
