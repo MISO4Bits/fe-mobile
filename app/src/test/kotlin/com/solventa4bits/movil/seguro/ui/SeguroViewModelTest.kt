@@ -105,4 +105,17 @@ class SeguroViewModelTest {
 
         assertTrue(solicitudes.pedidos.isEmpty())
     }
+
+    @Test
+    @DisplayName("BITS-217: sin conexion muestra lo guardado y el documento pide conexion sin llamar")
+    fun sinConexion() {
+        val solicitudes = SolicitudesFalsas(ResultadoDocumento.Fallo)
+        val seguro = SeguroViewModel(solicitudes).apply { mostrar(emitida, guardadoEn = "2026-10-19T14:41:00Z") }
+
+        seguro.verDocumento()
+
+        assertEquals("2026-10-19T14:41:00Z", seguro.estado.guardadoEn)
+        assertEquals(AvisoDeDocumento.SIN_CONEXION, seguro.estado.aviso)
+        assertTrue(solicitudes.pedidos.isEmpty())
+    }
 }

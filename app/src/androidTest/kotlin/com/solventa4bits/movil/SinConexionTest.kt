@@ -50,18 +50,50 @@ class SinConexionTest {
     }
 
     @Test
-    fun siElServidorNoRespondeSeVeLaPolizaGuardada() {
+    fun sinConexionSeVeLaPolizaGuardadaYSuDetalle() {
         llegarAlInicioConUnaPoliza()
         esperarGuardado { it == "SOL-VH-2026-K7M2Q9" }
 
-        bff.responderSiempreEn("/v1/cotizaciones/actual", 503)
-        bff.responderSiempreEn(RUTA_POLIZAS, 503, metodo = "GET")
+        sinConexion()
         composeRule.onNodeWithText("SOL-VH-2026-K7M2Q9").performScrollTo().performClick()
         composeRule.esperarTexto("Detalle de tu seguro")
         composeRule.onNodeWithText("Inicio").performClick()
 
+        // AC-2: lo guardado, con la fecha y el aviso, sin pantalla de error.
+        composeRule.esperarTexto(AVISO)
+        composeRule.onNodeWithText("Mi póliza").assertIsDisplayed()
+        composeRule.onNodeWithText("ACTUALIZADA EL", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithText("SOL-VH-2026-K7M2Q9").performClick()
+        composeRule.esperarTexto("Detalle de tu seguro")
+        composeRule.onNodeWithText(AVISO).assertIsDisplayed()
+        composeRule.onNodeWithText("$39.734").assertIsDisplayed()
+
+        composeRule.onNodeWithText("Ver documento").performClick()
+        composeRule.esperarTexto("Para ver el documento necesitas conexión.")
+    }
+
+    @Test
+    fun alVolverLaConexionSeActualizaSinPedirlo() {
+        bff.responder(200, RespuestasBff.sesionValida())
+        guardados = composeRule.abrirApp(bff, almacen)
+        sinConexion()
+
+        // Sin nada guardado y sin conexion: no hay pantalla de error.
+        composeRule.iniciarSesion(hasta = "Todavía no tienes seguros guardados en el teléfono.")
+        composeRule.onNodeWithText(AVISO).assertIsDisplayed()
+
+        // AC-4: con conexion otra vez, se actualiza lo guardado.
+        bff.responderSiempreEn("/v1/cotizaciones/actual", 404)
+        bff.responderSiempreEn(RUTA_POLIZAS, 200, "[${polizaEnviada("EMITIDA")}]", metodo = "GET")
+        composeRule.onNodeWithText("Reintentar la conexión").performClick()
         composeRule.esperarTexto("Tus seguros")
-        composeRule.onNodeWithText("SOL-VH-2026-K7M2Q9").performScrollTo().assertIsDisplayed()
+        esperarGuardado { it == "SOL-VH-2026-K7M2Q9" }
+    }
+
+    /** El BFF deja de responder, como si el telefono no tuviera red. */
+    private fun sinConexion() {
+        bff.responderSiempreEn("/v1/cotizaciones/actual", 503)
+        bff.responderSiempreEn(RUTA_POLIZAS, 503, metodo = "GET")
     }
 
     private fun llegarAlInicioConUnaPoliza() {
@@ -81,5 +113,6 @@ class SinConexionTest {
 
     private companion object {
         const val ESPERA_MS = 5_000L
+        const val AVISO = "Sin conexión. Ves lo que guardamos en el teléfono."
     }
 }

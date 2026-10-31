@@ -45,6 +45,7 @@ import com.solventa4bits.movil.inicio.ui.InicioViewModel
 import com.solventa4bits.movil.seguro.datos.AlmacenDeSegurosRoom
 import com.solventa4bits.movil.seguro.datos.BaseDeDatosSolventa
 import com.solventa4bits.movil.seguro.dominio.AlmacenDeSeguros
+import com.solventa4bits.movil.seguro.ui.PantallaMiPoliza
 import com.solventa4bits.movil.solicitud.datos.AdaptadorSolicitudes
 import com.solventa4bits.movil.solicitud.datos.crearSolicitudesApi
 import com.solventa4bits.movil.solicitud.dominio.ServicioDeSolicitudes
@@ -259,7 +260,7 @@ fun AppSolventa(
                     viendoSolicitud = true
                 },
                 alVerSeguro = { emitida ->
-                    seguro.mostrar(emitida)
+                    seguro.mostrar(emitida, inicio.estado.actualizadosEn)
                     viendoSeguro = true
                 },
                 alCerrarSesion = cerrarSesion,
@@ -398,7 +399,10 @@ private fun AntesDeEntrar(
     }
 }
 
-/** El Home: cada vez que se muestra consulta la cotizacion en curso. */
+/**
+ * El Home: cada vez que se muestra consulta la cotizacion en curso. Sin
+ * conexion, muestra las polizas guardadas en el telefono (BITS-217, AC-2).
+ */
 @Composable
 private fun Inicio(
     inicio: InicioViewModel,
@@ -413,6 +417,17 @@ private fun Inicio(
 ) {
     LaunchedEffect(Unit) { inicio.consultar() }
     LaunchedEffect(inicio.estado.sesionVencida) { if (inicio.estado.sesionVencida) alCerrarSesion() }
+    if (inicio.estado.sinConexion) {
+        PantallaMiPoliza(
+            seguros = inicio.estado.seguros,
+            actualizadosEn = inicio.estado.actualizadosEn,
+            alVerSeguro = alVerSeguro,
+            alReintentar = inicio::consultar,
+            alCerrarSesion = alCerrarSesion,
+            modifier = modifier,
+        )
+        return
+    }
     PantallaInicio(
         cotizacionEnCurso = inicio.estado.cotizacionEnCurso,
         alCotizar = alCotizar,

@@ -106,17 +106,21 @@ fun ComposeContentTestRule.abrirApp(
     return guardados
 }
 
-/** Escribe las credenciales (por defecto, las del usuario de demostracion) y entra hasta el inicio. */
+/**
+ * Escribe las credenciales (por defecto, las del usuario de demostracion) y
+ * entra hasta el inicio, que se reconoce por el texto [hasta].
+ */
 fun ComposeContentTestRule.iniciarSesion(
     correo: String = UsuarioDemo.CORREO,
     contrasena: String = UsuarioDemo.CONTRASENA,
     esperaMs: Long = ESPERA_MS,
+    // "Nueva cotizacion" esta en el Home con y sin cotizacion en curso.
+    hasta: String = "Nueva cotización",
 ) {
     onNodeWithText("Correo electrónico").performTextInput(correo)
     onNodeWithText("Contraseña").performTextInput(contrasena)
     onNodeWithText("Iniciar sesión").performClick()
-    // "Nueva cotizacion" esta en el Home con y sin cotizacion en curso.
-    esperarTexto("Nueva cotización", esperaMs)
+    esperarTexto(hasta, esperaMs)
 }
 
 /** Abre la lista de bancos de la nueva cotizacion y elige uno. */

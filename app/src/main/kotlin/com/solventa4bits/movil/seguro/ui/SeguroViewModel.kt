@@ -11,7 +11,7 @@ import com.solventa4bits.movil.solicitud.dominio.Solicitud
 import kotlinx.coroutines.launch
 
 /** Lo que se le dice al cliente al pedir el documento. */
-enum class AvisoDeDocumento { NINGUNO, PIDIENDO, GENERANDO, FALLO }
+enum class AvisoDeDocumento { NINGUNO, PIDIENDO, GENERANDO, FALLO, SIN_CONEXION }
 
 data class EstadoSeguro(
     val seguro: Solicitud? = null,
@@ -19,6 +19,8 @@ data class EstadoSeguro(
     /** El enlace del documento, listo para abrirlo una vez. */
     val documentoPorAbrir: String? = null,
     val sesionVencida: Boolean = false,
+    /** Sin conexion: cuando se guardo lo que se ve, en ISO 8601 (BITS-217, AC-2). Null con conexion. */
+    val guardadoEn: String? = null,
 )
 
 /** El detalle de una poliza emitida y su documento (BITS-104, AC-1). */
@@ -27,13 +29,17 @@ class SeguroViewModel(private val solicitudes: ServicioDeSolicitudes) : ViewMode
     var estado by mutableStateOf(EstadoSeguro())
         private set
 
-    /** Lo muestra con lo que ya llego en la lista del Inicio. */
-    fun mostrar(seguro: Solicitud) {
-        estado = EstadoSeguro(seguro = seguro)
+    /** Lo muestra con lo que ya llego en la lista del Inicio, o con lo guardado si no hay conexion. */
+    fun mostrar(seguro: Solicitud, guardadoEn: String? = null) {
+        estado = EstadoSeguro(seguro = seguro, guardadoEn = guardadoEn)
     }
 
     fun verDocumento() {
         val seguro = estado.seguro ?: return
+        if (estado.guardadoEn != null) {
+            estado = estado.copy(aviso = AvisoDeDocumento.SIN_CONEXION)
+            return
+        }
         estado = estado.copy(aviso = AvisoDeDocumento.PIDIENDO)
         viewModelScope.launch {
             estado = when (val resultado = solicitudes.documento(seguro.id)) {
