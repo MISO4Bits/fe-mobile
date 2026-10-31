@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.solventa4bits.movil.R
+import com.solventa4bits.movil.cotizacion.dominio.CodigoCobertura
 import com.solventa4bits.movil.cotizacion.ui.enPesos
 import com.solventa4bits.movil.solicitud.dominio.CreditoAsegurado
 import com.solventa4bits.movil.solicitud.dominio.EstadoDeSolicitud
@@ -186,6 +187,9 @@ private fun Fila(etiqueta: String, valor: String) {
     }
 }
 
+private const val PRIMA_VIDA_DE_EJEMPLO = 49_100.0
+private const val PRIMA_CASA_DE_EJEMPLO = 28_274.0
+
 @Preview(showBackground = true)
 @Composable
 private fun PantallaSeguroPreview() {
@@ -203,7 +207,10 @@ private fun PantallaSeguroPreview() {
                     vigencia = Vigencia("2026-10-22T15:00:00Z", "2027-10-22T15:00:00Z"),
                     primaMensual = 77_374.0,
                     credito = CreditoAsegurado(banco = "Bancolombia S.A.", saldo = 320_000_000.0, plazoMeses = 180),
-                    conTuCasa = true,
+                    primasPorCobertura = mapOf(
+                        CodigoCobertura.VIDA to PRIMA_VIDA_DE_EJEMPLO,
+                        CodigoCobertura.HOGAR to PRIMA_CASA_DE_EJEMPLO,
+                    ),
                 ),
             ),
             alVerDocumento = {},

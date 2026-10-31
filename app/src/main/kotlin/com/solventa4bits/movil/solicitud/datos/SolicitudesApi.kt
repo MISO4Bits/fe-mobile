@@ -89,7 +89,7 @@ data class VigenciaDto(val desde: String, val hasta: String)
 data class CreditoPolizaDto(val entidadAcreedora: String, val saldoInsoluto: Double, val plazoRestanteMeses: Int)
 
 @Serializable
-data class CoberturaPolizaDto(val codigo: String)
+data class CoberturaPolizaDto(val codigo: String, val primaTotal: Double)
 
 @Serializable
 data class DocumentoPolizaDto(val estado: String, val url: String? = null)

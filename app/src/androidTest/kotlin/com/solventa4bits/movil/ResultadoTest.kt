@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.solventa4bits.movil.fixtures.BffFalso
 import com.solventa4bits.movil.fixtures.RespuestasBff
@@ -58,8 +59,32 @@ class ResultadoTest {
         enviarYRecibir(polizaEnviada("EMITIDA"))
 
         // AC-1: no falta nada y la poliza se emite sola.
-        composeRule.esperarTexto("Solicitud aprobada")
-        composeRule.onNodeWithText("Listo").assertIsDisplayed()
+        composeRule.esperarTexto("Listo, tu seguro quedó activo")
+        composeRule.onNodeWithText("Solicitud aprobada").assertIsDisplayed()
+        composeRule.onNodeWithText("SOL-VH-2026-K7M2Q9").assertIsDisplayed()
+        // BITS-102: el valor del seguro dentro de la cuota, desde el dia en que se emitio.
+        mostrado("$39.734 al mes desde el 28 de octubre")
+        mostrado("Lo cobra Bancolombia con la cuota de tu crédito")
+        mostrado("Vida para tu crédito: $39.734")
+        mostrado("Total: $39.734 al mes. Es el valor que aceptaste.")
+        composeRule.onNodeWithText("Tu casa, con IVA", substring = true).assertDoesNotExist()
+
+        composeRule.onNodeWithText("Ir al inicio").performClick()
+        composeRule.esperarTexto("Nueva cotización")
+    }
+
+    @Test
+    fun conTuCasaMuestraLoQueValeCadaCobertura() {
+        enviarYRecibir(polizaEnviada("EMITIDA", conTuCasa = true))
+
+        composeRule.esperarTexto("Listo, tu seguro quedó activo")
+        mostrado("Vida para tu crédito: $30.000")
+        mostrado("Tu casa, con IVA: $9.734")
+        mostrado("Total: $39.734 al mes. Es el valor que aceptaste.")
+    }
+
+    private fun mostrado(texto: String) {
+        composeRule.onNodeWithText(texto).performScrollTo().assertIsDisplayed()
     }
 
     @Test

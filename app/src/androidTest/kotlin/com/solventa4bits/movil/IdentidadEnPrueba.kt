@@ -66,8 +66,18 @@ fun polizaEnviada(
     estado: String = "PENDIENTE",
     pendientes: String = "[]",
     rechazo: String = "null",
+    conTuCasa: Boolean = false,
 ): String {
     val emitida = estado == "EMITIDA"
+    val coberturas = if (conTuCasa) {
+        """[{"codigo": "VIDA", "obligatoria": true, "sumaAsegurada": 238500000,
+            "primaNeta": 30000, "iva": 0, "primaTotal": 30000},
+            {"codigo": "HOGAR", "obligatoria": false, "sumaAsegurada": 180000000,
+            "primaNeta": 8180, "iva": 1554, "primaTotal": 9734}]"""
+    } else {
+        """[{"codigo": "VIDA", "obligatoria": true, "sumaAsegurada": 238500000,
+            "primaNeta": 39734, "iva": 0, "primaTotal": 39734}]"""
+    }
     val vigencia = if (emitida) """{"desde": "2026-10-28T16:20:00Z", "hasta": "2027-10-28T16:20:00Z"}""" else "null"
     return """{
     "polizaId": "$ID_DE_POLIZA", "numero": ${if (emitida) "\"SOL-VH-2026-K7M2Q9\"" else "null"},
@@ -77,8 +87,7 @@ fun polizaEnviada(
     "cotizacionCreadaEn": "2026-10-06T14:35:00Z", "primaTotalMensual": 39734, "moneda": "COP",
     "datosCredito": {"valorCredito": 250000000, "plazoRestanteMeses": 180,
         "entidadAcreedora": "Bancolombia", "saldoInsoluto": 238500000},
-    "coberturas": [{"codigo": "VIDA", "obligatoria": true, "sumaAsegurada": 238500000,
-        "primaNeta": 39734, "iva": 0, "primaTotal": 39734}],
+    "coberturas": $coberturas,
     "pendientes": $pendientes, "rechazo": $rechazo
 }"""
 }

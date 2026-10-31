@@ -73,9 +73,13 @@ data class Solicitud(
     val cotizacionCreadaEn: String? = null,
     val primaMensual: Double? = null,
     val credito: CreditoAsegurado? = null,
+    /** Lo que vale cada cobertura al mes, con IVA (BITS-102). */
+    val primasPorCobertura: Map<CodigoCobertura, Double> = emptyMap(),
+) {
     /** Si ademas de la vida tomo "Tu casa". */
-    val conTuCasa: Boolean = false,
-)
+    val conTuCasa: Boolean
+        get() = CodigoCobertura.HOGAR in primasPorCobertura
+}
 
 sealed interface ResultadoDocumento {
     /** El enlace al PDF es temporal: se abre de una vez. */

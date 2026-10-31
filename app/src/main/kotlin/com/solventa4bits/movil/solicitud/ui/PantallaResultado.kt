@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -41,7 +42,8 @@ private val Ambar = Color(0xFF8A5A00)
 private const val AVANCE_EN_REVISION = 0.5f
 
 /**
- * Figma 08, 08A y 08B: el resultado de la solicitud segun su estado (BITS-97).
+ * Figma 08, 08A y 09: el resultado de la solicitud segun su estado (BITS-97);
+ * aprobada, con el valor del seguro dentro de la cuota (BITS-102).
  * Los pendientes y los motivos llegan del servidor listos para mostrar.
  */
 @Composable
@@ -76,8 +78,11 @@ fun PantallaResultado(
                 solicitud != null -> Resultado(solicitud)
             }
         }
-        TextButton(onClick = alInicio, modifier = Modifier.align(Alignment.CenterHorizontally).padding(8.dp)) {
-            Text(stringResource(R.string.resultado_inicio))
+        val alFinal = Modifier.align(Alignment.CenterHorizontally).padding(8.dp)
+        if (estado.solicitud?.estado == EstadoDeSolicitud.EMITIDA) {
+            Button(onClick = alInicio, modifier = alFinal) { Text(stringResource(R.string.resultado_ir_al_inicio)) }
+        } else {
+            TextButton(onClick = alInicio, modifier = alFinal) { Text(stringResource(R.string.resultado_inicio)) }
         }
     }
 }
@@ -85,6 +90,10 @@ fun PantallaResultado(
 @Composable
 private fun Resultado(solicitud: Solicitud) {
     Encabezado(solicitud)
+    if (solicitud.estado == EstadoDeSolicitud.EMITIDA) {
+        ResultadoAprobado(solicitud)
+        return
+    }
     if (solicitud.estado.enRevision) {
         LinearProgressIndicator(progress = { AVANCE_EN_REVISION }, modifier = Modifier.fillMaxWidth())
     }
@@ -99,10 +108,10 @@ private fun Resultado(solicitud: Solicitud) {
     }
     Text(
         text = stringResource(
-            when (solicitud.estado) {
-                EstadoDeSolicitud.EMITIDA -> R.string.resultado_nota_aprobada
-                EstadoDeSolicitud.RECHAZADA -> R.string.resultado_nota_rechazada
-                EstadoDeSolicitud.PENDIENTE, EstadoDeSolicitud.VENCIDA -> R.string.resultado_nota_en_revision
+            if (solicitud.estado == EstadoDeSolicitud.RECHAZADA) {
+                R.string.resultado_nota_rechazada
+            } else {
+                R.string.resultado_nota_en_revision
             },
         ),
         style = MaterialTheme.typography.bodySmall,
@@ -114,25 +123,18 @@ private fun Resultado(solicitud: Solicitud) {
 private val EstadoDeSolicitud.enRevision: Boolean
     get() = this == EstadoDeSolicitud.PENDIENTE || this == EstadoDeSolicitud.VENCIDA
 
-/** "Revision de tu solicitud": en curso con lo que falta, no aprobada o aprobada con su fecha. */
+/** "Revision de tu solicitud": no aprobada, o en curso con lo que falta. */
 @Composable
 private fun PasoDeRevision(solicitud: Solicitud) {
-    when (solicitud.estado) {
-        EstadoDeSolicitud.EMITIDA -> Paso(
-            icono = { IconoListo() },
-            titulo = stringResource(R.string.resultado_paso_revision),
-            detalle = stringResource(
-                R.string.resultado_aprobada_el,
-                solicitud.emitidaEn?.let(::fechaDeSolicitud)?.replaceFirstChar { it.lowercase() }.orEmpty(),
-            ),
-        )
-        EstadoDeSolicitud.RECHAZADA -> Paso(
+    if (solicitud.estado == EstadoDeSolicitud.RECHAZADA) {
+        Paso(
             icono = { IconoRechazo(tamano = 22.dp) },
             titulo = stringResource(R.string.resultado_paso_revision),
             detalle = stringResource(R.string.resultado_no_aprobada),
             colorDelDetalle = MaterialTheme.colorScheme.error,
         )
-        EstadoDeSolicitud.PENDIENTE, EstadoDeSolicitud.VENCIDA -> Paso(
+    } else {
+        Paso(
             icono = { Icon(painterResource(R.drawable.ic_reloj), contentDescription = null, tint = Ambar) },
             titulo = stringResource(R.string.resultado_paso_revision),
             detalle = stringResource(R.string.resultado_en_curso),
@@ -143,17 +145,17 @@ private fun PasoDeRevision(solicitud: Solicitud) {
     }
 }
 
-/** "Activamos tu seguro": listo, no se emitio o pendiente. */
+/** "Activamos tu seguro": no se emitio o pendiente. */
 @Composable
 private fun PasoDeActivacion(estado: EstadoDeSolicitud) {
     Paso(
-        icono = { if (estado == EstadoDeSolicitud.EMITIDA) IconoListo() else IconoVacio() },
+        icono = { IconoVacio() },
         titulo = stringResource(R.string.resultado_paso_activamos),
         detalle = stringResource(
-            when (estado) {
-                EstadoDeSolicitud.EMITIDA -> R.string.resultado_listo
-                EstadoDeSolicitud.RECHAZADA -> R.string.resultado_no_se_emitio
-                EstadoDeSolicitud.PENDIENTE, EstadoDeSolicitud.VENCIDA -> R.string.resultado_pendiente
+            if (estado == EstadoDeSolicitud.RECHAZADA) {
+                R.string.resultado_no_se_emitio
+            } else {
+                R.string.resultado_pendiente
             },
         ),
     )
