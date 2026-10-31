@@ -27,8 +27,8 @@ render.experimental.xml
 *.jks
 *.keystore
 
-# Google Services (e.g. APIs or Firebase)
-google-services.json
+# google-services.json SI se versiona (BITS-229): lo genera iac-gcp-dev/persistent, no es un
+# secreto (su clave de API queda restringida a la app) y el CI lo necesita para compilar.
 
 # Android Profiling
 *.hprof

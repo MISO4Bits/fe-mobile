@@ -1,5 +1,6 @@
 package com.solventa4bits.movil
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.compose.BackHandler
@@ -13,12 +14,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.solventa4bits.movil.avisos.dominio.ControlDeAvisos
+import com.solventa4bits.movil.avisos.dominio.DestinoDeAviso
+import com.solventa4bits.movil.avisos.dominio.SinAvisos
+import com.solventa4bits.movil.avisos.ui.AvisosDelSeguro
 import com.solventa4bits.movil.cotizacion.datos.AdaptadorCotizaciones
 import com.solventa4bits.movil.cotizacion.datos.AdaptadorCreditos
 import com.solventa4bits.movil.cotizacion.datos.crearCotizacionesApi
@@ -85,13 +91,20 @@ import com.solventa4bits.movil.sesion.ui.PasoLogin
 import com.solventa4bits.movil.traza.Traza
 import com.solventa4bits.movil.ui.tema.TemaSolventa
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 // FragmentActivity y no ComponentActivity: el dialogo de la huella lo exige.
 class MainActivity : FragmentActivity() {
+    // A donde lleva el aviso que el cliente toco (BITS-229). Se lee de la intencion y se limpia al atenderlo.
+    private var destinoDeAviso by mutableStateOf<DestinoDeAviso?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Al girar el telefono la intencion es la misma: el aviso ya se atendio.
+        if (savedInstanceState == null) destinoDeAviso = destinoDe(intent)
 
         // Aqui se arman las piezas de la app y se conectan entre si.
         val traza = Traza { origen, mensaje, causa -> Log.e(origen, mensaje, causa) }
@@ -120,11 +133,35 @@ class MainActivity : FragmentActivity() {
                     preferencias,
                     guardados,
                     conexion,
+                    avisos = (application as AplicacionSolventa).avisos,
+                    destinoDeAviso = destinoDeAviso,
+                    alAtenderElDestino = ::destinoAtendido,
                 )
             }
         }
     }
+
+    // Con la app abierta, tocar el aviso entrega la intencion aqui (launchMode singleTop).
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        destinoDeAviso = destinoDe(intent)
+    }
+
+    private fun destinoDe(intencion: Intent?): DestinoDeAviso? = DestinoDeAviso.desde(
+        intencion?.getStringExtra(DestinoDeAviso.CLAVE_DESTINO),
+        intencion?.getStringExtra(DestinoDeAviso.CLAVE_ID),
+    )
+
+    private fun destinoAtendido() {
+        destinoDeAviso = null
+        intent.removeExtra(DestinoDeAviso.CLAVE_DESTINO)
+        intent.removeExtra(DestinoDeAviso.CLAVE_ID)
+    }
 }
+
+/** Cuanto se espera a que el servidor confirme la baja del telefono antes de cerrar la sesion. */
+private const val ESPERA_DE_BAJA_MS = 1_500L
 
 /**
  * Decide que pantalla se ve: sin sesion, el inicio de sesion; con sesion, el
@@ -144,6 +181,9 @@ fun AppSolventa(
     conexion: Conexion,
     camara: Camara = camaraReal,
     abrirEnlace: ((String) -> Unit)? = null,
+    avisos: ControlDeAvisos = SinAvisos,
+    destinoDeAviso: DestinoDeAviso? = null,
+    alAtenderElDestino: () -> Unit = {},
 ) {
     val login = viewModel { LoginViewModel(sesion, almacen, preferencias, conHuella = autenticador.disponible()) }
     val cotizacion = viewModel { NuevaCotizacionViewModel(creditos, cotizaciones) }
@@ -168,15 +208,36 @@ fun AppSolventa(
     var viendoSolicitud by rememberSaveable { mutableStateOf(false) }
     // La cotizacion se retomo desde el Home: "Atras" vuelve al Home.
     var retomada by rememberSaveable { mutableStateOf(false) }
-    val cerrarSesion = {
+    val alcance = rememberCoroutineScope()
+    val cerrarSesion: () -> Unit = {
         cotizando = false
         enCedula = false
         viendoSolicitud = false
         viendoSeguro = false
         red.descartar()
         inicio.olvidarSeguros()
-        login.cerrarSesion()
+        // Antes de borrar la sesion, el telefono deja de recibir los avisos de este cliente (BITS-229).
+        // Es un intento acotado: sin red, el cierre sigue igual.
+        alcance.launch {
+            withTimeoutOrNull(ESPERA_DE_BAJA_MS) { avisos.alSalir() }
+            login.cerrarSesion()
+        }
     }
+    AvisosDelSeguro(
+        sesionIniciada = login.estado.sesionIniciada,
+        avisos = avisos,
+        destino = destinoDeAviso,
+        seguro = seguro,
+        alAbrirSeguro = {
+            cotizando = false
+            enCedula = false
+            viendoSolicitud = false
+            viendoSeguro = true
+        },
+        alNoPoderMostrarlo = { viendoSeguro = false },
+        alAtenderElDestino = alAtenderElDestino,
+        alcance = alcance,
+    )
     val alInicioSinRed = {
         red.descartar()
         cotizando = false

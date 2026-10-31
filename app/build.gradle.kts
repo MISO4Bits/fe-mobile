@@ -7,6 +7,8 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kover)
     alias(libs.plugins.ksp)
+    // Avisos push (BITS-229): lee app/google-services.json, que sale de iac-gcp-dev/persistent.
+    alias(libs.plugins.google.services)
 }
 
 // URL del BFF en la version de depuracion. Por defecto es el BFF levantado en
@@ -49,6 +51,15 @@ kover {
                 classes(
                     "com.solventa4bits.movil.sesion.datos.AutenticadorBiometrico*",
                     "com.solventa4bits.movil.sesion.datos.PreferenciasDelTelefono*",
+                )
+                // Piezas de los avisos que dependen de Android o de Firebase: el servicio de
+                // mensajeria, la Application, el permiso del sistema y el token. La logica
+                // (registro, destino, permiso pedido una vez) esta en avisos.dominio y si se mide.
+                classes(
+                    "com.solventa4bits.movil.AplicacionSolventa*",
+                    "com.solventa4bits.movil.avisos.ServicioDeAvisos*",
+                    "com.solventa4bits.movil.avisos.datos.FuenteDeTokenFirebase*",
+                    "com.solventa4bits.movil.avisos.datos.PermisoDelTelefono*",
                 )
                 // Usa imagenes reales de Android: se verifica con una prueba
                 // instrumentada (PreparadorDeFotosTest).
@@ -174,6 +185,10 @@ dependencies {
     // Poliza sin conexion (BITS-217): Room guarda en el telefono lo ultimo que llego.
     implementation(libs.androidx.room.runtime)
     ksp(libs.androidx.room.compiler)
+
+    // Avisos push (BITS-229): Firebase Cloud Messaging. El BOM fija las versiones.
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
 
     // Reglas de negocio: JUnit 5, como declara la Estrategia de Pruebas.
     testImplementation(libs.junit.jupiter)

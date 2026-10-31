@@ -1,7 +1,7 @@
 [extend]
 useDefault = true
 
-[allowlist]
+[[allowlists]]
 description = """
 Identificadores públicos conocidos, no secretos.
 
@@ -17,3 +17,11 @@ regexes = [
   # Full Prototype Mobile+Web, de donde salen las pantallas.
   '''^ywaw6DfutH6wzbXs1Y7641$''',
 ]
+
+[[allowlists]]
+description = """
+google-services.json (BITS-229): configuracion de Firebase de la app, generada por Terraform en
+iac-gcp-dev/persistent. Su clave de API no es un secreto: identifica el proyecto y se restringe a
+la app. La deteccion de claves de GCP la marcaria por su forma.
+"""
+paths = ['''^app/google-services\.json$''']

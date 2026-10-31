@@ -15,4 +15,14 @@ interface AlmacenDePreferencias {
     fun huella(): PreferenciaDeHuella
 
     fun guardarHuella(preferencia: PreferenciaDeHuella)
+
+    /** El id que el servidor le dio a este telefono para los avisos push, o null si no esta registrado (BITS-229). */
+    fun dispositivoId(): String?
+
+    fun guardarDispositivoId(id: String?)
+
+    /** Ya se le pidio al cliente el permiso de notificaciones: se pide una sola vez. */
+    fun permisoDeAvisosPedido(): Boolean
+
+    fun marcarPermisoDeAvisosPedido()
 }

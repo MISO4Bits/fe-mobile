@@ -7,8 +7,11 @@
     <!-- Foto de la cedula (BITS-275). Sin camara, el cliente elige de la galeria. -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+    <!-- Avisos push (BITS-229). Desde Android 13 se pide en ejecucion, una sola vez. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
+        android:name=".AplicacionSolventa"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/reglas_de_datos"
         android:fullBackupContent="false"
@@ -18,12 +21,30 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.Solventa">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Recibe los avisos con la app abierta y los cambios de token de Firebase. -->
+        <service
+            android:name=".avisos.ServicioDeAvisos"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!-- Canal de los avisos que Firebase muestra solo, con la app cerrada. Lo crea AplicacionSolventa. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="@string/canal_avisos_id" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_escudo" />
     </application>
 
 </manifest>
