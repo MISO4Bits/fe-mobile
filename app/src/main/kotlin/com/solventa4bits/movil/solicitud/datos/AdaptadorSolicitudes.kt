@@ -164,7 +164,9 @@ class AdaptadorSolicitudes(
         credito = datosCredito?.let {
             CreditoAsegurado(it.entidadAcreedora, it.saldoInsoluto, it.plazoRestanteMeses)
         },
-        conTuCasa = coberturas.any { it.codigo == CodigoCobertura.HOGAR.name },
+        primasPorCobertura = coberturas.mapNotNull { cobertura ->
+            CodigoCobertura.entries.find { it.name == cobertura.codigo }?.let { it to cobertura.primaTotal }
+        }.toMap(),
     )
 
     private companion object {

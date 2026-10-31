@@ -50,6 +50,14 @@ class FechasTest {
     }
 
     @Test
+    @DisplayName("el inicio del seguro dice el dia y el mes en Colombia")
+    fun fechaDelDiaDeInicio() {
+        assertEquals("22 de octubre", fechaDelDia("2026-10-22T15:00:00Z"))
+        assertEquals("21 de octubre", fechaDelDia("2026-10-22T02:00:00Z"))
+        assertNull(fechaDelDia("pronto"))
+    }
+
+    @Test
     @DisplayName("la vigencia se escribe corta y en Colombia: las 2 a. m. UTC todavia son el dia anterior")
     fun fechaCortaDeLaVigencia() {
         assertEquals("22 oct 2026", fechaCorta("2026-10-22T15:00:00Z"))

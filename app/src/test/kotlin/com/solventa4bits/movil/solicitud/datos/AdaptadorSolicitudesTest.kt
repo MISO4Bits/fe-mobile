@@ -382,6 +382,10 @@ class AdaptadorSolicitudesTest {
         assertEquals("2026-10-22T14:00:00Z", seguro.cotizacionCreadaEn)
         assertEquals(77_374.0, seguro.primaMensual)
         assertEquals(CreditoAsegurado("Bancolombia S.A.", 320_000_000.0, 180), seguro.credito)
+        assertEquals(
+            mapOf(CodigoCobertura.VIDA to 50_000.0, CodigoCobertura.HOGAR to 27_374.0),
+            seguro.primasPorCobertura,
+        )
         assertTrue(seguro.conTuCasa)
     }
 

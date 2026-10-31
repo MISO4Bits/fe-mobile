@@ -30,6 +30,10 @@ fun fechaDeSolicitud(fechaIso: String, ahora: Instant = Instant.now(), zona: Zon
     return "$dia, $hora:$minutos $sufijo"
 }
 
+/** El dia en que empieza el seguro, como en el Figma 09: "22 de octubre", en Colombia. Null si no tiene el formato. */
+fun fechaDelDia(fechaIso: String, zona: ZoneId = zonaDeColombia): String? =
+    runCatching { OffsetDateTime.parse(fechaIso).atZoneSameInstant(zona).format(formatoDelDia) }.getOrNull()
+
 // Sin punto, como en el Figma 11; el formato del sistema le pone "oct.".
 private val mesesCortos = listOf("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
 
