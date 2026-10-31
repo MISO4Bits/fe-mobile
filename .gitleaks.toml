@@ -1,7 +1,7 @@
 [extend]
 useDefault = true
 
-[allowlist]
+[[allowlists]]
 description = """
 Identificadores públicos conocidos, no secretos.
 
