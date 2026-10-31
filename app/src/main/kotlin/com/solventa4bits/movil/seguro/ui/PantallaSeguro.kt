@@ -87,6 +87,10 @@ fun PantallaSeguro(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            estado.guardadoEn?.let {
+                AvisoSinConexion()
+                ActualizadaEl(it)
+            }
             Column {
                 Text(nombreDelSeguro(seguro), style = MaterialTheme.typography.headlineSmall)
                 Text(
@@ -151,6 +155,7 @@ private fun AvisoDelDocumento(aviso: AvisoDeDocumento) {
     val texto = when (aviso) {
         AvisoDeDocumento.GENERANDO -> R.string.seguro_generando
         AvisoDeDocumento.FALLO -> R.string.seguro_fallo_documento
+        AvisoDeDocumento.SIN_CONEXION -> R.string.seguro_documento_sin_conexion
         AvisoDeDocumento.NINGUNO, AvisoDeDocumento.PIDIENDO -> return
     }
     Text(

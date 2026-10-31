@@ -49,13 +49,7 @@ private fun TarjetaSeguro(seguro: Solicitud, modifier: Modifier, alVer: () -> Un
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
             )
-            Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.secondaryContainer) {
-                Text(
-                    text = stringResource(R.string.seguro_vigente),
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                )
-            }
+            EtiquetaVigente()
             Text(nombreDelSeguro(seguro), style = MaterialTheme.typography.titleSmall)
             Text(
                 text = seguro.numero.orEmpty(),
@@ -68,5 +62,17 @@ private fun TarjetaSeguro(seguro: Solicitud, modifier: Modifier, alVer: () -> Un
                 color = MaterialTheme.colorScheme.primary,
             )
         }
+    }
+}
+
+/** La etiqueta "Vigente" de una poliza emitida. */
+@Composable
+internal fun EtiquetaVigente() {
+    Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.secondaryContainer) {
+        Text(
+            text = stringResource(R.string.seguro_vigente),
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+        )
     }
 }

@@ -3,6 +3,7 @@ package com.solventa4bits.movil.solicitud.ui
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -24,10 +25,15 @@ fun fechaDeSolicitud(fechaIso: String, ahora: Instant = Instant.now(), zona: Zon
         hoy.minusDays(1) -> "Ayer"
         else -> fecha.format(formatoDelDia)
     }
+    return "$dia, ${horaDe(fecha)}"
+}
+
+/** "9:41 a. m." */
+private fun horaDe(fecha: ZonedDateTime): String {
     val hora = (fecha.hour + HORAS_DE_MEDIO_DIA - 1) % HORAS_DE_MEDIO_DIA + 1
     val minutos = fecha.minute.toString().padStart(2, '0')
     val sufijo = if (fecha.hour < HORAS_DE_MEDIO_DIA) "a. m." else "p. m."
-    return "$dia, $hora:$minutos $sufijo"
+    return "$hora:$minutos $sufijo"
 }
 
 /** El dia en que empieza el seguro, como en el Figma 09: "22 de octubre", en Colombia. Null si no tiene el formato. */
@@ -41,4 +47,10 @@ private val mesesCortos = listOf("ene", "feb", "mar", "abr", "may", "jun", "jul"
 fun fechaCorta(fechaIso: String, zona: ZoneId = zonaDeColombia): String? {
     val fecha = runCatching { OffsetDateTime.parse(fechaIso).atZoneSameInstant(zona) }.getOrNull() ?: return null
     return "${fecha.dayOfMonth} ${mesesCortos[fecha.monthValue - 1]} ${fecha.year}"
+}
+
+/** Cuando se guardo la poliza, como en el Figma 05: "19 oct · 9:41 a. m.", en Colombia. Null si no tiene el formato. */
+fun fechaYHora(fechaIso: String, zona: ZoneId = zonaDeColombia): String? {
+    val fecha = runCatching { OffsetDateTime.parse(fechaIso).atZoneSameInstant(zona) }.getOrNull() ?: return null
+    return "${fecha.dayOfMonth} ${mesesCortos[fecha.monthValue - 1]} · ${horaDe(fecha)}"
 }

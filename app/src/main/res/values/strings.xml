@@ -286,4 +286,19 @@
     <string name="seguro_ver_documento">Ver documento</string>
     <string name="seguro_generando">Estamos preparando tu documento. Inténtalo en un momento.</string>
     <string name="seguro_fallo_documento">No pudimos abrir tu documento. Inténtalo de nuevo.</string>
+    <string name="seguro_documento_sin_conexion">Para ver el documento necesitas conexión.</string>
+
+    <!-- Sin conexion (BITS-217) -->
+    <string name="sin_conexion_aviso">Sin conexión. Ves lo que guardamos en el teléfono.</string>
+    <string name="sin_conexion_actualizada">Actualizada el %1$s</string>
+    <string name="mi_poliza_titulo">Mi póliza</string>
+    <string name="mi_poliza_sin_guardados">Todavía no tienes seguros guardados en el teléfono.</string>
+    <string name="mi_poliza_sin_senal">Qué puedes hacer sin señal</string>
+    <string name="mi_poliza_ver">Ver tu póliza</string>
+    <string name="mi_poliza_cuando">Ver cuándo se actualizó</string>
+    <string name="mi_poliza_cotizar">Cotizar o enviar una solicitud</string>
+    <string name="mi_poliza_reintentar">Reintentar la conexión</string>
+    <string name="sin_conexion_titulo">Sin conexión</string>
+    <string name="sin_conexion_detalle">No pudimos conectarnos. Revisa tu red e inténtalo otra vez.</string>
+    <string name="sin_conexion_guardado">Lo que llevas quedó guardado. Retomas donde ibas.</string>
 </resources>

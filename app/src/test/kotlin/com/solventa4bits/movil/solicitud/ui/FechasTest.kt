@@ -64,4 +64,11 @@ class FechasTest {
         assertEquals("31 dic 2026", fechaCorta("2027-01-01T02:00:00Z"))
         assertNull(fechaCorta("el otro año"))
     }
+
+    @Test
+    @DisplayName("BITS-217: cuando se guardo la poliza, con dia, mes corto y hora de Colombia")
+    fun fechaYHoraDeLoGuardado() {
+        assertEquals("19 oct · 9:41 a. m.", fechaYHora("2026-10-19T14:41:00.123Z"))
+        assertNull(fechaYHora("ayer"))
+    }
 }

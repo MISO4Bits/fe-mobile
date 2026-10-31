@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -12,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -24,6 +26,7 @@ import com.solventa4bits.movil.cotizacion.datos.crearCreditosApi
 import com.solventa4bits.movil.cotizacion.dominio.Cotizacion
 import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCotizaciones
 import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCreditos
+import com.solventa4bits.movil.cotizacion.ui.AccionesDeCotizacion
 import com.solventa4bits.movil.cotizacion.ui.Declinacion
 import com.solventa4bits.movil.cotizacion.ui.NuevaCotizacionViewModel
 import com.solventa4bits.movil.cotizacion.ui.PantallaCoberturas
@@ -42,6 +45,15 @@ import com.solventa4bits.movil.identidad.ui.Camara
 import com.solventa4bits.movil.identidad.ui.camaraReal
 import com.solventa4bits.movil.identidad.ui.PantallaCedula
 import com.solventa4bits.movil.inicio.ui.InicioViewModel
+import com.solventa4bits.movil.red.Conexion
+import com.solventa4bits.movil.red.ConexionDelTelefono
+import com.solventa4bits.movil.red.GuardiaDeRed
+import com.solventa4bits.movil.ui.SinConexion
+import com.solventa4bits.movil.ui.tapadoSinRed
+import com.solventa4bits.movil.seguro.datos.AlmacenDeSegurosRoom
+import com.solventa4bits.movil.seguro.datos.BaseDeDatosSolventa
+import com.solventa4bits.movil.seguro.dominio.AlmacenDeSeguros
+import com.solventa4bits.movil.seguro.ui.PantallaMiPoliza
 import com.solventa4bits.movil.solicitud.datos.AdaptadorSolicitudes
 import com.solventa4bits.movil.solicitud.datos.crearSolicitudesApi
 import com.solventa4bits.movil.solicitud.dominio.ServicioDeSolicitudes
@@ -92,6 +104,8 @@ class MainActivity : FragmentActivity() {
         val solicitudes = AdaptadorSolicitudes(crearSolicitudesApi(BuildConfig.URL_BASE_BFF), conSesion, traza)
         val autenticador = AutenticadorBiometrico(this)
         val preferencias = PreferenciasDelTelefono(applicationContext)
+        val guardados = AlmacenDeSegurosRoom(BaseDeDatosSolventa.crear(applicationContext).polizas())
+        val conexion = ConexionDelTelefono(applicationContext)
 
         setContent {
             TemaSolventa {
@@ -104,6 +118,8 @@ class MainActivity : FragmentActivity() {
                     solicitudes,
                     autenticador,
                     preferencias,
+                    guardados,
+                    conexion,
                 )
             }
         }
@@ -124,12 +140,16 @@ fun AppSolventa(
     solicitudes: ServicioDeSolicitudes,
     autenticador: AutenticadorDeHuella,
     preferencias: AlmacenDePreferencias,
+    guardados: AlmacenDeSeguros,
+    conexion: Conexion,
     camara: Camara = camaraReal,
     abrirEnlace: ((String) -> Unit)? = null,
 ) {
     val login = viewModel { LoginViewModel(sesion, almacen, preferencias, conHuella = autenticador.disponible()) }
     val cotizacion = viewModel { NuevaCotizacionViewModel(creditos, cotizaciones) }
-    val inicio = viewModel { InicioViewModel(cotizaciones, solicitudes) }
+    val inicio = viewModel { InicioViewModel(cotizaciones, solicitudes, guardados) }
+    // Las acciones que necesitan el servidor esperan aqui si no hay red (BITS-217, AC-5).
+    val red = remember { GuardiaDeRed(conexion) }
     // Preparar la foto pesa: va en segundo plano para no congelar la pantalla.
     val preparar: suspend (ByteArray) -> ByteArray? = { foto ->
         withContext(Dispatchers.Default) { PreparadorDeFotos.preparar(foto) }
@@ -153,112 +173,133 @@ fun AppSolventa(
         enCedula = false
         viendoSolicitud = false
         viendoSeguro = false
+        red.descartar()
+        inicio.olvidarSeguros()
         login.cerrarSesion()
+    }
+    val alInicioSinRed = {
+        red.descartar()
+        cotizando = false
+        enCedula = false
+        viendoSolicitud = false
+        viendoSeguro = false
+        inicio.consultar()
     }
 
     Scaffold(modifier = Modifier.fillMaxSize()) { relleno ->
         val conRelleno = Modifier.padding(relleno)
-        when {
-            !login.estado.sesionIniciada -> AntesDeEntrar(
-                login = login,
-                autenticador = autenticador,
-                alUsarOtraCuenta = cerrarSesion,
-                modifier = conRelleno,
-            )
+        Box(Modifier.fillMaxSize().tapadoSinRed(red)) {
+            when {
+                !login.estado.sesionIniciada -> AntesDeEntrar(
+                    login = login,
+                    autenticador = autenticador,
+                    alUsarOtraCuenta = cerrarSesion,
+                    modifier = conRelleno,
+                )
 
-            viendoSolicitud -> TuResultado(
-                resultado = resultado,
-                alInicio = { viendoSolicitud = false },
-                alCerrarSesion = cerrarSesion,
-                modifier = conRelleno,
-            )
+                viendoSolicitud -> TuResultado(
+                    resultado = resultado,
+                    alInicio = { viendoSolicitud = false },
+                    alCerrarSesion = cerrarSesion,
+                    modifier = conRelleno,
+                )
 
-            viendoSeguro -> TuSeguro(
-                seguro = seguro,
-                abrirEnlace = abrirEnlace,
-                alInicio = { viendoSeguro = false },
-                alCerrarSesion = cerrarSesion,
-                modifier = conRelleno,
-            )
+                viendoSeguro -> TuSeguro(
+                    seguro = seguro,
+                    abrirEnlace = abrirEnlace,
+                    alInicio = { viendoSeguro = false },
+                    alCerrarSesion = cerrarSesion,
+                    modifier = conRelleno,
+                )
 
-            cotizando && enCedula -> TuCedula(
-                cedula = cedula,
-                selfie = selfie,
-                solicitud = solicitud,
-                camara = camara,
-                // La solicitud va con la cotizacion que el cliente vio y las coberturas que eligio.
-                alAbrirSolicitud = {
-                    solicitud.abrir(checkNotNull(cotizacion.estado.cotizacion), cotizacion.estado.conTuCasa)
-                },
-                alInicio = {
-                    enCedula = false
-                    cotizando = false
-                },
-                alVerResultado = { enviada ->
-                    resultado.mostrar(enviada)
-                    enCedula = false
-                    cotizando = false
-                    viendoSolicitud = true
-                },
-                alVolver = { enCedula = false },
-                alCerrarSesion = cerrarSesion,
-                modifier = conRelleno,
-            )
+                cotizando && enCedula -> TuCedula(
+                    cedula = cedula,
+                    selfie = selfie,
+                    solicitud = solicitud,
+                    camara = camara,
+                    red = red,
+                    // La solicitud va con la cotizacion que el cliente vio y las coberturas que eligio.
+                    alAbrirSolicitud = {
+                        solicitud.abrir(checkNotNull(cotizacion.estado.cotizacion), cotizacion.estado.conTuCasa)
+                    },
+                    alInicio = {
+                        enCedula = false
+                        cotizando = false
+                    },
+                    alVerResultado = { enviada ->
+                        resultado.mostrar(enviada)
+                        enCedula = false
+                        cotizando = false
+                        viendoSolicitud = true
+                    },
+                    alVolver = { enCedula = false },
+                    alCerrarSesion = cerrarSesion,
+                    modifier = conRelleno,
+                )
 
-            cotizando && cotizacion.estado.cotizacion != null && !cotizacion.estado.coberturasElegidas -> TusCoberturas(
-                cotizacion = cotizacion,
-                retomada = retomada,
-                alInicio = { cotizando = false },
-                alCerrarSesion = cerrarSesion,
-                modifier = conRelleno,
-            )
+                cotizando &&
+                    cotizacion.estado.cotizacion != null &&
+                    !cotizacion.estado.coberturasElegidas -> TusCoberturas(
+                    cotizacion = cotizacion,
+                    retomada = retomada,
+                    alInicio = { cotizando = false },
+                    alCerrarSesion = cerrarSesion,
+                    modifier = conRelleno,
+                )
 
-            cotizando && cotizacion.estado.cotizacion != null -> LoQuePagas(
-                cotizacion = cotizacion,
-                alInicio = { cotizando = false },
-                // AC-1: aceptar lleva a cargar la cedula.
-                alAceptar = {
-                    cedula.abrir()
-                    enCedula = true
-                },
-                alCerrarSesion = cerrarSesion,
-                modifier = conRelleno,
-            )
+                cotizando && cotizacion.estado.cotizacion != null -> LoQuePagas(
+                    cotizacion = cotizacion,
+                    alInicio = { cotizando = false },
+                    // AC-1: aceptar lleva a cargar la cedula.
+                    alAceptar = {
+                        cedula.abrir()
+                        enCedula = true
+                    },
+                    alCerrarSesion = cerrarSesion,
+                    modifier = conRelleno,
+                )
 
-            cotizando -> NuevaCotizacion(
-                cotizacion = cotizacion,
-                alVolver = { cotizando = false },
-                alCerrarSesion = cerrarSesion,
-                modifier = conRelleno,
-            )
+                cotizando -> NuevaCotizacion(
+                    cotizacion = cotizacion,
+                    red = red,
+                    alVolver = { cotizando = false },
+                    alCerrarSesion = cerrarSesion,
+                    modifier = conRelleno,
+                )
 
-            else -> Inicio(
-                inicio = inicio,
-                huellaActivada = login.estado.huellaActivada,
-                alAlternarHuella = { login.alternarHuella(autenticador) },
-                // Cada vez que se entra desde el inicio, la cotizacion empieza de cero.
-                alCotizar = {
-                    cotizacion.empezar()
-                    retomada = false
-                    cotizando = true
-                },
-                alVerCotizacion = { enCurso ->
-                    cotizacion.retomar(enCurso)
-                    retomada = true
-                    cotizando = true
-                },
-                alVerSolicitud = { enviada ->
-                    resultado.abrir(enviada.id)
-                    viendoSolicitud = true
-                },
-                alVerSeguro = { emitida ->
-                    seguro.mostrar(emitida)
-                    viendoSeguro = true
-                },
-                alCerrarSesion = cerrarSesion,
-                modifier = conRelleno,
-            )
+                else -> Inicio(
+                    inicio = inicio,
+                    huellaActivada = login.estado.huellaActivada,
+                    alAlternarHuella = { login.alternarHuella(autenticador) },
+                    // Cada vez que se entra desde el inicio, la cotizacion empieza de cero.
+                    alCotizar = {
+                        red.conRed {
+                            cotizacion.empezar()
+                            retomada = false
+                            cotizando = true
+                        }
+                    },
+                    alVerCotizacion = { enCurso ->
+                        red.conRed {
+                            cotizacion.retomar(enCurso)
+                            retomada = true
+                            cotizando = true
+                        }
+                    },
+                    alVerSolicitud = { enviada ->
+                        resultado.abrir(enviada.id)
+                        viendoSolicitud = true
+                    },
+                    alVerSeguro = { emitida ->
+                        seguro.mostrar(emitida, inicio.estado.actualizadosEn)
+                        viendoSeguro = true
+                    },
+                    alCerrarSesion = cerrarSesion,
+                    modifier = conRelleno,
+                )
+            }
         }
+        SinConexion(red, alInicio = alInicioSinRed, alCerrarSesion = cerrarSesion, modifier = conRelleno)
     }
 }
 
@@ -301,6 +342,7 @@ private fun TuCedula(
     selfie: SelfieViewModel,
     solicitud: SolicitudViewModel,
     camara: Camara,
+    red: GuardiaDeRed,
     alAbrirSolicitud: () -> Unit,
     alInicio: () -> Unit,
     alVerResultado: (Solicitud) -> Unit,
@@ -316,6 +358,7 @@ private fun TuCedula(
             selfie = selfie,
             solicitud = solicitud,
             camara = camara,
+            red = red,
             alAbrirSolicitud = alAbrirSolicitud,
             alInicio = alInicio,
             alVerResultado = alVerResultado,
@@ -391,7 +434,10 @@ private fun AntesDeEntrar(
     }
 }
 
-/** El Home: cada vez que se muestra consulta la cotizacion en curso. */
+/**
+ * El Home: cada vez que se muestra consulta la cotizacion en curso. Sin
+ * conexion, muestra las polizas guardadas en el telefono (BITS-217, AC-2).
+ */
 @Composable
 private fun Inicio(
     inicio: InicioViewModel,
@@ -406,6 +452,17 @@ private fun Inicio(
 ) {
     LaunchedEffect(Unit) { inicio.consultar() }
     LaunchedEffect(inicio.estado.sesionVencida) { if (inicio.estado.sesionVencida) alCerrarSesion() }
+    if (inicio.estado.sinConexion) {
+        PantallaMiPoliza(
+            seguros = inicio.estado.seguros,
+            actualizadosEn = inicio.estado.actualizadosEn,
+            alVerSeguro = alVerSeguro,
+            alReintentar = inicio::consultar,
+            alCerrarSesion = alCerrarSesion,
+            modifier = modifier,
+        )
+        return
+    }
     PantallaInicio(
         cotizacionEnCurso = inicio.estado.cotizacionEnCurso,
         alCotizar = alCotizar,
@@ -425,6 +482,7 @@ private fun Inicio(
 @Composable
 private fun NuevaCotizacion(
     cotizacion: NuevaCotizacionViewModel,
+    red: GuardiaDeRed,
     alVolver: () -> Unit,
     alCerrarSesion: () -> Unit,
     modifier: Modifier,
@@ -440,7 +498,9 @@ private fun NuevaCotizacion(
     BackHandler(onBack = alVolver)
     PantallaNuevaCotizacion(
         estado = cotizacion.estado,
-        acciones = cotizacion,
+        acciones = object : AccionesDeCotizacion by cotizacion {
+            override fun cotizar() = red.conRed(cotizacion::cotizar)
+        },
         alVolver = alVolver,
         alCerrarSesion = alCerrarSesion,
         modifier = modifier,
@@ -453,6 +513,7 @@ private fun TuSelfie(
     selfie: SelfieViewModel,
     solicitud: SolicitudViewModel,
     camara: Camara,
+    red: GuardiaDeRed,
     alAbrirSolicitud: () -> Unit,
     alInicio: () -> Unit,
     alVerResultado: (Solicitud) -> Unit,
@@ -466,6 +527,7 @@ private fun TuSelfie(
     if (enSolicitud) {
         TuSolicitud(
             solicitud = solicitud,
+            red = red,
             alInicio = alInicio,
             alVerResultado = alVerResultado,
             alVolver = { enSolicitud = false },
@@ -508,6 +570,7 @@ private fun TuSelfie(
 @Composable
 private fun TuSolicitud(
     solicitud: SolicitudViewModel,
+    red: GuardiaDeRed,
     alInicio: () -> Unit,
     alVerResultado: (Solicitud) -> Unit,
     alVolver: () -> Unit,
@@ -525,7 +588,7 @@ private fun TuSolicitud(
             alVerCondiciones = solicitud::verCondiciones,
             alCerrarCondiciones = solicitud::cerrarCondiciones,
             alAceptarCondiciones = solicitud::aceptarDesdeCondiciones,
-            alEnviar = solicitud::enviar,
+            alEnviar = { red.conRed(solicitud::enviar) },
             alReintentar = solicitud::reintentar,
             alIrAlInicio = alInicio,
         ),

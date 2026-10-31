@@ -5,6 +5,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.room.Room
 import androidx.test.platform.app.InstrumentationRegistry
 import com.solventa4bits.movil.cotizacion.datos.AdaptadorCotizaciones
 import com.solventa4bits.movil.cotizacion.datos.AdaptadorCreditos
@@ -14,6 +15,10 @@ import com.solventa4bits.movil.fixtures.BffFalso
 import com.solventa4bits.movil.fixtures.UsuarioDemo
 import com.solventa4bits.movil.identidad.datos.AdaptadorEvidencias
 import com.solventa4bits.movil.identidad.datos.crearEvidenciasApi
+import com.solventa4bits.movil.red.Conexion
+import com.solventa4bits.movil.seguro.datos.AlmacenDeSegurosRoom
+import com.solventa4bits.movil.seguro.datos.BaseDeDatosSolventa
+import com.solventa4bits.movil.seguro.dominio.AlmacenDeSeguros
 import com.solventa4bits.movil.solicitud.datos.AdaptadorSolicitudes
 import com.solventa4bits.movil.solicitud.datos.crearSolicitudesApi
 import com.solventa4bits.movil.sesion.datos.AdaptadorSesion
@@ -44,6 +49,8 @@ fun almacenDelDispositivo(): AlmacenDeSesion {
     return AlmacenDeSesionSeguro(BovedaKeystore(contexto, sinTraza), sinTraza)
 }
 
+/** Abre la app y devuelve donde guarda las polizas, para revisarlo (BITS-217). */
+@Suppress("LongParameterList") // Cada doble tiene su valor por defecto: la prueba cambia solo el que necesita.
 fun ComposeContentTestRule.abrirApp(
     bff: BffFalso,
     almacen: AlmacenDeSesion,
@@ -52,16 +59,19 @@ fun ComposeContentTestRule.abrirApp(
     autenticador: AutenticadorDeHuella = AutenticadorFalso(disponible = false),
     preferencias: AlmacenDePreferencias = PreferenciasEnMemoria(),
     abrirEnlace: (String) -> Unit = {},
-) {
+    // Por defecto el telefono tiene red. SinConexionTest se la quita.
+    conexion: Conexion = Conexion { true },
+): AlmacenDeSeguros {
     // Por defecto el cliente no tiene cotizacion en curso. Una prueba que la
     // necesite responde otra cosa en la misma ruta.
     bff.responderSiempreEn("/v1/cotizaciones/actual", 404)
     // Ni solicitudes enviadas: el Inicio las consulta cada vez que se muestra.
     bff.responderSiempreEn("/v1/cuenta/polizas", 200, "[]", metodo = "GET")
-    abrirApp(bff.url, almacen, autenticador, preferencias, abrirEnlace)
+    return abrirApp(bff.url, almacen, autenticador, preferencias, abrirEnlace, conexion)
 }
 
 /** La misma app contra un BFF de verdad, como el de dev (BITS-146). */
+@Suppress("LongParameterList")
 fun ComposeContentTestRule.abrirApp(
     urlBff: String,
     almacen: AlmacenDeSesion,
@@ -69,13 +79,19 @@ fun ComposeContentTestRule.abrirApp(
     preferencias: AlmacenDePreferencias = PreferenciasEnMemoria(),
     // Por defecto no abre el navegador: la prueba solo mira que enlace pidio abrir.
     abrirEnlace: (String) -> Unit = {},
-) {
+    conexion: Conexion = Conexion { true },
+): AlmacenDeSeguros {
     val sesion = AdaptadorSesion(crearSesionApi(urlBff), sinTraza)
     val conSesion = ConSesion(almacen, sesion)
     val creditos = AdaptadorCreditos(crearCreditosApi(urlBff), conSesion, sinTraza)
     val cotizaciones = AdaptadorCotizaciones(crearCotizacionesApi(urlBff), conSesion, sinTraza)
     val evidencias = AdaptadorEvidencias(crearEvidenciasApi(urlBff), conSesion, sinTraza)
     val solicitudes = AdaptadorSolicitudes(crearSolicitudesApi(urlBff), conSesion, sinTraza)
+    // Room de verdad, pero en memoria: cada prueba empieza sin polizas guardadas.
+    val contexto = InstrumentationRegistry.getInstrumentation().targetContext
+    val guardados = AlmacenDeSegurosRoom(
+        Room.inMemoryDatabaseBuilder(contexto, BaseDeDatosSolventa::class.java).build().polizas(),
+    )
     setContent {
         TemaSolventa {
             AppSolventa(
@@ -87,24 +103,31 @@ fun ComposeContentTestRule.abrirApp(
                 solicitudes,
                 autenticador,
                 preferencias,
+                guardados,
+                conexion,
                 camaraDePrueba,
                 abrirEnlace,
             )
         }
     }
+    return guardados
 }
 
-/** Escribe las credenciales (por defecto, las del usuario de demostracion) y entra hasta el inicio. */
+/**
+ * Escribe las credenciales (por defecto, las del usuario de demostracion) y
+ * entra hasta el inicio, que se reconoce por el texto [hasta].
+ */
 fun ComposeContentTestRule.iniciarSesion(
     correo: String = UsuarioDemo.CORREO,
     contrasena: String = UsuarioDemo.CONTRASENA,
     esperaMs: Long = ESPERA_MS,
+    // "Nueva cotizacion" esta en el Home con y sin cotizacion en curso.
+    hasta: String = "Nueva cotización",
 ) {
     onNodeWithText("Correo electrónico").performTextInput(correo)
     onNodeWithText("Contraseña").performTextInput(contrasena)
     onNodeWithText("Iniciar sesión").performClick()
-    // "Nueva cotizacion" esta en el Home con y sin cotizacion en curso.
-    esperarTexto("Nueva cotización", esperaMs)
+    esperarTexto(hasta, esperaMs)
 }
 
 /** Abre la lista de bancos de la nueva cotizacion y elige uno. */
