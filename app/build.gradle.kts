@@ -181,6 +181,8 @@ dependencies {
 
     // Huella (BITS-353): el dialogo biometrico del sistema.
     implementation(libs.androidx.biometric)
+    // biometric trae fragment 1.2.5, que no acepta el permiso de avisos que pide Compose (BITS-229).
+    implementation(libs.androidx.fragment)
 
     // Poliza sin conexion (BITS-217): Room guarda en el telefono lo ultimo que llego.
     implementation(libs.androidx.room.runtime)
