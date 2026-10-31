@@ -46,7 +46,16 @@ enum class CodigoDePendiente { CORREO_SIN_CONFIRMAR, EVIDENCIA_FALTANTE, EVIDENC
 /** Lo que falta para emitir. [codigo] es null si el servidor mando uno que la app no conoce. */
 data class Pendiente(val codigo: CodigoDePendiente?, val mensaje: String)
 
-/** La solicitud de cambio de seguro, tal como la tiene el servidor. Fechas en ISO 8601. */
+/** El credito que cubre el seguro. */
+data class CreditoAsegurado(val banco: String, val saldo: Double, val plazoMeses: Int)
+
+/** Desde y hasta cuando cubre el seguro, en ISO 8601. */
+data class Vigencia(val desde: String, val hasta: String)
+
+/**
+ * La solicitud de cambio de seguro, tal como la tiene el servidor. Emitida, es
+ * la poliza del cliente (BITS-104). Fechas en ISO 8601.
+ */
 data class Solicitud(
     val id: String,
     val estado: EstadoDeSolicitud,
@@ -56,7 +65,29 @@ data class Solicitud(
     val pendientes: List<Pendiente>,
     /** Los mensajes de por que no se aprobo, listos para mostrar. Solo cuando esta rechazada. */
     val motivosDeRechazo: List<String>,
+    /** Solo cuando esta emitida. */
+    val numero: String? = null,
+    /** Solo cuando esta emitida. */
+    val vigencia: Vigencia? = null,
+    /** Cuando se creo la cotizacion con la que se envio. */
+    val cotizacionCreadaEn: String? = null,
+    val primaMensual: Double? = null,
+    val credito: CreditoAsegurado? = null,
+    /** Si ademas de la vida tomo "Tu casa". */
+    val conTuCasa: Boolean = false,
 )
+
+sealed interface ResultadoDocumento {
+    /** El enlace al PDF es temporal: se abre de una vez. */
+    data class Listo(val url: String) : ResultadoDocumento
+
+    /** El servidor lo esta generando: se pide de nuevo en un momento. */
+    data object Generando : ResultadoDocumento
+
+    data object SesionVencida : ResultadoDocumento
+
+    data object Fallo : ResultadoDocumento
+}
 
 sealed interface ResultadoEnvio {
     data class Enviada(val solicitud: Solicitud) : ResultadoEnvio
@@ -98,4 +129,7 @@ interface ServicioDeSolicitudes {
     suspend fun consultar(id: String): ResultadoConsulta
 
     suspend fun listar(): ResultadoLista
+
+    /** El documento de una poliza emitida. */
+    suspend fun documento(id: String): ResultadoDocumento
 }

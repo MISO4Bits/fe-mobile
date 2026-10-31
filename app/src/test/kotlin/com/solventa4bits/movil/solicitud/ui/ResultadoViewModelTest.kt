@@ -4,6 +4,7 @@ import com.solventa4bits.movil.solicitud.dominio.DatosDeLaSolicitud
 import com.solventa4bits.movil.solicitud.dominio.EstadoDeSolicitud
 import com.solventa4bits.movil.solicitud.dominio.ResultadoCondiciones
 import com.solventa4bits.movil.solicitud.dominio.ResultadoConsulta
+import com.solventa4bits.movil.solicitud.dominio.ResultadoDocumento
 import com.solventa4bits.movil.solicitud.dominio.ResultadoEnvio
 import com.solventa4bits.movil.solicitud.dominio.ResultadoLista
 import com.solventa4bits.movil.solicitud.dominio.ServicioDeSolicitudes
@@ -43,6 +44,7 @@ class ResultadoViewModelTest {
         }
 
         override suspend fun listar() = ResultadoLista.Fallo
+        override suspend fun documento(id: String) = ResultadoDocumento.Fallo
     }
 
     private val solicitudes = SolicitudesFalsas()

@@ -50,6 +50,8 @@ import com.solventa4bits.movil.solicitud.dominio.Solicitud
 import com.solventa4bits.movil.solicitud.ui.PantallaResultado
 import com.solventa4bits.movil.solicitud.ui.PantallaSolicitud
 import com.solventa4bits.movil.solicitud.ui.ResultadoViewModel
+import com.solventa4bits.movil.seguro.ui.SeguroViewModel
+import com.solventa4bits.movil.seguro.ui.TuSeguro
 import com.solventa4bits.movil.solicitud.ui.SolicitudViewModel
 import com.solventa4bits.movil.inicio.ui.PantallaInicio
 import com.solventa4bits.movil.sesion.datos.AdaptadorSesion
@@ -123,6 +125,7 @@ fun AppSolventa(
     autenticador: AutenticadorDeHuella,
     preferencias: AlmacenDePreferencias,
     camara: Camara = camaraReal,
+    abrirEnlace: ((String) -> Unit)? = null,
 ) {
     val login = viewModel { LoginViewModel(sesion, almacen, preferencias, conHuella = autenticador.disponible()) }
     val cotizacion = viewModel { NuevaCotizacionViewModel(creditos, cotizaciones) }
@@ -135,7 +138,10 @@ fun AppSolventa(
     val selfie = viewModel { SelfieViewModel(evidencias, preparar) }
     val solicitud = viewModel { SolicitudViewModel(evidencias, solicitudes) }
     val resultado = viewModel { ResultadoViewModel(solicitudes) }
+    val seguro = viewModel { SeguroViewModel(solicitudes) }
     var cotizando by rememberSaveable { mutableStateOf(false) }
+    // Viendo el detalle de una poliza emitida (BITS-104).
+    var viendoSeguro by rememberSaveable { mutableStateOf(false) }
     // Acepto las condiciones y esta cargando la cedula (BITS-275).
     var enCedula by rememberSaveable { mutableStateOf(false) }
     // Viendo el resultado de la solicitud, al enviarla o desde el Inicio (BITS-97).
@@ -146,6 +152,7 @@ fun AppSolventa(
         cotizando = false
         enCedula = false
         viendoSolicitud = false
+        viendoSeguro = false
         login.cerrarSesion()
     }
 
@@ -162,6 +169,14 @@ fun AppSolventa(
             viendoSolicitud -> TuResultado(
                 resultado = resultado,
                 alInicio = { viendoSolicitud = false },
+                alCerrarSesion = cerrarSesion,
+                modifier = conRelleno,
+            )
+
+            viendoSeguro -> TuSeguro(
+                seguro = seguro,
+                abrirEnlace = abrirEnlace,
+                alInicio = { viendoSeguro = false },
                 alCerrarSesion = cerrarSesion,
                 modifier = conRelleno,
             )
@@ -210,24 +225,12 @@ fun AppSolventa(
                 modifier = conRelleno,
             )
 
-            cotizando -> {
-                // Al girar el telefono esto se vuelve a ejecutar: no debe
-                // borrar lo que el cliente ya escribio. Solo consulta si la
-                // pantalla se restauro sin haber consultado nunca.
-                LaunchedEffect(Unit) { if (!cotizacion.empezo) cotizacion.empezar() }
-                // La sesion ya no se pudo refrescar: toca iniciar sesion de nuevo.
-                LaunchedEffect(cotizacion.estado.sesionVencida) {
-                    if (cotizacion.estado.sesionVencida) cerrarSesion()
-                }
-                BackHandler { cotizando = false }
-                PantallaNuevaCotizacion(
-                    estado = cotizacion.estado,
-                    acciones = cotizacion,
-                    alVolver = { cotizando = false },
-                    alCerrarSesion = cerrarSesion,
-                    modifier = conRelleno,
-                )
-            }
+            cotizando -> NuevaCotizacion(
+                cotizacion = cotizacion,
+                alVolver = { cotizando = false },
+                alCerrarSesion = cerrarSesion,
+                modifier = conRelleno,
+            )
 
             else -> Inicio(
                 inicio = inicio,
@@ -247,6 +250,10 @@ fun AppSolventa(
                 alVerSolicitud = { enviada ->
                     resultado.abrir(enviada.id)
                     viendoSolicitud = true
+                },
+                alVerSeguro = { emitida ->
+                    seguro.mostrar(emitida)
+                    viendoSeguro = true
                 },
                 alCerrarSesion = cerrarSesion,
                 modifier = conRelleno,
@@ -393,6 +400,7 @@ private fun Inicio(
     alCotizar: () -> Unit,
     alVerCotizacion: (Cotizacion) -> Unit,
     alVerSolicitud: (Solicitud) -> Unit,
+    alVerSeguro: (Solicitud) -> Unit,
     alCerrarSesion: () -> Unit,
     modifier: Modifier,
 ) {
@@ -408,6 +416,34 @@ private fun Inicio(
         alAlternarHuella = alAlternarHuella,
         solicitudReciente = inicio.estado.solicitudReciente,
         alVerSolicitud = alVerSolicitud,
+        seguros = inicio.estado.seguros,
+        alVerSeguro = alVerSeguro,
+    )
+}
+
+/** "Nueva cotizacion": los datos del credito, del banco o escritos por el cliente (BITS-219). */
+@Composable
+private fun NuevaCotizacion(
+    cotizacion: NuevaCotizacionViewModel,
+    alVolver: () -> Unit,
+    alCerrarSesion: () -> Unit,
+    modifier: Modifier,
+) {
+    // Al girar el telefono esto se vuelve a ejecutar: no debe
+    // borrar lo que el cliente ya escribio. Solo consulta si la
+    // pantalla se restauro sin haber consultado nunca.
+    LaunchedEffect(Unit) { if (!cotizacion.empezo) cotizacion.empezar() }
+    // La sesion ya no se pudo refrescar: toca iniciar sesion de nuevo.
+    LaunchedEffect(cotizacion.estado.sesionVencida) {
+        if (cotizacion.estado.sesionVencida) alCerrarSesion()
+    }
+    BackHandler(onBack = alVolver)
+    PantallaNuevaCotizacion(
+        estado = cotizacion.estado,
+        acciones = cotizacion,
+        alVolver = alVolver,
+        alCerrarSesion = alCerrarSesion,
+        modifier = modifier,
     )
 }
 

@@ -51,13 +51,14 @@ fun ComposeContentTestRule.abrirApp(
     // de sesion de siempre. HuellaTest le pone uno falso.
     autenticador: AutenticadorDeHuella = AutenticadorFalso(disponible = false),
     preferencias: AlmacenDePreferencias = PreferenciasEnMemoria(),
+    abrirEnlace: (String) -> Unit = {},
 ) {
     // Por defecto el cliente no tiene cotizacion en curso. Una prueba que la
     // necesite responde otra cosa en la misma ruta.
     bff.responderSiempreEn("/v1/cotizaciones/actual", 404)
     // Ni solicitudes enviadas: el Inicio las consulta cada vez que se muestra.
     bff.responderSiempreEn("/v1/cuenta/polizas", 200, "[]", metodo = "GET")
-    abrirApp(bff.url, almacen, autenticador, preferencias)
+    abrirApp(bff.url, almacen, autenticador, preferencias, abrirEnlace)
 }
 
 /** La misma app contra un BFF de verdad, como el de dev (BITS-146). */
@@ -66,6 +67,8 @@ fun ComposeContentTestRule.abrirApp(
     almacen: AlmacenDeSesion,
     autenticador: AutenticadorDeHuella = AutenticadorFalso(disponible = false),
     preferencias: AlmacenDePreferencias = PreferenciasEnMemoria(),
+    // Por defecto no abre el navegador: la prueba solo mira que enlace pidio abrir.
+    abrirEnlace: (String) -> Unit = {},
 ) {
     val sesion = AdaptadorSesion(crearSesionApi(urlBff), sinTraza)
     val conSesion = ConSesion(almacen, sesion)
@@ -85,6 +88,7 @@ fun ComposeContentTestRule.abrirApp(
                 autenticador,
                 preferencias,
                 camaraDePrueba,
+                abrirEnlace,
             )
         }
     }

@@ -9,6 +9,7 @@ import com.solventa4bits.movil.solicitud.dominio.DatosDeLaSolicitud
 import com.solventa4bits.movil.solicitud.dominio.EstadoDeSolicitud
 import com.solventa4bits.movil.solicitud.dominio.ResultadoCondiciones
 import com.solventa4bits.movil.solicitud.dominio.ResultadoConsulta
+import com.solventa4bits.movil.solicitud.dominio.ResultadoDocumento
 import com.solventa4bits.movil.solicitud.dominio.ResultadoEnvio
 import com.solventa4bits.movil.solicitud.dominio.ResultadoLista
 import com.solventa4bits.movil.solicitud.dominio.ServicioDeSolicitudes
@@ -68,6 +69,7 @@ class InicioViewModelTest {
             override suspend fun enviar(datos: DatosDeLaSolicitud) = ResultadoEnvio.Fallo
             override suspend fun consultar(id: String) = ResultadoConsulta.Fallo
             override suspend fun listar() = lista
+            override suspend fun documento(id: String) = ResultadoDocumento.Fallo
         }
         return InicioViewModel(cotizaciones, solicitudes).apply { consultar() }
     }
@@ -127,6 +129,37 @@ class InicioViewModelTest {
 
         assertNull(estado.solicitudReciente)
         assertEquals(vigente, estado.cotizacionEnCurso)
+    }
+
+    @Test
+    @DisplayName("BITS-104, AC-3: las polizas emitidas van en Mis seguros y no como solicitud")
+    fun segurosEmitidos() {
+        val lista = ResultadoLista.Exito(
+            listOf(
+                solicitud("emitida", EstadoDeSolicitud.EMITIDA),
+                solicitud("rechazada", EstadoDeSolicitud.RECHAZADA),
+                solicitud("otra", EstadoDeSolicitud.EMITIDA),
+            ),
+        )
+
+        val estado = inicioQueRecibe(ResultadoCotizacion.SinCotizacion, lista).estado
+
+        assertEquals(listOf("emitida", "otra"), estado.seguros.map { it.id })
+        assertNull(estado.solicitudReciente)
+    }
+
+    @Test
+    @DisplayName("una cotizacion que ya va en una solicitud pendiente o emitida no se muestra")
+    fun cotizacionYaUsada() {
+        val usada = vigente.copy(creadaEn = "2026-10-27T14:00:00Z")
+        fun conUna(estado: EstadoDeSolicitud) = inicioQueRecibe(
+            ResultadoCotizacion.Exito(usada),
+            ResultadoLista.Exito(listOf(solicitud("s", estado).copy(cotizacionCreadaEn = usada.creadaEn))),
+        ).estado.cotizacionEnCurso
+
+        assertNull(conUna(EstadoDeSolicitud.EMITIDA))
+        assertNull(conUna(EstadoDeSolicitud.PENDIENTE))
+        assertEquals(usada, conUna(EstadoDeSolicitud.RECHAZADA))
     }
 
     @Test

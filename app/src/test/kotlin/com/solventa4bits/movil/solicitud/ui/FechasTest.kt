@@ -48,4 +48,12 @@ class FechasTest {
     fun fechaInvalida() {
         assertNull(fechaDeSolicitud("ayer por la tarde", ahora))
     }
+
+    @Test
+    @DisplayName("la vigencia se escribe corta y en Colombia: las 2 a. m. UTC todavia son el dia anterior")
+    fun fechaCortaDeLaVigencia() {
+        assertEquals("22 oct 2026", fechaCorta("2026-10-22T15:00:00Z"))
+        assertEquals("31 dic 2026", fechaCorta("2027-01-01T02:00:00Z"))
+        assertNull(fechaCorta("el otro año"))
+    }
 }

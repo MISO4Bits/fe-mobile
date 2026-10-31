@@ -37,6 +37,13 @@ interface SolicitudesApi {
     /** De la mas reciente a la mas antigua. */
     @GET("v1/cuenta/polizas")
     suspend fun polizas(@Header("Authorization") autorizacion: String): Response<List<PolizaDto>>
+
+    /** 200 con un enlace temporal; 202 mientras se genera. */
+    @GET("v1/cuenta/polizas/{polizaId}/documento")
+    suspend fun documento(
+        @Header("Authorization") autorizacion: String,
+        @Path("polizaId") polizaId: String,
+    ): Response<DocumentoPolizaDto>
 }
 
 /** Los nombres de los campos son los del contrato. */
@@ -67,7 +74,25 @@ data class PolizaDto(
     val emitidaEn: String? = null,
     val pendientes: List<PendienteDto> = emptyList(),
     val rechazo: RechazoDto? = null,
+    val numero: String? = null,
+    val vigencia: VigenciaDto? = null,
+    val cotizacionCreadaEn: String? = null,
+    val primaTotalMensual: Double? = null,
+    val datosCredito: CreditoPolizaDto? = null,
+    val coberturas: List<CoberturaPolizaDto> = emptyList(),
 )
+
+@Serializable
+data class VigenciaDto(val desde: String, val hasta: String)
+
+@Serializable
+data class CreditoPolizaDto(val entidadAcreedora: String, val saldoInsoluto: Double, val plazoRestanteMeses: Int)
+
+@Serializable
+data class CoberturaPolizaDto(val codigo: String)
+
+@Serializable
+data class DocumentoPolizaDto(val estado: String, val url: String? = null)
 
 @Serializable
 data class PendienteDto(val codigo: String, val mensaje: String)

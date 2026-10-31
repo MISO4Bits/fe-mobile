@@ -61,17 +61,27 @@ const val CONDICIONES_DEL_SEGURO = """[
 
 const val ID_DE_POLIZA = "7c0f2a52-3b6f-4a0e-9e7e-2f6c9d1a8b11"
 
-/** Una solicitud como la responde el BFF al enviarla, consultarla o listarla. */
+/** Una solicitud como la responde el BFF al enviarla, consultarla o listarla. Emitida, trae numero y vigencia. */
 fun polizaEnviada(
     estado: String = "PENDIENTE",
     pendientes: String = "[]",
     rechazo: String = "null",
-) = """{
-    "polizaId": "$ID_DE_POLIZA", "numero": null, "estado": "$estado",
-    "producto": "VIDA_HIPOTECARIO", "creadaEn": "2026-10-27T14:41:00Z",
-    "emitidaEn": ${if (estado == "EMITIDA") "\"2026-10-28T16:20:00Z\"" else "null"},
+): String {
+    val emitida = estado == "EMITIDA"
+    val vigencia = if (emitida) """{"desde": "2026-10-28T16:20:00Z", "hasta": "2027-10-28T16:20:00Z"}""" else "null"
+    return """{
+    "polizaId": "$ID_DE_POLIZA", "numero": ${if (emitida) "\"SOL-VH-2026-K7M2Q9\"" else "null"},
+    "estado": "$estado", "producto": "VIDA_HIPOTECARIO", "creadaEn": "2026-10-27T14:41:00Z",
+    "emitidaEn": ${if (emitida) "\"2026-10-28T16:20:00Z\"" else "null"},
+    "vigencia": $vigencia,
+    "cotizacionCreadaEn": "2026-10-06T14:35:00Z", "primaTotalMensual": 39734, "moneda": "COP",
+    "datosCredito": {"valorCredito": 250000000, "plazoRestanteMeses": 180,
+        "entidadAcreedora": "Bancolombia", "saldoInsoluto": 238500000},
+    "coberturas": [{"codigo": "VIDA", "obligatoria": true, "sumaAsegurada": 238500000,
+        "primaNeta": 39734, "iva": 0, "primaTotal": 39734}],
     "pendientes": $pendientes, "rechazo": $rechazo
 }"""
+}
 
 /** En "Revisa y envia tu solicitud", acepta las condiciones desde su hoja. */
 fun ComposeContentTestRule.aceptarLasCondiciones() {
