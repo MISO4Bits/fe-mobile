@@ -55,6 +55,8 @@ fun PantallaInicio(
     alAlternarHuella: () -> Unit = {},
     solicitudReciente: Solicitud? = null,
     alVerSolicitud: (Solicitud) -> Unit = {},
+    seguros: List<Solicitud> = emptyList(),
+    alVerSeguro: (Solicitud) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val enRevision = solicitudReciente?.takeIf { it.estado == EstadoDeSolicitud.PENDIENTE }
@@ -81,8 +83,9 @@ fun PantallaInicio(
                     text = stringResource(
                         when {
                             enRevision != null -> R.string.inicio_revision_titulo
-                            cotizacionEnCurso == null -> R.string.inicio_sin_seguros
-                            else -> R.string.inicio_en_curso
+                            cotizacionEnCurso != null -> R.string.inicio_en_curso
+                            seguros.isNotEmpty() -> R.string.inicio_tus_seguros
+                            else -> R.string.inicio_sin_seguros
                         },
                     ),
                     style = MaterialTheme.typography.headlineSmall,
@@ -93,9 +96,17 @@ fun PantallaInicio(
                 )
             }
             if (enRevision != null) {
-                ContenidoEnRevision(enRevision, cotizacionEnCurso, { alVerSolicitud(enRevision) }) {
-                    avisando = true
+                ContenidoEnRevision(enRevision, { alVerSolicitud(enRevision) }, { avisando = true }) {
+                    MisSeguros(seguros, alVerSeguro)
                 }
+            } else if (seguros.isNotEmpty()) {
+                // Figma 10: la cotizacion va en "Tu cotizacion" y nunca en "Mis seguros" (BITS-104, AC-3).
+                Seccion(stringResource(R.string.inicio_seccion_cotizacion))
+                solicitudReciente?.let { TarjetaSolicitud(it) { alVerSolicitud(it) } }
+                cotizacionEnCurso?.let { TarjetaCotizacionEnCurso(it) { alVerCotizacion(it) } }
+                TarjetaNuevaCotizacion(alCotizar)
+                Seccion(stringResource(R.string.inicio_seccion_seguros))
+                MisSeguros(seguros, alVerSeguro)
             } else {
                 solicitudReciente?.let { TarjetaSolicitud(it) { alVerSolicitud(it) } }
                 if (cotizacionEnCurso == null) {
@@ -113,17 +124,14 @@ fun PantallaInicio(
 @Composable
 private fun ContenidoEnRevision(
     solicitud: Solicitud,
-    cotizacion: Cotizacion?,
     alVerSolicitud: () -> Unit,
     alCotizar: () -> Unit,
+    misSeguros: @Composable () -> Unit,
 ) {
     Seccion(stringResource(R.string.inicio_seccion_cotizacion))
-    TarjetaEnRevision(solicitud, cotizacion, alVerSolicitud)
+    TarjetaEnRevision(solicitud, alVerSolicitud)
     Seccion(stringResource(R.string.inicio_seccion_seguros))
-    Text(
-        text = stringResource(R.string.inicio_seguros_al_aprobar),
-        style = MaterialTheme.typography.bodyMedium,
-    )
+    misSeguros()
     TarjetaNuevaCotizacion(alCotizar)
 }
 
@@ -138,7 +146,7 @@ private fun Seccion(titulo: String) {
 }
 
 @Composable
-private fun TarjetaEnRevision(solicitud: Solicitud, cotizacion: Cotizacion?, alVer: () -> Unit) {
+private fun TarjetaEnRevision(solicitud: Solicitud, alVer: () -> Unit) {
     OutlinedCard(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -158,9 +166,9 @@ private fun TarjetaEnRevision(solicitud: Solicitud, cotizacion: Cotizacion?, alV
                     )
                 }
             }
-            cotizacion?.let {
+            solicitud.primaMensual?.let {
                 Text(
-                    text = stringResource(R.string.inicio_al_mes, enPesos(it.primaMensual)),
+                    text = stringResource(R.string.inicio_al_mes, enPesos(it)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

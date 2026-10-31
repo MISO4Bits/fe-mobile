@@ -29,3 +29,12 @@ fun fechaDeSolicitud(fechaIso: String, ahora: Instant = Instant.now(), zona: Zon
     val sufijo = if (fecha.hour < HORAS_DE_MEDIO_DIA) "a. m." else "p. m."
     return "$dia, $hora:$minutos $sufijo"
 }
+
+// Sin punto, como en el Figma 11; el formato del sistema le pone "oct.".
+private val mesesCortos = listOf("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
+
+/** Una fecha de la vigencia como en el Figma 11: "22 oct 2026", en Colombia. Null si no tiene el formato. */
+fun fechaCorta(fechaIso: String, zona: ZoneId = zonaDeColombia): String? {
+    val fecha = runCatching { OffsetDateTime.parse(fechaIso).atZoneSameInstant(zona) }.getOrNull() ?: return null
+    return "${fecha.dayOfMonth} ${mesesCortos[fecha.monthValue - 1]} ${fecha.year}"
+}

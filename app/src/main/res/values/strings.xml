@@ -261,4 +261,22 @@
     <string name="inicio_nueva_detalle">Si cotizas de nuevo, borramos tu solicitud en revisión y tendrás que enviarla otra vez con la nueva cotización.</string>
     <string name="inicio_cotizar_de_nuevo">Cotizar de nuevo</string>
     <string name="inicio_nueva_volver">Volver</string>
+    <string name="inicio_tus_seguros">Tus seguros</string>
+    <string name="seguro_titulo">Detalle de tu seguro</string>
+    <string name="seguro_vida_y_casa">Vida y tu casa</string>
+    <string name="seguro_vigente">Vigente</string>
+    <string name="seguro_numero">Seguro N.º %1$s · Vigente</string>
+    <string name="seguro_condiciones">Condiciones</string>
+    <string name="seguro_pagas">Pagas cada mes</string>
+    <string name="seguro_te_cubre">Te cubre</string>
+    <string name="seguro_vigencia">%1$s al %2$s</string>
+    <string name="seguro_tu_credito">Tu crédito</string>
+    <string name="seguro_banco">Banco</string>
+    <string name="seguro_debes">Lo que debes hoy</string>
+    <string name="seguro_plazo">Plazo</string>
+    <string name="seguro_meses">%1$d meses</string>
+    <string name="seguro_nota">Tu banco lo cobra cada mes con la cuota del crédito.</string>
+    <string name="seguro_ver_documento">Ver documento</string>
+    <string name="seguro_generando">Estamos preparando tu documento. Inténtalo en un momento.</string>
+    <string name="seguro_fallo_documento">No pudimos abrir tu documento. Inténtalo de nuevo.</string>
 </resources>

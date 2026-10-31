@@ -7,7 +7,10 @@ import com.solventa4bits.movil.sesion.dominio.ResultadoInicioSesion
 import com.solventa4bits.movil.sesion.dominio.ServicioDeSesion
 import com.solventa4bits.movil.sesion.dominio.Sesion
 import com.solventa4bits.movil.solicitud.dominio.CondicionesDelSeguro
+import com.solventa4bits.movil.solicitud.dominio.CreditoAsegurado
 import com.solventa4bits.movil.solicitud.dominio.DatosDeLaSolicitud
+import com.solventa4bits.movil.solicitud.dominio.ResultadoDocumento
+import com.solventa4bits.movil.solicitud.dominio.Vigencia
 import com.solventa4bits.movil.solicitud.dominio.CodigoDePendiente
 import com.solventa4bits.movil.solicitud.dominio.EstadoDeSolicitud
 import com.solventa4bits.movil.solicitud.dominio.Pendiente
@@ -348,6 +351,66 @@ class AdaptadorSolicitudesTest {
 
         servidor.shutdown()
         assertEquals(ResultadoLista.Fallo, adaptador().listar())
+    }
+
+    @Test
+    @DisplayName("BITS-104, AC-1: una poliza emitida trae numero, vigencia, prima, credito y coberturas")
+    fun polizaEmitida() = runTest {
+        responder(
+            200,
+            """[{
+                "polizaId": "$ID", "numero": "SOL-VH-2026-K7M2Q9", "estado": "EMITIDA",
+                "producto": "VIDA_HIPOTECARIO", "creadaEn": "2026-10-22T14:41:00Z",
+                "emitidaEn": "2026-10-22T15:00:00Z", "cotizacionCreadaEn": "2026-10-22T14:00:00Z",
+                "vigencia": {"desde": "2026-10-22T15:00:00Z", "hasta": "2027-10-22T15:00:00Z"},
+                "primaTotalMensual": 77374, "moneda": "COP",
+                "datosCredito": {"valorCredito": 350000000, "plazoRestanteMeses": 180,
+                    "entidadAcreedora": "Bancolombia S.A.", "saldoInsoluto": 320000000},
+                "coberturas": [{"codigo": "VIDA", "obligatoria": true, "sumaAsegurada": 320000000,
+                    "primaNeta": 50000, "iva": 0, "primaTotal": 50000},
+                    {"codigo": "HOGAR", "obligatoria": false, "sumaAsegurada": 200000000,
+                    "primaNeta": 23000, "iva": 4374, "primaTotal": 27374}],
+                "pendientes": [], "documento": {"estado": "DISPONIBLE"}
+            }]""",
+        )
+
+        val resultado = assertInstanceOf(ResultadoLista.Exito::class.java, adaptador().listar())
+
+        val seguro = resultado.solicitudes.single()
+        assertEquals("SOL-VH-2026-K7M2Q9", seguro.numero)
+        assertEquals(Vigencia("2026-10-22T15:00:00Z", "2027-10-22T15:00:00Z"), seguro.vigencia)
+        assertEquals("2026-10-22T14:00:00Z", seguro.cotizacionCreadaEn)
+        assertEquals(77_374.0, seguro.primaMensual)
+        assertEquals(CreditoAsegurado("Bancolombia S.A.", 320_000_000.0, 180), seguro.credito)
+        assertTrue(seguro.conTuCasa)
+    }
+
+    @Test
+    @DisplayName("el documento listo trae su enlace temporal, con el token")
+    fun documentoListo() = runTest {
+        responder(200, """{"estado": "LISTO", "url": "https://docs.example/poliza.pdf", "expiraEn": null}""")
+
+        assertEquals(ResultadoDocumento.Listo("https://docs.example/poliza.pdf"), adaptador().documento(ID))
+        val peticion = servidor.takeRequest()
+        assertEquals("/mobile/v1/cuenta/polizas/$ID/documento", peticion.path)
+        assertEquals("Bearer jwt-de-acceso", peticion.getHeader("Authorization"))
+    }
+
+    @Test
+    @DisplayName("el documento que se esta generando, la sesion vencida y los errores responden controlado")
+    fun documentoConEsperasYFallas() = runTest {
+        responder(202, """{"estado": "GENERANDO", "url": null}""")
+        assertEquals(ResultadoDocumento.Generando, adaptador().documento(ID))
+
+        responder(401)
+        assertEquals(ResultadoDocumento.SesionVencida, adaptador().documento(ID))
+
+        responder(409, """{"codigo": "POLIZA_NO_EMITIDA"}""")
+        assertEquals(ResultadoDocumento.Fallo, adaptador().documento(ID))
+        assertTrue(traza.errores.single().mensaje.contains("409"))
+
+        servidor.shutdown()
+        assertEquals(ResultadoDocumento.Fallo, adaptador().documento(ID))
     }
 
     private companion object {

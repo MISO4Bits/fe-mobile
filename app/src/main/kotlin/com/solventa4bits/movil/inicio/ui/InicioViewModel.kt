@@ -18,8 +18,13 @@ import kotlinx.coroutines.launch
 data class EstadoInicio(
     /** La cotizacion en curso del cliente, para retomarla (BITS-95, AC-6). Null si no hay. */
     val cotizacionEnCurso: Cotizacion? = null,
-    /** La solicitud mas reciente, para volver a verla (BITS-97, AC-2). Null si no hay o si vencio. */
+    /**
+     * La solicitud mas reciente, para volver a verla (BITS-97, AC-2). Null si
+     * no hay, si vencio o si ya se emitio: emitida, va en [seguros].
+     */
     val solicitudReciente: Solicitud? = null,
+    /** Las polizas emitidas, para "Mis seguros" (BITS-104, AC-3). */
+    val seguros: List<Solicitud> = emptyList(),
     val sesionVencida: Boolean = false,
 )
 
@@ -36,7 +41,8 @@ class InicioViewModel(
      * Consulta la cotizacion activa y las solicitudes cada vez que se muestra el
      * Home. Mientras llegan, y si fallan, el Home ofrece cotizar. Una cotizacion
      * vencida se trata como si no hubiera, y una solicitud vencida tambien: el
-     * cliente cotiza de nuevo.
+     * cliente cotiza de nuevo. Una cotizacion que ya va en una solicitud
+     * pendiente o emitida tampoco se muestra.
      */
     fun consultar() {
         estado = EstadoInicio()
@@ -48,12 +54,23 @@ class InicioViewModel(
             estado = if (resultado == ResultadoCotizacion.SesionVencida || enviadas == ResultadoLista.SesionVencida) {
                 EstadoInicio(sesionVencida = true)
             } else {
-                EstadoInicio(
-                    cotizacionEnCurso = (resultado as? ResultadoCotizacion.Exito)?.cotizacion?.takeIf { it.vigente },
-                    solicitudReciente = (enviadas as? ResultadoLista.Exito)?.solicitudes?.firstOrNull()
-                        ?.takeIf { it.estado != EstadoDeSolicitud.VENCIDA },
+                armar(
+                    (resultado as? ResultadoCotizacion.Exito)?.cotizacion,
+                    (enviadas as? ResultadoLista.Exito)?.solicitudes.orEmpty(),
                 )
             }
         }
+    }
+
+    private fun armar(cotizacion: Cotizacion?, enviadas: List<Solicitud>): EstadoInicio {
+        val usadas = enviadas
+            .filter { it.estado == EstadoDeSolicitud.PENDIENTE || it.estado == EstadoDeSolicitud.EMITIDA }
+            .mapNotNull { it.cotizacionCreadaEn }
+        return EstadoInicio(
+            cotizacionEnCurso = cotizacion?.takeIf { it.vigente && it.creadaEn !in usadas },
+            solicitudReciente = enviadas.firstOrNull()
+                ?.takeIf { it.estado == EstadoDeSolicitud.PENDIENTE || it.estado == EstadoDeSolicitud.RECHAZADA },
+            seguros = enviadas.filter { it.estado == EstadoDeSolicitud.EMITIDA },
+        )
     }
 }

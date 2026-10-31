@@ -1,22 +1,27 @@
 package com.solventa4bits.movil.solicitud.datos
 
+import com.solventa4bits.movil.cotizacion.dominio.CodigoCobertura
 import com.solventa4bits.movil.sesion.datos.ConSesion
 import com.solventa4bits.movil.sesion.datos.LlamadaConSesion
 import com.solventa4bits.movil.solicitud.dominio.CodigoDePendiente
 import com.solventa4bits.movil.solicitud.dominio.CondicionesDelSeguro
+import com.solventa4bits.movil.solicitud.dominio.CreditoAsegurado
 import com.solventa4bits.movil.solicitud.dominio.DatosDeLaSolicitud
 import com.solventa4bits.movil.solicitud.dominio.EstadoDeSolicitud
 import com.solventa4bits.movil.solicitud.dominio.Pendiente
 import com.solventa4bits.movil.solicitud.dominio.ResultadoCondiciones
 import com.solventa4bits.movil.solicitud.dominio.ResultadoConsulta
+import com.solventa4bits.movil.solicitud.dominio.ResultadoDocumento
 import com.solventa4bits.movil.solicitud.dominio.ResultadoEnvio
 import com.solventa4bits.movil.solicitud.dominio.ResultadoLista
 import com.solventa4bits.movil.solicitud.dominio.ServicioDeSolicitudes
 import com.solventa4bits.movil.solicitud.dominio.Solicitud
+import com.solventa4bits.movil.solicitud.dominio.Vigencia
 import com.solventa4bits.movil.traza.Traza
 import kotlinx.serialization.SerializationException
 import retrofit2.Response
 import java.io.IOException
+import java.net.HttpURLConnection.HTTP_ACCEPTED
 import java.net.HttpURLConnection.HTTP_CONFLICT
 import java.net.HttpURLConnection.HTTP_NOT_FOUND
 
@@ -94,6 +99,20 @@ class AdaptadorSolicitudes(
         }
     }
 
+    override suspend fun documento(id: String): ResultadoDocumento = pedir(
+        accion = "pedir el documento de la poliza",
+        fallo = ResultadoDocumento.Fallo,
+        sesionVencida = ResultadoDocumento.SesionVencida,
+        llamada = { autorizacion -> api.documento(autorizacion, id) },
+    ) { respuesta ->
+        val url = respuesta.body()?.url
+        when {
+            respuesta.code() == HTTP_ACCEPTED -> ResultadoDocumento.Generando
+            respuesta.isSuccessful && url != null -> ResultadoDocumento.Listo(url)
+            else -> null
+        }
+    }
+
     /**
      * Llama con la sesion y traduce la respuesta con [traducir]. Si [traducir]
      * no la reconoce (null), deja traza con el codigo y devuelve [fallo].
@@ -138,6 +157,14 @@ class AdaptadorSolicitudes(
             Pendiente(CodigoDePendiente.entries.find { it.name == pendiente.codigo }, pendiente.mensaje)
         },
         motivosDeRechazo = rechazo?.motivos.orEmpty().map { it.mensaje },
+        numero = numero,
+        vigencia = vigencia?.let { Vigencia(it.desde, it.hasta) },
+        cotizacionCreadaEn = cotizacionCreadaEn,
+        primaMensual = primaTotalMensual,
+        credito = datosCredito?.let {
+            CreditoAsegurado(it.entidadAcreedora, it.saldoInsoluto, it.plazoRestanteMeses)
+        },
+        conTuCasa = coberturas.any { it.codigo == CodigoCobertura.HOGAR.name },
     )
 
     private companion object {
