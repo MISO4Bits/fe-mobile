@@ -5,6 +5,8 @@ import com.solventa4bits.movil.cotizacion.dominio.DatosDelCredito
 import com.solventa4bits.movil.cotizacion.dominio.ResultadoCotizacion
 import com.solventa4bits.movil.cotizacion.dominio.ResultadoDeclinacion
 import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCotizaciones
+import com.solventa4bits.movil.seguro.dominio.AlmacenDeSeguros
+import com.solventa4bits.movil.seguro.dominio.SegurosGuardados
 import com.solventa4bits.movil.solicitud.dominio.DatosDeLaSolicitud
 import com.solventa4bits.movil.solicitud.dominio.EstadoDeSolicitud
 import com.solventa4bits.movil.solicitud.dominio.ResultadoCondiciones
@@ -21,11 +23,13 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import java.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class InicioViewModelTest {
@@ -55,6 +59,9 @@ class InicioViewModelTest {
         Dispatchers.resetMain()
     }
 
+    private val guardados = SegurosEnMemoria()
+    private val ahora = Instant.parse("2026-10-19T14:41:00Z")
+
     private fun inicioQueRecibe(
         resultado: ResultadoCotizacion,
         lista: ResultadoLista = ResultadoLista.Exito(emptyList()),
@@ -71,7 +78,7 @@ class InicioViewModelTest {
             override suspend fun listar() = lista
             override suspend fun documento(id: String) = ResultadoDocumento.Fallo
         }
-        return InicioViewModel(cotizaciones, solicitudes).apply { consultar() }
+        return InicioViewModel(cotizaciones, solicitudes, guardados) { ahora }.apply { consultar() }
     }
 
     @Test
@@ -168,5 +175,88 @@ class InicioViewModelTest {
         val inicio = inicioQueRecibe(ResultadoCotizacion.SinCotizacion, ResultadoLista.SesionVencida)
 
         assertTrue(inicio.estado.sesionVencida)
+    }
+
+    @Test
+    @DisplayName("BITS-217, AC-1 y AC-4: guarda las polizas emitidas que llegan y cuando llegaron")
+    fun guardaLasEmitidas() {
+        val lista = ResultadoLista.Exito(
+            listOf(
+                solicitud("emitida", EstadoDeSolicitud.EMITIDA),
+                solicitud("pendiente", EstadoDeSolicitud.PENDIENTE),
+            ),
+        )
+
+        val estado = inicioQueRecibe(ResultadoCotizacion.SinCotizacion, lista).estado
+
+        assertEquals(listOf("emitida"), guardados.guardado?.seguros?.map { it.id })
+        assertEquals("2026-10-19T14:41:00Z", guardados.guardado?.actualizadosEn)
+        assertFalse(estado.sinConexion)
+        assertNull(estado.actualizadosEn)
+    }
+
+    @Test
+    @DisplayName("BITS-217, AC-2: si nada llega, no hay conexion y se ven las polizas guardadas")
+    fun sinConexionMuestraLoGuardado() {
+        guardados.guardado = SegurosGuardados(listOf(solicitud("emitida", EstadoDeSolicitud.EMITIDA)), ANTES)
+
+        val estado = inicioQueRecibe(ResultadoCotizacion.Fallo, ResultadoLista.Fallo).estado
+
+        assertTrue(estado.sinConexion)
+        assertEquals(listOf("emitida"), estado.seguros.map { it.id })
+        assertEquals(ANTES, estado.actualizadosEn)
+    }
+
+    @Test
+    @DisplayName("si solo falla la lista, se ven las polizas guardadas pero no es falta de conexion")
+    fun soloFallaLaLista() {
+        guardados.guardado = SegurosGuardados(listOf(solicitud("emitida", EstadoDeSolicitud.EMITIDA)), ANTES)
+
+        val estado = inicioQueRecibe(ResultadoCotizacion.SinCotizacion, ResultadoLista.Fallo).estado
+
+        assertFalse(estado.sinConexion)
+        assertEquals(listOf("emitida"), estado.seguros.map { it.id })
+    }
+
+    @Test
+    @DisplayName("sin conexion y sin nada guardado, no hay seguros ni fecha")
+    fun sinConexionNiGuardados() {
+        val estado = inicioQueRecibe(ResultadoCotizacion.Fallo, ResultadoLista.Fallo).estado
+
+        assertTrue(estado.sinConexion)
+        assertTrue(estado.seguros.isEmpty())
+        assertNull(estado.actualizadosEn)
+    }
+
+    @Test
+    @DisplayName("BITS-217, AC-6: al cerrar sesion borra las polizas guardadas")
+    fun olvidarSeguros() {
+        val inicio = inicioQueRecibe(
+            ResultadoCotizacion.SinCotizacion,
+            ResultadoLista.Exito(listOf(solicitud("emitida", EstadoDeSolicitud.EMITIDA))),
+        )
+
+        inicio.olvidarSeguros()
+
+        assertNull(guardados.guardado)
+        assertTrue(inicio.estado.seguros.isEmpty())
+    }
+
+    private class SegurosEnMemoria : AlmacenDeSeguros {
+        var guardado: SegurosGuardados? = null
+
+        override suspend fun guardar(seguros: List<Solicitud>, en: String) {
+            guardado = SegurosGuardados(seguros, en)
+        }
+
+        override suspend fun leer() = guardado
+
+        override suspend fun borrar() {
+            guardado = null
+        }
+    }
+
+    private companion object {
+        const val ANTES = "2026-10-18T10:00:00Z"
     }
 }

@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kover)
+    alias(libs.plugins.ksp)
 }
 
 // URL del BFF en la version de depuracion. Por defecto es el BFF levantado en
@@ -37,6 +38,9 @@ kover {
                 // Depende del Keystore del dispositivo: se verifica con una
                 // prueba instrumentada (BovedaKeystoreTest).
                 classes("com.solventa4bits.movil.sesion.datos.BovedaKeystore*")
+                // La base de datos y el codigo que Room genera: se verifican con
+                // una prueba instrumentada (PolizasDaoTest).
+                classes("com.solventa4bits.movil.seguro.datos.BaseDeDatosSolventa*", "*_Impl*")
                 // El dialogo biometrico del sistema no se automatiza; las
                 // preferencias del dispositivo se verifican con una prueba
                 // instrumentada (PreferenciasDelTelefonoTest).
@@ -164,6 +168,10 @@ dependencies {
 
     // Huella (BITS-353): el dialogo biometrico del sistema.
     implementation(libs.androidx.biometric)
+
+    // Poliza sin conexion (BITS-217): Room guarda en el telefono lo ultimo que llego.
+    implementation(libs.androidx.room.runtime)
+    ksp(libs.androidx.room.compiler)
 
     // Reglas de negocio: JUnit 5, como declara la Estrategia de Pruebas.
     testImplementation(libs.junit.jupiter)

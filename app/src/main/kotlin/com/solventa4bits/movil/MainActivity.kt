@@ -42,6 +42,9 @@ import com.solventa4bits.movil.identidad.ui.Camara
 import com.solventa4bits.movil.identidad.ui.camaraReal
 import com.solventa4bits.movil.identidad.ui.PantallaCedula
 import com.solventa4bits.movil.inicio.ui.InicioViewModel
+import com.solventa4bits.movil.seguro.datos.AlmacenDeSegurosRoom
+import com.solventa4bits.movil.seguro.datos.BaseDeDatosSolventa
+import com.solventa4bits.movil.seguro.dominio.AlmacenDeSeguros
 import com.solventa4bits.movil.solicitud.datos.AdaptadorSolicitudes
 import com.solventa4bits.movil.solicitud.datos.crearSolicitudesApi
 import com.solventa4bits.movil.solicitud.dominio.ServicioDeSolicitudes
@@ -92,6 +95,7 @@ class MainActivity : FragmentActivity() {
         val solicitudes = AdaptadorSolicitudes(crearSolicitudesApi(BuildConfig.URL_BASE_BFF), conSesion, traza)
         val autenticador = AutenticadorBiometrico(this)
         val preferencias = PreferenciasDelTelefono(applicationContext)
+        val guardados = AlmacenDeSegurosRoom(BaseDeDatosSolventa.crear(applicationContext).polizas())
 
         setContent {
             TemaSolventa {
@@ -104,6 +108,7 @@ class MainActivity : FragmentActivity() {
                     solicitudes,
                     autenticador,
                     preferencias,
+                    guardados,
                 )
             }
         }
@@ -124,12 +129,13 @@ fun AppSolventa(
     solicitudes: ServicioDeSolicitudes,
     autenticador: AutenticadorDeHuella,
     preferencias: AlmacenDePreferencias,
+    guardados: AlmacenDeSeguros,
     camara: Camara = camaraReal,
     abrirEnlace: ((String) -> Unit)? = null,
 ) {
     val login = viewModel { LoginViewModel(sesion, almacen, preferencias, conHuella = autenticador.disponible()) }
     val cotizacion = viewModel { NuevaCotizacionViewModel(creditos, cotizaciones) }
-    val inicio = viewModel { InicioViewModel(cotizaciones, solicitudes) }
+    val inicio = viewModel { InicioViewModel(cotizaciones, solicitudes, guardados) }
     // Preparar la foto pesa: va en segundo plano para no congelar la pantalla.
     val preparar: suspend (ByteArray) -> ByteArray? = { foto ->
         withContext(Dispatchers.Default) { PreparadorDeFotos.preparar(foto) }
@@ -153,6 +159,7 @@ fun AppSolventa(
         enCedula = false
         viendoSolicitud = false
         viendoSeguro = false
+        inicio.olvidarSeguros()
         login.cerrarSesion()
     }
 
