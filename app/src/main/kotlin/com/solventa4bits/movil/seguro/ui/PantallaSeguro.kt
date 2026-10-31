@@ -2,6 +2,7 @@ package com.solventa4bits.movil.seguro.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
@@ -59,6 +61,11 @@ fun TuSeguro(
         }
     }
     BackHandler(onBack = alInicio)
+    // Trayendo la poliza a la que lleva un aviso.
+    if (estado.cargando) {
+        Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        return
+    }
     PantallaSeguro(
         estado = estado,
         alVerDocumento = seguro::verDocumento,

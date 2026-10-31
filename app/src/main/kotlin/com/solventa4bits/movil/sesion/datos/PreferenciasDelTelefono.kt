@@ -26,8 +26,22 @@ class PreferenciasDelTelefono(contexto: Context) : AlmacenDePreferencias {
         preferencias.edit { putString(CLAVE_HUELLA, preferencia.name) }
     }
 
+    override fun dispositivoId(): String? = preferencias.getString(CLAVE_DISPOSITIVO, null)
+
+    override fun guardarDispositivoId(id: String?) {
+        preferencias.edit { if (id == null) remove(CLAVE_DISPOSITIVO) else putString(CLAVE_DISPOSITIVO, id) }
+    }
+
+    override fun permisoDeAvisosPedido(): Boolean = preferencias.getBoolean(CLAVE_PERMISO_PEDIDO, false)
+
+    override fun marcarPermisoDeAvisosPedido() {
+        preferencias.edit { putBoolean(CLAVE_PERMISO_PEDIDO, true) }
+    }
+
     private companion object {
         const val ARCHIVO = "preferencias"
         const val CLAVE_HUELLA = "huella"
+        const val CLAVE_DISPOSITIVO = "dispositivo_id"
+        const val CLAVE_PERMISO_PEDIDO = "permiso_avisos_pedido"
     }
 }

@@ -6,6 +6,9 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.solventa4bits.movil.sesion.dominio.PreferenciaDeHuella
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -45,5 +48,26 @@ class PreferenciasDelTelefonoTest {
             .edit().putString("huella", "LO_QUE_SEA").commit()
 
         assertEquals(PreferenciaDeHuella.SIN_DECIDIR, preferencias.huella())
+    }
+
+    // BITS-229: lo que la app recuerda de los avisos push.
+    @Test
+    fun recuerdaElIdDelDispositivoYLoOlvida() {
+        assertNull(preferencias.dispositivoId())
+
+        preferencias.guardarDispositivoId("dispositivo-1")
+        assertEquals("dispositivo-1", preferencias.dispositivoId())
+
+        preferencias.guardarDispositivoId(null)
+        assertNull(preferencias.dispositivoId())
+    }
+
+    @Test
+    fun elPermisoDeAvisosSePideUnaSolaVez() {
+        assertFalse(preferencias.permisoDeAvisosPedido())
+
+        preferencias.marcarPermisoDeAvisosPedido()
+
+        assertTrue(preferencias.permisoDeAvisosPedido())
     }
 }

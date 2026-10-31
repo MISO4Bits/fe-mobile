@@ -301,4 +301,7 @@
     <string name="sin_conexion_titulo">Sin conexión</string>
     <string name="sin_conexion_detalle">No pudimos conectarnos. Revisa tu red e inténtalo otra vez.</string>
     <string name="sin_conexion_guardado">Lo que llevas quedó guardado. Retomas donde ibas.</string>
+    <string name="canal_avisos_id" translatable="false">avisos_del_seguro</string>
+    <string name="canal_avisos_nombre">Avisos de tu seguro</string>
+    <string name="canal_avisos_descripcion">Te avisamos cuando tu póliza cambia de estado.</string>
 </resources>

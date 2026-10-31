@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "212429606384",
+    "project_id": "solventa-dev",
+    "storage_bucket": "solventa-dev.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:212429606384:android:86ca725e41d6fe6657e135",
+        "android_client_info": {
+          "package_name": "com.solventa4bits.movil"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCJUb1kxgigZMWjXFzd5tZ500ig-LIA3lY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
