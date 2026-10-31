@@ -8,6 +8,7 @@ import com.solventa4bits.movil.sesion.dominio.ServicioDeSesion
 import com.solventa4bits.movil.sesion.dominio.Sesion
 import com.solventa4bits.movil.traza.TrazaFalsa
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.SocketPolicy
@@ -38,11 +39,13 @@ class AdaptadorDispositivosTest {
         servidor.shutdown()
     }
 
+    private var refresco: ResultadoInicioSesion = ResultadoInicioSesion.CredencialesInvalidas
+
     private fun adaptador(): AdaptadorDispositivos {
         val sesiones = object : ServicioDeSesion {
             override suspend fun iniciarSesion(correo: String, contrasena: String) = ResultadoInicioSesion.Fallo
 
-            override suspend fun refrescar(tokenDeRefresco: String) = ResultadoInicioSesion.CredencialesInvalidas
+            override suspend fun refrescar(tokenDeRefresco: String) = refresco
         }
         return AdaptadorDispositivos(
             crearDispositivosApi(servidor.url("/mobile/").toString()),
@@ -67,8 +70,8 @@ class AdaptadorDispositivosTest {
         assertEquals("/mobile/v1/cuenta/dispositivos", peticion.path)
         assertEquals("Bearer jwt-de-acceso", peticion.getHeader("Authorization"))
         assertEquals(
-            """{"token":"fcm-token","plataforma":"android","versionApp":"0.1.0"}""",
-            peticion.body.readUtf8(),
+            RegistrarDispositivoDto("fcm-token", "android", "0.1.0"),
+            Json.decodeFromString<RegistrarDispositivoDto>(peticion.body.readUtf8()),
         )
         assertEquals(ResultadoRegistro.Registrado("d-1"), resultado)
     }
@@ -143,5 +146,38 @@ class AdaptadorDispositivosTest {
 
         almacen.borrar()
         assertFalse(adaptador().darDeBaja("d-1"))
+    }
+
+    @Test
+    @DisplayName("un 204 sin cuerpo al registrar no trae el id: es Fallo")
+    fun sinCuerpo() = runTest {
+        responder(204)
+
+        assertEquals(ResultadoRegistro.Fallo, adaptador().registrar("t", "1"))
+        assertEquals(1, traza.errores.size)
+    }
+
+    @Test
+    @DisplayName("si el token vencio y no se pudo refrescar por falta de red, no se registra ni se da de baja")
+    fun sinRefresco() = runTest {
+        refresco = ResultadoInicioSesion.Fallo
+        responder(401)
+        responder(401)
+
+        assertEquals(ResultadoRegistro.Fallo, adaptador().registrar("t", "1"))
+        assertFalse(adaptador().darDeBaja("d-1"))
+    }
+
+    @Test
+    @DisplayName("si el token vencio y el refresco sirve, repite la llamada con el token nuevo")
+    fun conRefresco() = runTest {
+        refresco = ResultadoInicioSesion.Exito(Sesion("jwt-nuevo", "refresco-nuevo", 3600))
+        responder(401)
+        responder(200, """{"dispositivoId":"d-1"}""")
+
+        assertEquals(ResultadoRegistro.Registrado("d-1"), adaptador().registrar("t", "1"))
+
+        servidor.takeRequest()
+        assertEquals("Bearer jwt-nuevo", servidor.takeRequest().getHeader("Authorization"))
     }
 }
