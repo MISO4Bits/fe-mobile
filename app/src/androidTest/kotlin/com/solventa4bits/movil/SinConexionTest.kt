@@ -8,8 +8,10 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.solventa4bits.movil.fixtures.BffFalso
+import com.solventa4bits.movil.fixtures.Personas
 import com.solventa4bits.movil.fixtures.RespuestasBff
 import com.solventa4bits.movil.fixtures.SesionLimpia
+import com.solventa4bits.movil.red.Conexion
 import com.solventa4bits.movil.seguro.dominio.AlmacenDeSeguros
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
@@ -22,6 +24,10 @@ class SinConexionTest {
 
     private val almacen = almacenDelDispositivo()
     private lateinit var guardados: AlmacenDeSeguros
+
+    // La red del telefono, falsa: la prueba decide cuando hay.
+    @Volatile
+    private var conRed = true
 
     @get:Rule
     val composeRule = createComposeRule()
@@ -88,6 +94,41 @@ class SinConexionTest {
         composeRule.onNodeWithText("Reintentar la conexión").performClick()
         composeRule.esperarTexto("Tus seguros")
         esperarGuardado { it == "SOL-VH-2026-K7M2Q9" }
+    }
+
+    @Test
+    fun cotizarSinRedLoDiceYVuelveAlInicio() {
+        bff.responder(200, RespuestasBff.sesionValida())
+        guardados = composeRule.abrirApp(bff, almacen, conexion = Conexion { conRed })
+        composeRule.iniciarSesion()
+
+        conRed = false
+        composeRule.onNodeWithText("Cotizar mi seguro").performClick()
+
+        // AC-5: la accion necesita conexion y lo dice, en lugar de fallar en silencio.
+        composeRule.esperarTexto("Lo que llevas quedó guardado. Retomas donde ibas.")
+        composeRule.onNodeWithText("Sin conexión").assertIsDisplayed()
+        composeRule.onNodeWithText("Reintentar").performClick()
+        composeRule.onNodeWithText("Sin conexión").assertIsDisplayed()
+
+        composeRule.onNodeWithText("Inicio").performClick()
+        composeRule.esperarTexto("Cotizar mi seguro")
+    }
+
+    @Test
+    fun alReintentarConRedSigueConLaAccion() {
+        bff.responder(200, RespuestasBff.sesionValida())
+        guardados = composeRule.abrirApp(bff, almacen, conexion = Conexion { conRed })
+        composeRule.iniciarSesion()
+        conRed = false
+        composeRule.onNodeWithText("Cotizar mi seguro").performClick()
+        composeRule.esperarTexto("Sin conexión")
+
+        conRed = true
+        bff.responder(200, RespuestasBff.creditosDe(Personas.DANIEL))
+        composeRule.onNodeWithText("Reintentar").performClick()
+
+        composeRule.esperarTexto("Banco o entidad")
     }
 
     /** El BFF deja de responder, como si el telefono no tuviera red. */

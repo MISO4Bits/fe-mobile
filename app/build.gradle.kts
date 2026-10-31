@@ -38,6 +38,8 @@ kover {
                 // Depende del Keystore del dispositivo: se verifica con una
                 // prueba instrumentada (BovedaKeystoreTest).
                 classes("com.solventa4bits.movil.sesion.datos.BovedaKeystore*")
+                // Pregunta al sistema por la red: depende del dispositivo.
+                classes("com.solventa4bits.movil.red.ConexionDelTelefono*")
                 // La base de datos y el codigo que Room genera: se verifican con
                 // una prueba instrumentada (PolizasDaoTest).
                 classes("com.solventa4bits.movil.seguro.datos.BaseDeDatosSolventa*", "*_Impl*")

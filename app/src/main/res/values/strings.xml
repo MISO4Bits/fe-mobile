@@ -298,4 +298,7 @@
     <string name="mi_poliza_cuando">Ver cuándo se actualizó</string>
     <string name="mi_poliza_cotizar">Cotizar o enviar una solicitud</string>
     <string name="mi_poliza_reintentar">Reintentar la conexión</string>
+    <string name="sin_conexion_titulo">Sin conexión</string>
+    <string name="sin_conexion_detalle">No pudimos conectarnos. Revisa tu red e inténtalo otra vez.</string>
+    <string name="sin_conexion_guardado">Lo que llevas quedó guardado. Retomas donde ibas.</string>
 </resources>
