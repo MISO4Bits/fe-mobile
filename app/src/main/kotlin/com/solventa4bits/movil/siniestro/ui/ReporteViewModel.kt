@@ -34,24 +34,6 @@ enum class Escaneo(val clase: ClaseDeArchivo) {
     DOCUMENTO(ClaseDeArchivo.DOCUMENTO),
 }
 
-/** Lo que el cliente hace en "Tu dictamen". */
-class AccionesDelDictamen(
-    val alCambiarFecha: (LocalDate) -> Unit,
-    val alEscanear: (Escaneo) -> Unit,
-    val alEscanearOtraVez: () -> Unit,
-    val alQuitar: (Escaneo) -> Unit,
-    val alContinuar: () -> Unit,
-    val alVolver: () -> Unit,
-)
-
-/** Lo que el cliente puede hacer en "Revisa y envia". */
-class AccionesDeRevision(
-    val alQuitar: (Escaneo) -> Unit,
-    val alQuitarUno: (Escaneo, Int) -> Unit,
-    val alEnviar: () -> Unit,
-    val alVolver: () -> Unit,
-)
-
 /** Lo que salio mal al enviar, para decirselo al cliente en "Revisa y envia". */
 enum class ProblemaAlEnviar { FALLO, FUERA_DE_VIGENCIA, EN_CURSO }
 
