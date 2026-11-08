@@ -9,6 +9,9 @@
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
     <!-- Avisos push (BITS-229). Desde Android 13 se pide en ejecucion, una sola vez. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Donde se tomo cada foto del dano (BITS-111). Si el cliente la niega, la foto va sin ubicacion. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <application
         android:name=".AplicacionSolventa"

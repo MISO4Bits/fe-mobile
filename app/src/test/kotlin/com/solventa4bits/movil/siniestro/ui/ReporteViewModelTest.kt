@@ -1,9 +1,12 @@
 package com.solventa4bits.movil.siniestro.ui
 
 import com.solventa4bits.movil.siniestro.dominio.ClaseDeArchivo
+import com.solventa4bits.movil.siniestro.dominio.DestinoDePago
 import com.solventa4bits.movil.siniestro.dominio.ProblemaDeFecha
 import com.solventa4bits.movil.siniestro.dominio.ResultadoReporte
+import com.solventa4bits.movil.siniestro.dominio.TipoDeCuenta
 import com.solventa4bits.movil.siniestro.dominio.TipoDeSiniestro
+import com.solventa4bits.movil.siniestro.dominio.Ubicacion
 import com.solventa4bits.movil.solicitud.dominio.EstadoDeSolicitud
 import com.solventa4bits.movil.solicitud.dominio.Solicitud
 import com.solventa4bits.movil.solicitud.dominio.Vigencia
@@ -229,5 +232,147 @@ class ReporteViewModelTest {
         reporte.enviar()
 
         assertTrue(servicio.reportes.isEmpty())
+    }
+
+    // --- Tu casa.
+
+    private val enLaCasa = Ubicacion(4.65, -74.06)
+    private val cuenta = DatosDePago("Bancolombia", TipoDeCuenta.AHORROS, "48210012345")
+
+    private fun deTuCasa(ubicacion: Ubicacion? = enLaCasa) = ReporteViewModel(
+        servicio = servicio,
+        preparar = { byteArrayOf(9) },
+        ubicacion = { ubicacion },
+        ahora = { ahora },
+        llaveNueva = { "llave-${++llaves}" },
+    ).apply { empezar(poliza, TipoDeSiniestro.INCENDIO_TERREMOTO) }
+
+    @Test
+    @DisplayName("BITS-111, AC-4: con el permiso, cada foto del dano lleva donde y cuando se tomo")
+    fun fotoConUbicacion() {
+        val reporte = deTuCasa()
+        reporte.decidirUbicacion(true)
+
+        reporte.agregarPagina(Escaneo.FOTO_DEL_DANO, foto)
+
+        val tomada = reporte.estado.fotos.single()
+        assertEquals(ClaseDeArchivo.FOTO, tomada.clase)
+        assertEquals(4.65, tomada.latitud)
+        assertEquals(-74.06, tomada.longitud)
+        assertEquals("2026-11-08T14:12:00Z", tomada.capturadoEn)
+    }
+
+    @Test
+    @DisplayName("BITS-111, AC-5: si el cliente siguio sin ubicacion, la foto no la lleva y se puede seguir")
+    fun fotoSinUbicacion() {
+        val reporte = deTuCasa()
+        reporte.decidirUbicacion(false)
+
+        reporte.agregarPagina(Escaneo.FOTO_DEL_DANO, foto)
+
+        assertNull(reporte.estado.fotos.single().latitud)
+        assertTrue(reporte.estado.fotosListas)
+    }
+
+    @Test
+    @DisplayName("BITS-111, AC-5: si el telefono no sabe donde esta, la foto queda sin ubicacion")
+    fun gpsSinRespuesta() {
+        val reporte = deTuCasa(ubicacion = null)
+        reporte.decidirUbicacion(true)
+
+        reporte.agregarPagina(Escaneo.FOTO_DEL_DANO, foto)
+
+        assertNull(reporte.estado.fotos.single().latitud)
+    }
+
+    @Test
+    @DisplayName("los documentos de Tu casa no llevan ubicacion")
+    fun documentoSinUbicacion() {
+        val reporte = deTuCasa()
+        reporte.decidirUbicacion(true)
+
+        reporte.agregarPagina(Escaneo.DOCUMENTO, foto)
+
+        assertEquals(ClaseDeArchivo.DOCUMENTO, reporte.estado.documentos.single().clase)
+        assertNull(reporte.estado.documentos.single().latitud)
+    }
+
+    @Test
+    @DisplayName("BITS-111, AC-6: se puede quitar una sola foto")
+    fun quitarUnaFoto() {
+        val reporte = deTuCasa()
+        reporte.agregarPagina(Escaneo.FOTO_DEL_DANO, foto)
+        reporte.agregarPagina(Escaneo.FOTO_DEL_DANO, byteArrayOf(7))
+
+        reporte.quitarUno(Escaneo.FOTO_DEL_DANO, 0)
+
+        assertEquals(1, reporte.estado.fotos.size)
+    }
+
+    @Test
+    @DisplayName("BITS-111, AC-4: sin foto, sin lo que paso o sin la cuenta no se envia")
+    fun loObligatorioDeTuCasa() {
+        val reporte = deTuCasa()
+        assertFalse(reporte.estado.fotosListas)
+
+        reporte.agregarPagina(Escaneo.FOTO_DEL_DANO, foto)
+        reporte.cambiarNarracion("   ")
+        reporte.cambiarPago(cuenta)
+        assertFalse(reporte.estado.relatoListo)
+        assertFalse(reporte.estado.listoParaEnviar)
+
+        reporte.cambiarNarracion("Se incendio la cocina")
+        reporte.cambiarPago(cuenta.copy(numeroCuenta = "12"))
+        assertTrue(reporte.estado.relatoListo)
+        assertFalse(reporte.estado.listoParaEnviar)
+
+        reporte.cambiarPago(cuenta)
+        assertTrue(reporte.estado.listoParaEnviar)
+    }
+
+    @Test
+    @DisplayName("lo que paso se corta en 500 caracteres, como en el Figma")
+    fun narracionLarga() {
+        val reporte = deTuCasa()
+
+        reporte.cambiarNarracion("a".repeat(600))
+
+        assertEquals(500, reporte.estado.narracion.length)
+    }
+
+    @Test
+    @DisplayName("BITS-111, AC-7: envia incendio o terremoto con fotos, documentos, lo que paso y la cuenta")
+    fun enviaTuCasa() {
+        servicio.alReportar = ResultadoReporte.Radicado("s2", "SIN-2026-00042")
+        val reporte = deTuCasa()
+        reporte.agregarPagina(Escaneo.FOTO_DEL_DANO, foto)
+        reporte.agregarPagina(Escaneo.DOCUMENTO, foto)
+        reporte.cambiarNarracion("  Se incendio la cocina ")
+        reporte.cambiarPago(cuenta)
+
+        reporte.enviar()
+
+        val enviado = servicio.reportes.single().first
+        assertEquals(TipoDeSiniestro.INCENDIO_TERREMOTO, enviado.tipo)
+        assertEquals("Se incendio la cocina", enviado.narracion)
+        assertEquals(listOf(ClaseDeArchivo.FOTO, ClaseDeArchivo.DOCUMENTO), enviado.archivos.map { it.clase })
+        assertEquals(DestinoDePago("Bancolombia", TipoDeCuenta.AHORROS, "48210012345"), enviado.destinoPago)
+        assertEquals("SIN-2026-00042", reporte.estado.radicado?.numero)
+    }
+
+    @Test
+    @DisplayName("en Vida no viajan lo que paso ni la cuenta: se le paga al banco")
+    fun vidaSinDestino() {
+        servicio.alReportar = ResultadoReporte.Radicado("s1", "SIN-1")
+        val reporte = reporte()
+        reporte.agregarPagina(Escaneo.DICTAMEN, foto)
+        reporte.cambiarNarracion("algo")
+        reporte.cambiarPago(cuenta)
+
+        reporte.enviar()
+
+        val enviado = servicio.reportes.single().first
+        assertNull(enviado.narracion)
+        assertNull(enviado.destinoPago)
     }
 }

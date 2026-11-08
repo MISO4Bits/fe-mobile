@@ -7,12 +7,14 @@ import com.solventa4bits.movil.sesion.dominio.ServicioDeSesion
 import com.solventa4bits.movil.sesion.dominio.Sesion
 import com.solventa4bits.movil.siniestro.dominio.ArchivoDelReporte
 import com.solventa4bits.movil.siniestro.dominio.ClaseDeArchivo
+import com.solventa4bits.movil.siniestro.dominio.DestinoDePago
 import com.solventa4bits.movil.siniestro.dominio.EstadoDeSiniestro
 import com.solventa4bits.movil.siniestro.dominio.ReporteDeSiniestro
 import com.solventa4bits.movil.siniestro.dominio.ResultadoDetalle
 import com.solventa4bits.movil.siniestro.dominio.ResultadoReporte
 import com.solventa4bits.movil.siniestro.dominio.ResultadoSiniestros
 import com.solventa4bits.movil.siniestro.dominio.SiniestroResumen
+import com.solventa4bits.movil.siniestro.dominio.TipoDeCuenta
 import com.solventa4bits.movil.siniestro.dominio.TipoDeSiniestro
 import com.solventa4bits.movil.traza.TrazaFalsa
 import kotlinx.coroutines.test.runTest
@@ -20,6 +22,7 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -120,6 +123,35 @@ class AdaptadorSiniestrosTest {
                 """{"clase":"DOCUMENTO","capturadoEn":"2026-11-10T15:05:00Z","latitud":null,"longitud":null}""",
             ),
         )
+    }
+
+    @Test
+    @DisplayName("Tu casa: la cuenta viaja como transferencia")
+    fun destinoComoTransferencia() = runTest {
+        responder(201, """{"id": "sin-1", "numero": "SIN-1", "estado": "EN_ESTUDIO"}""")
+        val conCuenta = reporte.copy(destinoPago = DestinoDePago("Bancolombia", TipoDeCuenta.AHORROS, "48210012345"))
+
+        adaptador().reportar(conCuenta, "llave-1")
+
+        val cuerpo = servidor.takeRequest().body.readUtf8()
+        assertTrue(
+            cuerpo.contains(
+                """"destinoPago":{"tipo":"TRANSFERENCIA","banco":"Bancolombia","tipoCuenta":"AHORROS",""" +
+                    """"numeroCuenta":"48210012345"}""",
+            ),
+        )
+    }
+
+    @Test
+    @DisplayName("Vida: sin cuenta, el destino no viaja")
+    fun vidaSinDestino() = runTest {
+        responder(201, """{"id": "sin-1", "numero": "SIN-1", "estado": "EN_ESTUDIO"}""")
+
+        adaptador().reportar(reporte.copy(tipo = TipoDeSiniestro.INCAPACIDAD_TOTAL, narracion = null), "llave-1")
+
+        val cuerpo = servidor.takeRequest().body.readUtf8()
+        assertFalse(cuerpo.contains("destinoPago"))
+        assertFalse(cuerpo.contains("narracion"))
     }
 
     @Test

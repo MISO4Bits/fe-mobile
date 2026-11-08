@@ -72,7 +72,9 @@ import com.solventa4bits.movil.seguro.ui.SeguroViewModel
 import com.solventa4bits.movil.seguro.ui.MiSeguro
 import com.solventa4bits.movil.seguro.ui.PiezasDelSiniestro
 import com.solventa4bits.movil.siniestro.datos.AdaptadorSiniestros
+import com.solventa4bits.movil.siniestro.datos.UbicacionDelTelefono
 import com.solventa4bits.movil.siniestro.datos.crearSiniestrosApi
+import com.solventa4bits.movil.siniestro.dominio.FuenteDeUbicacion
 import com.solventa4bits.movil.siniestro.dominio.ServicioDeSiniestros
 import com.solventa4bits.movil.siniestro.ui.MisSiniestrosViewModel
 import com.solventa4bits.movil.siniestro.ui.ReporteViewModel
@@ -144,6 +146,7 @@ class MainActivity : FragmentActivity() {
                     avisos = (application as AplicacionSolventa).avisos,
                     destinoDeAviso = destinoDeAviso,
                     alAtenderElDestino = ::destinoAtendido,
+                    ubicacion = UbicacionDelTelefono(applicationContext),
                 )
             }
         }
@@ -193,6 +196,8 @@ fun AppSolventa(
     avisos: ControlDeAvisos = SinAvisos,
     destinoDeAviso: DestinoDeAviso? = null,
     alAtenderElDestino: () -> Unit = {},
+    // Donde se toma cada foto del dano (BITS-111). Las pruebas no tienen GPS: las fotos van sin ubicacion.
+    ubicacion: FuenteDeUbicacion = FuenteDeUbicacion { null },
 ) {
     val login = viewModel { LoginViewModel(sesion, almacen, preferencias, conHuella = autenticador.disponible()) }
     val cotizacion = viewModel { NuevaCotizacionViewModel(creditos, cotizaciones) }
@@ -210,7 +215,7 @@ fun AppSolventa(
     val seguro = viewModel { SeguroViewModel(solicitudes) }
     // Los siniestros de la poliza y el reporte de uno nuevo (BITS-111).
     val misSiniestros = viewModel { MisSiniestrosViewModel(siniestros) }
-    val reporte = viewModel { ReporteViewModel(siniestros, preparar) }
+    val reporte = viewModel { ReporteViewModel(siniestros, preparar, ubicacion) }
     var cotizando by rememberSaveable { mutableStateOf(false) }
     // Viendo el detalle de una poliza emitida (BITS-104).
     var viendoSeguro by rememberSaveable { mutableStateOf(false) }

@@ -82,6 +82,20 @@ class SiniestrosTest {
     }
 
     @Test
+    @DisplayName("la cuenta del pago necesita banco, tipo y un numero de 4 a 20 digitos")
+    fun destinoDePago() {
+        val cuenta = DestinoDePago.desde(" Bancolombia ", TipoDeCuenta.AHORROS, "48210012345")
+
+        assertEquals(DestinoDePago("Bancolombia", TipoDeCuenta.AHORROS, "48210012345"), cuenta)
+        assertEquals("2345", cuenta?.terminadaEn)
+        assertNull(DestinoDePago.desde("", TipoDeCuenta.AHORROS, "48210012345"))
+        assertNull(DestinoDePago.desde("Bancolombia", null, "48210012345"))
+        assertNull(DestinoDePago.desde("Bancolombia", TipoDeCuenta.CORRIENTE, "123"))
+        assertNull(DestinoDePago.desde("Bancolombia", TipoDeCuenta.CORRIENTE, "1".repeat(21)))
+        assertNull(DestinoDePago.desde("Bancolombia", TipoDeCuenta.CORRIENTE, "12a4"))
+    }
+
+    @Test
     @DisplayName("BITS-111, AC-2A: En estudio y Falta informacion estan en curso; pagado y rechazado no")
     fun estadosEnCurso() {
         assertTrue(EstadoDeSiniestro.EN_ESTUDIO.enCurso)

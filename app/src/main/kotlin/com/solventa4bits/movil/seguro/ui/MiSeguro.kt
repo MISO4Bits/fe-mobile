@@ -11,27 +11,29 @@ import androidx.compose.ui.Modifier
 import com.solventa4bits.movil.identidad.ui.Camara
 import com.solventa4bits.movil.identidad.ui.QueFoto
 import com.solventa4bits.movil.red.GuardiaDeRed
+import com.solventa4bits.movil.siniestro.dominio.TipoDeSiniestro
+import com.solventa4bits.movil.siniestro.ui.AccionesDeLasFotos
+import com.solventa4bits.movil.siniestro.ui.AccionesDeRevision
 import com.solventa4bits.movil.siniestro.ui.AccionesDelDictamen
+import com.solventa4bits.movil.siniestro.ui.AccionesDelRelato
 import com.solventa4bits.movil.siniestro.ui.Escaneo
 import com.solventa4bits.movil.siniestro.ui.MisSiniestrosViewModel
+import com.solventa4bits.movil.siniestro.ui.PantallaFotosDelDano
+import com.solventa4bits.movil.siniestro.ui.PantallaQuePaso
 import com.solventa4bits.movil.siniestro.ui.PantallaReporteEnviado
 import com.solventa4bits.movil.siniestro.ui.PantallaRevisaYEnvia
 import com.solventa4bits.movil.siniestro.ui.PantallaTuDictamen
+import com.solventa4bits.movil.siniestro.ui.PantallaTuPago
 import com.solventa4bits.movil.siniestro.ui.PantallaTuSiniestro
 import com.solventa4bits.movil.siniestro.ui.ReporteViewModel
 import com.solventa4bits.movil.siniestro.ui.SiniestrosDelSeguro
 import com.solventa4bits.movil.solicitud.dominio.Solicitud
 
-/** Donde va el cliente dentro de "Mi seguro" (BITS-111). */
-private enum class PasoEnMiSeguro {
-    POLIZA,
-    DICTAMEN,
-    ESCANEANDO_DICTAMEN,
-    ESCANEANDO_HISTORIA,
-    REVISA,
-    ENVIADO,
-    SINIESTRO,
-}
+/**
+ * Donde va el cliente dentro de "Mi seguro" (BITS-111). Vida: dictamen y revisar. Tu casa: fotos,
+ * que paso, la cuenta para el pago y revisar. Los dos terminan en el radicado y en "Tu siniestro".
+ */
+private enum class PasoEnMiSeguro { POLIZA, DICTAMEN, FOTOS, QUE_PASO, PAGO, REVISA, ENVIADO, SINIESTRO }
 
 /** Las piezas que "Mi seguro" necesita para el camino del siniestro. */
 class PiezasDelSiniestro(
@@ -42,8 +44,8 @@ class PiezasDelSiniestro(
 )
 
 /**
- * "Mi seguro": el detalle de la poliza con sus siniestros (M01) y, desde ahi, el camino para
- * reportar una incapacidad total (M03 a M09V). Sin conexion solo se ve la poliza guardada.
+ * "Mi seguro": el detalle de la poliza con sus siniestros (M01) y, desde ahi, el camino de cada
+ * cobertura para reportar uno. Sin conexion solo se ve la poliza guardada.
  */
 @Composable
 fun MiSeguro(
@@ -82,10 +84,10 @@ fun MiSeguro(
                 SiniestrosDelSeguro(
                     poliza = poliza,
                     estado = misSiniestros.estado,
-                    alReportarIncapacidad = {
+                    alReportar = { tipo ->
                         piezas.red.conRed {
-                            reporte.empezar(poliza)
-                            paso = PasoEnMiSeguro.DICTAMEN
+                            reporte.empezar(poliza, tipo)
+                            paso = if (tipo.deTuCasa) PasoEnMiSeguro.FOTOS else PasoEnMiSeguro.DICTAMEN
                         }
                     },
                     alVerSiniestro = {
@@ -102,7 +104,7 @@ fun MiSeguro(
     CaminoDelSiniestro(paso, { paso = it }, poliza, piezas, alCerrarSesion, modifier)
 }
 
-/** Los pasos del reporte de incapacidad total, de "Tu dictamen" a "Tu siniestro". */
+/** Los pasos del reporte, de la primera pantalla de cada cobertura a "Tu siniestro". */
 @Composable
 private fun CaminoDelSiniestro(
     paso: PasoEnMiSeguro,
@@ -113,46 +115,102 @@ private fun CaminoDelSiniestro(
     modifier: Modifier,
 ) {
     val reporte = piezas.reporte
-    val misSiniestros = piezas.misSiniestros
-    val alaPoliza = { irA(PasoEnMiSeguro.POLIZA) }
-    val alDictamen = { irA(PasoEnMiSeguro.DICTAMEN) }
-    // Desde la camara y desde "Revisa y envia" se vuelve al dictamen; desde lo demas, a la poliza.
-    BackHandler(onBack = if (paso == PasoEnMiSeguro.DICTAMEN || enUltimosPasos(paso)) alaPoliza else alDictamen)
+    // Lo que se esta tomando con la camara. Al tener la foto se vuelve a la pantalla de donde salio.
+    var escaneando by rememberSaveable { mutableStateOf<Escaneo?>(null) }
+    val actual = escaneando
+    if (actual != null) {
+        // El gesto atras cierra la camara sin agregar nada.
+        BackHandler { escaneando = null }
+        piezas.camara(
+            if (actual == Escaneo.FOTO_DEL_DANO) QueFoto.FOTO_DEL_DANO else QueFoto.DOCUMENTO,
+            { foto ->
+                escaneando = null
+                reporte.agregarPagina(actual, foto)
+            },
+            modifier,
+        )
+        return
+    }
+    val alAnterior = { irA(anterior(paso, reporte.estado.tipo)) }
+    BackHandler(onBack = alAnterior)
     when (paso) {
         PasoEnMiSeguro.POLIZA -> Unit
         PasoEnMiSeguro.DICTAMEN -> PantallaTuDictamen(
             estado = reporte.estado,
             acciones = AccionesDelDictamen(
                 alCambiarFecha = reporte::cambiarFecha,
-                alEscanear = { irA(escaneandoPara(it)) },
+                alEscanear = { escaneando = it },
                 alEscanearOtraVez = {
                     reporte.quitar(Escaneo.DICTAMEN)
-                    irA(PasoEnMiSeguro.ESCANEANDO_DICTAMEN)
+                    escaneando = Escaneo.DICTAMEN
                 },
                 alQuitar = reporte::quitar,
                 alContinuar = { irA(PasoEnMiSeguro.REVISA) },
-                alVolver = alaPoliza,
+                alVolver = alAnterior,
             ),
             alCerrarSesion = alCerrarSesion,
             modifier = modifier,
         )
-        PasoEnMiSeguro.ESCANEANDO_DICTAMEN, PasoEnMiSeguro.ESCANEANDO_HISTORIA -> {
-            val escaneo = if (paso == PasoEnMiSeguro.ESCANEANDO_DICTAMEN) Escaneo.DICTAMEN else Escaneo.HISTORIA_CLINICA
-            piezas.camara(
-                QueFoto.DOCUMENTO,
-                { foto ->
-                    irA(PasoEnMiSeguro.DICTAMEN)
-                    reporte.agregarPagina(escaneo, foto)
-                },
-                modifier,
-            )
-        }
+        PasoEnMiSeguro.FOTOS -> PantallaFotosDelDano(
+            estado = reporte.estado,
+            acciones = AccionesDeLasFotos(
+                alTomarFoto = { escaneando = Escaneo.FOTO_DEL_DANO },
+                alDecidirUbicacion = reporte::decidirUbicacion,
+                alQuitar = { reporte.quitarUno(Escaneo.FOTO_DEL_DANO, it) },
+                alContinuar = { irA(PasoEnMiSeguro.QUE_PASO) },
+                alVolver = alAnterior,
+            ),
+            alCerrarSesion = alCerrarSesion,
+            modifier = modifier,
+        )
+        PasoEnMiSeguro.QUE_PASO -> PantallaQuePaso(
+            estado = reporte.estado,
+            acciones = AccionesDelRelato(
+                alCambiarFecha = reporte::cambiarFecha,
+                alCambiarNarracion = reporte::cambiarNarracion,
+                alEscanearDocumento = { escaneando = Escaneo.DOCUMENTO },
+                alQuitarDocumento = { reporte.quitarUno(Escaneo.DOCUMENTO, it) },
+                alContinuar = { irA(PasoEnMiSeguro.PAGO) },
+                alVolver = alAnterior,
+            ),
+            alCerrarSesion = alCerrarSesion,
+            modifier = modifier,
+        )
+        PasoEnMiSeguro.PAGO -> PantallaTuPago(
+            estado = reporte.estado,
+            alCambiarPago = reporte::cambiarPago,
+            alContinuar = { irA(PasoEnMiSeguro.REVISA) },
+            alVolver = alAnterior,
+            alCerrarSesion = alCerrarSesion,
+            modifier = modifier,
+        )
+        else -> FinalDelCamino(paso, irA, poliza, piezas, alAnterior, alCerrarSesion, modifier)
+    }
+}
+
+/** Revisar y enviar, el radicado y "Tu siniestro": iguales en las dos coberturas. */
+@Composable
+private fun FinalDelCamino(
+    paso: PasoEnMiSeguro,
+    irA: (PasoEnMiSeguro) -> Unit,
+    poliza: Solicitud,
+    piezas: PiezasDelSiniestro,
+    alAnterior: () -> Unit,
+    alCerrarSesion: () -> Unit,
+    modifier: Modifier,
+) {
+    val reporte = piezas.reporte
+    val misSiniestros = piezas.misSiniestros
+    when (paso) {
         PasoEnMiSeguro.REVISA -> PantallaRevisaYEnvia(
             estado = reporte.estado,
             nombreDeLaPoliza = nombreDelSeguro(poliza),
-            alQuitar = reporte::quitar,
-            alEnviar = { piezas.red.conRed(reporte::enviar) },
-            alVolver = alDictamen,
+            acciones = AccionesDeRevision(
+                alQuitar = reporte::quitar,
+                alQuitarUno = reporte::quitarUno,
+                alEnviar = { piezas.red.conRed(reporte::enviar) },
+                alVolver = alAnterior,
+            ),
             alCerrarSesion = alCerrarSesion,
             modifier = modifier,
         )
@@ -167,16 +225,18 @@ private fun CaminoDelSiniestro(
             estado = misSiniestros.estado,
             nombreDeLaPoliza = nombreDelSeguro(poliza),
             alReintentar = misSiniestros::reintentarDetalle,
-            alVolver = alaPoliza,
+            alVolver = alAnterior,
             alCerrarSesion = alCerrarSesion,
             modifier = modifier,
         )
+        else -> Unit
     }
 }
 
-private fun enUltimosPasos(paso: PasoEnMiSeguro) = paso == PasoEnMiSeguro.ENVIADO || paso == PasoEnMiSeguro.SINIESTRO
-
-private fun escaneandoPara(escaneo: Escaneo) = when (escaneo) {
-    Escaneo.DICTAMEN -> PasoEnMiSeguro.ESCANEANDO_DICTAMEN
-    Escaneo.HISTORIA_CLINICA -> PasoEnMiSeguro.ESCANEANDO_HISTORIA
+/** A donde vuelve el gesto atras o la flecha de cada paso. */
+private fun anterior(paso: PasoEnMiSeguro, tipo: TipoDeSiniestro) = when (paso) {
+    PasoEnMiSeguro.QUE_PASO -> PasoEnMiSeguro.FOTOS
+    PasoEnMiSeguro.PAGO -> PasoEnMiSeguro.QUE_PASO
+    PasoEnMiSeguro.REVISA -> if (tipo.deTuCasa) PasoEnMiSeguro.PAGO else PasoEnMiSeguro.DICTAMEN
+    else -> PasoEnMiSeguro.POLIZA
 }

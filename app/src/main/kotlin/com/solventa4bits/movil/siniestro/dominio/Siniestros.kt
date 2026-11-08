@@ -48,6 +48,32 @@ class ArchivoDelReporte(
     val longitud: Double? = null,
 )
 
+enum class TipoDeCuenta { AHORROS, CORRIENTE }
+
+/** La cuenta a la que Solventa le transfiere al cliente el pago de Tu casa. El cheque no se ofrece en la app. */
+data class DestinoDePago(val banco: String, val tipoCuenta: TipoDeCuenta, val numeroCuenta: String) {
+    /** "4821": lo que se muestra de la cuenta. */
+    val terminadaEn: String
+        get() = numeroCuenta.takeLast(DIGITOS_A_LA_VISTA)
+
+    companion object {
+        private const val DIGITOS_A_LA_VISTA = 4
+        private const val LARGO_MAXIMO_DEL_BANCO = 100
+        private val FORMA_DEL_NUMERO = Regex("^[0-9]{4,20}$")
+
+        /** Null si falta algo o no cumple el contrato: el banco, el tipo y un numero de 4 a 20 digitos. */
+        fun desde(banco: String, tipoCuenta: TipoDeCuenta?, numeroCuenta: String): DestinoDePago? {
+            val nombre = banco.trim()
+            val completo = nombre.isNotEmpty() && nombre.length <= LARGO_MAXIMO_DEL_BANCO && tipoCuenta != null
+            return if (completo && FORMA_DEL_NUMERO.matches(numeroCuenta)) {
+                DestinoDePago(nombre, checkNotNull(tipoCuenta), numeroCuenta)
+            } else {
+                null
+            }
+        }
+    }
+}
+
 data class ReporteDeSiniestro(
     val polizaId: String,
     val tipo: TipoDeSiniestro,
@@ -55,7 +81,17 @@ data class ReporteDeSiniestro(
     /** Obligatoria en Tu casa. */
     val narracion: String?,
     val archivos: List<ArchivoDelReporte>,
+    /** Obligatorio en Tu casa; en Vida no va, porque se le paga al banco. */
+    val destinoPago: DestinoDePago? = null,
 )
+
+/** Donde se tomo una foto. */
+data class Ubicacion(val latitud: Double, val longitud: Double)
+
+/** Donde esta el telefono ahora. Null sin permiso o si no se pudo saber a tiempo. */
+fun interface FuenteDeUbicacion {
+    suspend fun actual(): Ubicacion?
+}
 
 sealed interface ResultadoReporte {
     /** Quedo En estudio con su numero de radicado (AC-7). */

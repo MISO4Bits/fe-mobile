@@ -1,19 +1,15 @@
 package com.solventa4bits.movil.siniestro.ui
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -37,30 +33,41 @@ import com.solventa4bits.movil.solicitud.ui.fechaCorta
 fun SiniestrosDelSeguro(
     poliza: Solicitud,
     estado: EstadoMisSiniestros,
-    alReportarIncapacidad: () -> Unit,
+    alReportar: (TipoDeSiniestro) -> Unit,
     alVerSiniestro: (SiniestroResumen) -> Unit,
 ) {
     if (!estado.listos) return
     val deLaPoliza = estado.siniestros.filter { it.polizaId == poliza.id && it.tipo != null }
     val (deTuCasa, deVida) = deLaPoliza.partition { checkNotNull(it.tipo).deTuCasa }
+    val sinCurso = { tipo: TipoDeSiniestro -> deLaPoliza.enCurso(poliza.id, tipo) == null }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         TituloDeSeccion(stringResource(R.string.siniestro_seccion_vida))
-        if (deLaPoliza.enCurso(poliza.id, TipoDeSiniestro.INCAPACIDAD_TOTAL) == null) {
-            Tarjeta(alTocar = alReportarIncapacidad) {
-                IconoDeTipo(TipoDeSiniestro.INCAPACIDAD_TOTAL)
-                Text(
-                    text = stringResource(R.string.siniestro_reportar_incapacidad),
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.weight(1f),
-                )
-                Flecha()
-            }
+        if (sinCurso(TipoDeSiniestro.INCAPACIDAD_TOTAL)) {
+            EntradaParaReportar(TipoDeSiniestro.INCAPACIDAD_TOTAL, R.string.siniestro_reportar_incapacidad, alReportar)
         }
         deVida.forEach { TarjetaDeSiniestro(it, alVerSiniestro) }
         if (poliza.conTuCasa || deTuCasa.isNotEmpty()) {
             TituloDeSeccion(stringResource(R.string.siniestro_seccion_casa))
+            // Sin la cobertura de Tu casa no se reporta incendio ni terremoto (AC-1).
+            if (poliza.conTuCasa && sinCurso(TipoDeSiniestro.INCENDIO_TERREMOTO)) {
+                val incendio = TipoDeSiniestro.INCENDIO_TERREMOTO
+                EntradaParaReportar(incendio, R.string.siniestro_reportar_incendio, alReportar)
+            }
             deTuCasa.forEach { TarjetaDeSiniestro(it, alVerSiniestro) }
         }
+    }
+}
+
+@Composable
+private fun EntradaParaReportar(tipo: TipoDeSiniestro, texto: Int, alReportar: (TipoDeSiniestro) -> Unit) {
+    Tarjeta(alTocar = { alReportar(tipo) }) {
+        IconoDeTipo(tipo)
+        Text(
+            text = stringResource(texto),
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f),
+        )
+        Flecha()
     }
 }
 
@@ -85,51 +92,6 @@ private fun TarjetaDeSiniestro(siniestro: SiniestroResumen, alVerSiniestro: (Sin
         }
         Flecha()
     }
-}
-
-@Composable
-internal fun Tarjeta(alTocar: (() -> Unit)? = null, contenido: @Composable RowScope.() -> Unit) {
-    Surface(
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(if (alTocar != null) Modifier.clickable(onClick = alTocar) else Modifier),
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            content = contenido,
-        )
-    }
-}
-
-@Composable
-internal fun TituloDeSeccion(texto: String) {
-    Text(
-        text = texto,
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(top = 8.dp),
-    )
-}
-
-/** Como la etiqueta "Vigente" de la poliza. */
-@Composable
-internal fun Etiqueta(texto: String) {
-    Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.secondaryContainer) {
-        Text(
-            text = texto,
-            style = MaterialTheme.typography.labelSmall,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-        )
-    }
-}
-
-@Composable
-internal fun TextoTenue(texto: String) {
-    Text(texto, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 @Composable

@@ -118,6 +118,9 @@ class AdaptadorSiniestros(
         fechaOcurrencia = fechaOcurrencia.toString(),
         narracion = narracion,
         archivos = archivos.map { ArchivoReporteDto(it.clase.name, it.capturadoEn, it.latitud, it.longitud) },
+        destinoPago = destinoPago?.let {
+            DestinoPagoDto(TRANSFERENCIA, it.banco, it.tipoCuenta.name, it.numeroCuenta)
+        },
     )
 
     // Un tipo o un estado que la app no conoce no la rompe: queda en null.
@@ -143,6 +146,7 @@ class AdaptadorSiniestros(
 
     private companion object {
         const val ORIGEN = "AdaptadorSiniestros"
+        const val TRANSFERENCIA = "TRANSFERENCIA"
         val JSON = "application/json".toMediaType()
         val JPEG = "image/jpeg".toMediaType()
     }

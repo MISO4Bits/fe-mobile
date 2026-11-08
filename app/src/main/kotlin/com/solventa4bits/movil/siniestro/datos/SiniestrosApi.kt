@@ -45,6 +45,16 @@ data class ReportarSiniestroDatosDto(
     val fechaOcurrencia: String,
     val narracion: String? = null,
     val archivos: List<ArchivoReporteDto>,
+    val destinoPago: DestinoPagoDto? = null,
+)
+
+/** Solo la transferencia; [tipo] sin valor por defecto para que siempre viaje. */
+@Serializable
+data class DestinoPagoDto(
+    val tipo: String,
+    val banco: String,
+    val tipoCuenta: String,
+    val numeroCuenta: String,
 )
 
 @Serializable

@@ -1,9 +1,12 @@
 package com.solventa4bits.movil.identidad.ui
 
 import android.Manifest
+import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -58,7 +61,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.solventa4bits.movil.R
 import kotlinx.coroutines.Dispatchers
@@ -114,6 +119,12 @@ enum class QueFoto(
         PROPORCION_DE_PAGINA,
         listOf(R.string.camara_consejo_luz, R.string.camara_consejo_letras, R.string.camara_consejo_pagina_completa),
     ),
+    FOTO_DEL_DANO(
+        R.string.camara_dano_titulo,
+        R.string.camara_dano_subtitulo,
+        PROPORCION_DE_PAGINA,
+        listOf(R.string.camara_consejo_luz, R.string.camara_consejo_de_lejos, R.string.camara_consejo_una_por_dano),
+    ),
 }
 
 /**
@@ -138,9 +149,19 @@ fun PantallaCamara(queFoto: QueFoto, alTenerFoto: (ByteArray) -> Unit, modifier:
     val contexto = LocalContext.current
     val alcance = rememberCoroutineScope()
     var conPermiso by remember { mutableStateOf(tienePermiso(contexto)) }
+    // Android ya no vuelve a preguntar: el cliente lo da en los ajustes de la app (BITS-111, AC-5).
+    var soloEnAjustes by remember { mutableStateOf(false) }
     var fallo by remember { mutableStateOf(false) }
     val pedirPermiso = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         conPermiso = it
+        val actividad = contexto as? Activity
+        soloEnAjustes = !it && actividad != null &&
+            !ActivityCompat.shouldShowRequestPermissionRationale(actividad, Manifest.permission.CAMERA)
+    }
+    // Al volver de los ajustes el permiso pudo cambiar.
+    LifecycleResumeEffect(Unit) {
+        conPermiso = tienePermiso(contexto)
+        onPauseOrDispose {}
     }
     // El selector de fotos de Android no pide permisos.
     val galeria = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
@@ -183,7 +204,14 @@ fun PantallaCamara(queFoto: QueFoto, alTenerFoto: (ByteArray) -> Unit, modifier:
                 VistaDeCamara(captura, frontal = selfie)
                 if (selfie) OvaloGuia() else Marco()
             } else {
-                SinPermiso { pedirPermiso.launch(Manifest.permission.CAMERA) }
+                SinPermiso(soloEnAjustes) {
+                    if (soloEnAjustes) {
+                        val ajustes = Uri.fromParts("package", contexto.packageName, null)
+                        contexto.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, ajustes))
+                    } else {
+                        pedirPermiso.launch(Manifest.permission.CAMERA)
+                    }
+                }
             }
         }
         Consejos(queFoto.consejos)
@@ -271,15 +299,19 @@ private fun BoxScope.OvaloGuia() {
 }
 
 @Composable
-private fun SinPermiso(alDarPermiso: () -> Unit) {
+private fun SinPermiso(soloEnAjustes: Boolean, alDarPermiso: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
-            text = stringResource(R.string.camara_sin_permiso),
+            text = stringResource(
+                if (soloEnAjustes) R.string.camara_permiso_en_ajustes else R.string.camara_sin_permiso,
+            ),
             style = MaterialTheme.typography.bodyMedium,
             color = TextoClaro,
             textAlign = TextAlign.Center,
         )
-        Button(onClick = alDarPermiso) { Text(stringResource(R.string.camara_dar_permiso)) }
+        Button(onClick = alDarPermiso) {
+            Text(stringResource(if (soloEnAjustes) R.string.camara_abrir_ajustes else R.string.camara_dar_permiso))
+        }
     }
 }
 
