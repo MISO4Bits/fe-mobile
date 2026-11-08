@@ -60,6 +60,8 @@ kover {
                     "com.solventa4bits.movil.avisos.ServicioDeAvisos*",
                     "com.solventa4bits.movil.avisos.datos.FuenteDeTokenFirebase*",
                     "com.solventa4bits.movil.avisos.datos.PermisoDelTelefono*",
+                    // La ubicacion de las fotos del dano sale del GPS del telefono (BITS-111).
+                    "com.solventa4bits.movil.siniestro.datos.UbicacionDelTelefono*",
                 )
                 // Usa imagenes reales de Android: se verifica con una prueba
                 // instrumentada (PreparadorDeFotosTest).
@@ -191,6 +193,9 @@ dependencies {
     // Avisos push (BITS-229): Firebase Cloud Messaging. El BOM fija las versiones.
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+
+    // Ubicacion de las fotos del dano (BITS-111): la actual, no la ultima que el telefono recuerde.
+    implementation(libs.play.services.location)
 
     // Reglas de negocio: JUnit 5, como declara la Estrategia de Pruebas.
     testImplementation(libs.junit.jupiter)

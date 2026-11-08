@@ -69,7 +69,15 @@ import com.solventa4bits.movil.solicitud.ui.PantallaResultado
 import com.solventa4bits.movil.solicitud.ui.PantallaSolicitud
 import com.solventa4bits.movil.solicitud.ui.ResultadoViewModel
 import com.solventa4bits.movil.seguro.ui.SeguroViewModel
-import com.solventa4bits.movil.seguro.ui.TuSeguro
+import com.solventa4bits.movil.seguro.ui.MiSeguro
+import com.solventa4bits.movil.seguro.ui.PiezasDelSiniestro
+import com.solventa4bits.movil.siniestro.datos.AdaptadorSiniestros
+import com.solventa4bits.movil.siniestro.datos.UbicacionDelTelefono
+import com.solventa4bits.movil.siniestro.datos.crearSiniestrosApi
+import com.solventa4bits.movil.siniestro.dominio.FuenteDeUbicacion
+import com.solventa4bits.movil.siniestro.dominio.ServicioDeSiniestros
+import com.solventa4bits.movil.siniestro.ui.MisSiniestrosViewModel
+import com.solventa4bits.movil.siniestro.ui.ReporteViewModel
 import com.solventa4bits.movil.solicitud.ui.SolicitudViewModel
 import com.solventa4bits.movil.inicio.ui.PantallaInicio
 import com.solventa4bits.movil.sesion.datos.AdaptadorSesion
@@ -115,6 +123,7 @@ class MainActivity : FragmentActivity() {
         val cotizaciones = AdaptadorCotizaciones(crearCotizacionesApi(BuildConfig.URL_BASE_BFF), conSesion, traza)
         val evidencias = AdaptadorEvidencias(crearEvidenciasApi(BuildConfig.URL_BASE_BFF), conSesion, traza)
         val solicitudes = AdaptadorSolicitudes(crearSolicitudesApi(BuildConfig.URL_BASE_BFF), conSesion, traza)
+        val siniestros = AdaptadorSiniestros(crearSiniestrosApi(BuildConfig.URL_BASE_BFF), conSesion, traza)
         val autenticador = AutenticadorBiometrico(this)
         val preferencias = PreferenciasDelTelefono(applicationContext)
         val guardados = AlmacenDeSegurosRoom(BaseDeDatosSolventa.crear(applicationContext).polizas())
@@ -129,6 +138,7 @@ class MainActivity : FragmentActivity() {
                     cotizaciones,
                     evidencias,
                     solicitudes,
+                    siniestros,
                     autenticador,
                     preferencias,
                     guardados,
@@ -136,6 +146,7 @@ class MainActivity : FragmentActivity() {
                     avisos = (application as AplicacionSolventa).avisos,
                     destinoDeAviso = destinoDeAviso,
                     alAtenderElDestino = ::destinoAtendido,
+                    ubicacion = UbicacionDelTelefono(applicationContext),
                 )
             }
         }
@@ -175,6 +186,7 @@ fun AppSolventa(
     cotizaciones: ServicioDeCotizaciones,
     evidencias: ServicioDeEvidencias,
     solicitudes: ServicioDeSolicitudes,
+    siniestros: ServicioDeSiniestros,
     autenticador: AutenticadorDeHuella,
     preferencias: AlmacenDePreferencias,
     guardados: AlmacenDeSeguros,
@@ -184,6 +196,8 @@ fun AppSolventa(
     avisos: ControlDeAvisos = SinAvisos,
     destinoDeAviso: DestinoDeAviso? = null,
     alAtenderElDestino: () -> Unit = {},
+    // Donde se toma cada foto del dano (BITS-111). Las pruebas no tienen GPS: las fotos van sin ubicacion.
+    ubicacion: FuenteDeUbicacion = FuenteDeUbicacion { null },
 ) {
     val login = viewModel { LoginViewModel(sesion, almacen, preferencias, conHuella = autenticador.disponible()) }
     val cotizacion = viewModel { NuevaCotizacionViewModel(creditos, cotizaciones) }
@@ -199,6 +213,9 @@ fun AppSolventa(
     val solicitud = viewModel { SolicitudViewModel(evidencias, solicitudes) }
     val resultado = viewModel { ResultadoViewModel(solicitudes) }
     val seguro = viewModel { SeguroViewModel(solicitudes) }
+    // Los siniestros de la poliza y el reporte de uno nuevo (BITS-111).
+    val misSiniestros = viewModel { MisSiniestrosViewModel(siniestros) }
+    val reporte = viewModel { ReporteViewModel(siniestros, preparar, ubicacion) }
     var cotizando by rememberSaveable { mutableStateOf(false) }
     // Viendo el detalle de una poliza emitida (BITS-104).
     var viendoSeguro by rememberSaveable { mutableStateOf(false) }
@@ -265,8 +282,9 @@ fun AppSolventa(
                     modifier = conRelleno,
                 )
 
-                viendoSeguro -> TuSeguro(
+                viendoSeguro -> MiSeguro(
                     seguro = seguro,
+                    piezas = PiezasDelSiniestro(misSiniestros, reporte, camara, red),
                     abrirEnlace = abrirEnlace,
                     alInicio = { viendoSeguro = false },
                     alCerrarSesion = cerrarSesion,

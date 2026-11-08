@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.AlertDialog
@@ -36,6 +37,7 @@ import com.solventa4bits.movil.R
  *
  * @param huellaActivada si entra con la huella; null cuando el telefono no
  * tiene sensor y la opcion no se muestra.
+ * @param alVolver si no es null, la barra muestra la flecha para volver y no el menu.
  */
 @Composable
 fun BarraSolventa(
@@ -43,6 +45,7 @@ fun BarraSolventa(
     alCerrarSesion: () -> Unit,
     huellaActivada: Boolean? = null,
     alAlternarHuella: () -> Unit = {},
+    alVolver: (() -> Unit)? = null,
 ) {
     var menuAbierto by remember { mutableStateOf(false) }
     // La sesion solo se cierra despues de que el cliente confirma.
@@ -52,7 +55,12 @@ fun BarraSolventa(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box {
+        // Las pantallas de un camino, como reportar un siniestro, vuelven con la flecha en lugar del menu.
+        if (alVolver != null) {
+            IconButton(onClick = alVolver) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.barra_volver))
+            }
+        } else Box {
             IconButton(onClick = { menuAbierto = true }) {
                 Icon(Icons.Filled.Menu, contentDescription = stringResource(R.string.barra_menu))
             }

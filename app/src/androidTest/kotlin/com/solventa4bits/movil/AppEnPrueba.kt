@@ -19,6 +19,8 @@ import com.solventa4bits.movil.red.Conexion
 import com.solventa4bits.movil.seguro.datos.AlmacenDeSegurosRoom
 import com.solventa4bits.movil.seguro.datos.BaseDeDatosSolventa
 import com.solventa4bits.movil.seguro.dominio.AlmacenDeSeguros
+import com.solventa4bits.movil.siniestro.datos.AdaptadorSiniestros
+import com.solventa4bits.movil.siniestro.datos.crearSiniestrosApi
 import com.solventa4bits.movil.solicitud.datos.AdaptadorSolicitudes
 import com.solventa4bits.movil.solicitud.datos.crearSolicitudesApi
 import com.solventa4bits.movil.sesion.datos.AdaptadorSesion
@@ -67,6 +69,8 @@ fun ComposeContentTestRule.abrirApp(
     bff.responderSiempreEn("/v1/cotizaciones/actual", 404)
     // Ni solicitudes enviadas: el Inicio las consulta cada vez que se muestra.
     bff.responderSiempreEn("/v1/cuenta/polizas", 200, "[]", metodo = "GET")
+    // Ni siniestros: "Mi seguro" los consulta cada vez que se abre (BITS-111).
+    bff.responderSiempreEn("/v1/cuenta/siniestros", 200, "[]", metodo = "GET")
     return abrirApp(bff.url, almacen, autenticador, preferencias, abrirEnlace, conexion)
 }
 
@@ -87,6 +91,7 @@ fun ComposeContentTestRule.abrirApp(
     val cotizaciones = AdaptadorCotizaciones(crearCotizacionesApi(urlBff), conSesion, sinTraza)
     val evidencias = AdaptadorEvidencias(crearEvidenciasApi(urlBff), conSesion, sinTraza)
     val solicitudes = AdaptadorSolicitudes(crearSolicitudesApi(urlBff), conSesion, sinTraza)
+    val siniestros = AdaptadorSiniestros(crearSiniestrosApi(urlBff), conSesion, sinTraza)
     // Room de verdad, pero en memoria: cada prueba empieza sin polizas guardadas.
     val contexto = InstrumentationRegistry.getInstrumentation().targetContext
     val guardados = AlmacenDeSegurosRoom(
@@ -101,6 +106,7 @@ fun ComposeContentTestRule.abrirApp(
                 cotizaciones,
                 evidencias,
                 solicitudes,
+                siniestros,
                 autenticador,
                 preferencias,
                 guardados,

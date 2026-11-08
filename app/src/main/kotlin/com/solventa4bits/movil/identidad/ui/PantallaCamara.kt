@@ -1,9 +1,12 @@
 package com.solventa4bits.movil.identidad.ui
 
 import android.Manifest
+import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -58,7 +61,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.solventa4bits.movil.R
 import kotlinx.coroutines.Dispatchers
@@ -79,8 +84,48 @@ private const val ALTO_DEL_OVALO = 0.85f
 private const val PROPORCION_DEL_OVALO = 0.72f
 private val PUNTEADO_DEL_OVALO = floatArrayOf(18f, 12f)
 
-/** Para que es la foto: cambia la camara, la guia, los consejos y si hay galeria. */
-enum class QueFoto { CEDULA, SELFIE }
+// Una pagina carta u oficio, en vertical (BITS-111).
+private const val PROPORCION_DE_PAGINA = 0.77f
+
+/**
+ * Para que es la foto: cambia la camara, la guia, los consejos y si hay galeria. Solo la cedula
+ * deja elegir de la galeria: la selfie es en vivo y los documentos de un siniestro se escanean.
+ */
+enum class QueFoto(
+    val titulo: Int,
+    val subtitulo: Int,
+    val proporcion: Float,
+    val consejos: List<Int>,
+) {
+    CEDULA(
+        R.string.camara_titulo,
+        R.string.camara_subtitulo,
+        PROPORCION_DE_CEDULA,
+        listOf(R.string.camara_consejo_luz, R.string.camara_consejo_reflejos, R.string.camara_consejo_esquinas),
+    ),
+    SELFIE(
+        R.string.camara_selfie_titulo,
+        R.string.camara_selfie_subtitulo,
+        PROPORCION_DE_SELFIE_EN_CAMARA,
+        listOf(
+            R.string.camara_consejo_luz,
+            R.string.camara_selfie_consejo_una_persona,
+            R.string.camara_selfie_consejo_sin_accesorios,
+        ),
+    ),
+    DOCUMENTO(
+        R.string.camara_documento_titulo,
+        R.string.camara_documento_subtitulo,
+        PROPORCION_DE_PAGINA,
+        listOf(R.string.camara_consejo_luz, R.string.camara_consejo_letras, R.string.camara_consejo_pagina_completa),
+    ),
+    FOTO_DEL_DANO(
+        R.string.camara_dano_titulo,
+        R.string.camara_dano_subtitulo,
+        PROPORCION_DE_PAGINA,
+        listOf(R.string.camara_consejo_luz, R.string.camara_consejo_de_lejos, R.string.camara_consejo_una_por_dano),
+    ),
+}
 
 /**
  * De donde sale la foto de una cara. En la app es [camaraReal]; las pruebas
@@ -94,7 +139,8 @@ val camaraReal: Camara = { queFoto, alTenerFoto, modifier -> PantallaCamara(queF
  * Figma 02: la camara trasera con el marco de la cedula (BITS-275, AC-6);
  * desde aqui tambien se elige una foto de la galeria. Figma 08: la camara
  * frontal con el ovalo de la selfie (BITS-235, AC-4), sin galeria porque la
- * selfie es en vivo. [alTenerFoto] recibe la foto tal como sale: el
+ * selfie es en vivo. Los documentos de un siniestro se escanean con la camara
+ * trasera, una pagina por foto y sin galeria (BITS-111). [alTenerFoto] recibe la foto tal como sale: el
  * ViewModel la prepara antes de enviarla.
  */
 @Composable
@@ -103,9 +149,19 @@ fun PantallaCamara(queFoto: QueFoto, alTenerFoto: (ByteArray) -> Unit, modifier:
     val contexto = LocalContext.current
     val alcance = rememberCoroutineScope()
     var conPermiso by remember { mutableStateOf(tienePermiso(contexto)) }
+    // Android ya no vuelve a preguntar: el cliente lo da en los ajustes de la app (BITS-111, AC-5).
+    var soloEnAjustes by remember { mutableStateOf(false) }
     var fallo by remember { mutableStateOf(false) }
     val pedirPermiso = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         conPermiso = it
+        val actividad = contexto as? Activity
+        soloEnAjustes = !it && actividad != null &&
+            !ActivityCompat.shouldShowRequestPermissionRationale(actividad, Manifest.permission.CAMERA)
+    }
+    // Al volver de los ajustes el permiso pudo cambiar.
+    LifecycleResumeEffect(Unit) {
+        conPermiso = tienePermiso(contexto)
+        onPauseOrDispose {}
     }
     // El selector de fotos de Android no pide permisos.
     val galeria = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
@@ -127,13 +183,13 @@ fun PantallaCamara(queFoto: QueFoto, alTenerFoto: (ByteArray) -> Unit, modifier:
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(
-            text = stringResource(if (selfie) R.string.camara_selfie_titulo else R.string.camara_titulo),
+            text = stringResource(queFoto.titulo),
             style = MaterialTheme.typography.titleLarge,
             color = TextoClaro,
             textAlign = TextAlign.Center,
         )
         Text(
-            text = stringResource(if (selfie) R.string.camara_selfie_subtitulo else R.string.camara_subtitulo),
+            text = stringResource(queFoto.subtitulo),
             style = MaterialTheme.typography.bodyMedium,
             color = TextoTenue,
             textAlign = TextAlign.Center,
@@ -141,27 +197,24 @@ fun PantallaCamara(queFoto: QueFoto, alTenerFoto: (ByteArray) -> Unit, modifier:
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(if (selfie) PROPORCION_DE_SELFIE_EN_CAMARA else PROPORCION_DE_CEDULA),
+                .aspectRatio(queFoto.proporcion),
             contentAlignment = Alignment.Center,
         ) {
             if (conPermiso) {
                 VistaDeCamara(captura, frontal = selfie)
                 if (selfie) OvaloGuia() else Marco()
             } else {
-                SinPermiso { pedirPermiso.launch(Manifest.permission.CAMERA) }
+                SinPermiso(soloEnAjustes) {
+                    if (soloEnAjustes) {
+                        val ajustes = Uri.fromParts("package", contexto.packageName, null)
+                        contexto.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, ajustes))
+                    } else {
+                        pedirPermiso.launch(Manifest.permission.CAMERA)
+                    }
+                }
             }
         }
-        Consejos(
-            if (selfie) {
-                listOf(
-                    R.string.camara_consejo_luz,
-                    R.string.camara_selfie_consejo_una_persona,
-                    R.string.camara_selfie_consejo_sin_accesorios,
-                )
-            } else {
-                listOf(R.string.camara_consejo_luz, R.string.camara_consejo_reflejos, R.string.camara_consejo_esquinas)
-            },
-        )
+        Consejos(queFoto.consejos)
         if (fallo) {
             Text(
                 text = stringResource(R.string.camara_fallo),
@@ -176,7 +229,7 @@ fun PantallaCamara(queFoto: QueFoto, alTenerFoto: (ByteArray) -> Unit, modifier:
                 tomarFoto(contexto, captura, alTenerFoto) { fallo = true }
             }
         }
-        if (!selfie) {
+        if (queFoto == QueFoto.CEDULA) {
             TextButton(
                 onClick = {
                     fallo = false
@@ -246,15 +299,19 @@ private fun BoxScope.OvaloGuia() {
 }
 
 @Composable
-private fun SinPermiso(alDarPermiso: () -> Unit) {
+private fun SinPermiso(soloEnAjustes: Boolean, alDarPermiso: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
-            text = stringResource(R.string.camara_sin_permiso),
+            text = stringResource(
+                if (soloEnAjustes) R.string.camara_permiso_en_ajustes else R.string.camara_sin_permiso,
+            ),
             style = MaterialTheme.typography.bodyMedium,
             color = TextoClaro,
             textAlign = TextAlign.Center,
         )
-        Button(onClick = alDarPermiso) { Text(stringResource(R.string.camara_dar_permiso)) }
+        Button(onClick = alDarPermiso) {
+            Text(stringResource(if (soloEnAjustes) R.string.camara_abrir_ajustes else R.string.camara_dar_permiso))
+        }
     }
 }
 

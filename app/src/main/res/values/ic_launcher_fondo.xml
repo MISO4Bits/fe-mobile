@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- El verde de Solventa: el mismo del favicon y del color primario de la app. -->
+    <color name="ic_launcher_fondo">#006971</color>
+</resources>

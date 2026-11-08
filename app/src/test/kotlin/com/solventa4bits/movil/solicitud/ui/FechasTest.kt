@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import java.time.Instant
+import java.time.LocalDate
 
 class FechasTest {
 
@@ -70,5 +71,13 @@ class FechasTest {
     fun fechaYHoraDeLoGuardado() {
         assertEquals("19 oct · 9:41 a. m.", fechaYHora("2026-10-19T14:41:00.123Z"))
         assertNull(fechaYHora("ayer"))
+    }
+
+    @Test
+    @DisplayName("BITS-111: un dia sin hora, con el mes corto")
+    fun diaSinHora() {
+        assertEquals("2 nov 2026", fechaCorta(LocalDate.of(2026, 11, 2)))
+        assertEquals("2 nov 2026", fechaCortaDelDia("2026-11-02"))
+        assertNull(fechaCortaDelDia("2 de noviembre"))
     }
 }

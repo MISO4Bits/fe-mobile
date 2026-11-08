@@ -1,0 +1,29 @@
+package com.solventa4bits.movil.siniestro.ui
+
+import com.solventa4bits.movil.siniestro.dominio.ReporteDeSiniestro
+import com.solventa4bits.movil.siniestro.dominio.ResultadoDetalle
+import com.solventa4bits.movil.siniestro.dominio.ResultadoReporte
+import com.solventa4bits.movil.siniestro.dominio.ResultadoSiniestros
+import com.solventa4bits.movil.siniestro.dominio.ServicioDeSiniestros
+
+/** Doble de prueba: responde lo que la prueba le diga y anota lo que le pidieron. */
+class SiniestrosFalsos(
+    var alReportar: ResultadoReporte = ResultadoReporte.Fallo,
+    var alListar: ResultadoSiniestros = ResultadoSiniestros.Exito(emptyList()),
+    var alConsultar: ResultadoDetalle = ResultadoDetalle.Fallo,
+) : ServicioDeSiniestros {
+    val reportes = mutableListOf<Pair<ReporteDeSiniestro, String>>()
+    val consultados = mutableListOf<String>()
+
+    override suspend fun reportar(reporte: ReporteDeSiniestro, llave: String): ResultadoReporte {
+        reportes += reporte to llave
+        return alReportar
+    }
+
+    override suspend fun listar() = alListar
+
+    override suspend fun consultar(id: String): ResultadoDetalle {
+        consultados += id
+        return alConsultar
+    }
+}

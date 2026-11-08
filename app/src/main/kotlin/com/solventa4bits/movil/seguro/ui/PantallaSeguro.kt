@@ -49,6 +49,7 @@ fun TuSeguro(
     alInicio: () -> Unit,
     alCerrarSesion: () -> Unit,
     modifier: Modifier,
+    siniestros: @Composable () -> Unit = {},
 ) {
     val enlaces = LocalUriHandler.current
     val abrir = abrirEnlace ?: { url -> enlaces.openUri(url) }
@@ -72,6 +73,7 @@ fun TuSeguro(
         alInicio = alInicio,
         alCerrarSesion = alCerrarSesion,
         modifier = modifier,
+        siniestros = siniestros,
     )
 }
 
@@ -83,6 +85,8 @@ fun PantallaSeguro(
     alInicio: () -> Unit,
     alCerrarSesion: () -> Unit,
     modifier: Modifier = Modifier,
+    // Los siniestros de la poliza por cobertura (BITS-111, M01).
+    siniestros: @Composable () -> Unit = {},
 ) {
     val seguro = estado.seguro ?: return
     Column(modifier = modifier.fillMaxSize()) {
@@ -135,6 +139,7 @@ fun PantallaSeguro(
                 )
             }
             AvisoDelDocumento(estado.aviso)
+            siniestros()
         }
         Column(
             modifier = Modifier.fillMaxWidth().padding(8.dp),
