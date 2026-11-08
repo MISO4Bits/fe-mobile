@@ -1,6 +1,7 @@
 package com.solventa4bits.movil.solicitud.ui
 
 import java.time.Instant
+import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -48,6 +49,12 @@ fun fechaCorta(fechaIso: String, zona: ZoneId = zonaDeColombia): String? {
     val fecha = runCatching { OffsetDateTime.parse(fechaIso).atZoneSameInstant(zona) }.getOrNull() ?: return null
     return "${fecha.dayOfMonth} ${mesesCortos[fecha.monthValue - 1]} ${fecha.year}"
 }
+
+/** Un dia sin hora, como "2 nov 2026" (BITS-111). */
+fun fechaCorta(dia: LocalDate): String = "${dia.dayOfMonth} ${mesesCortos[dia.monthValue - 1]} ${dia.year}"
+
+/** Un dia del contrato, como "2026-11-02", en "2 nov 2026". Null si no tiene el formato. */
+fun fechaCortaDelDia(dia: String): String? = runCatching { fechaCorta(LocalDate.parse(dia)) }.getOrNull()
 
 /** Cuando se guardo la poliza, como en el Figma 05: "19 oct · 9:41 a. m.", en Colombia. Null si no tiene el formato. */
 fun fechaYHora(fechaIso: String, zona: ZoneId = zonaDeColombia): String? {

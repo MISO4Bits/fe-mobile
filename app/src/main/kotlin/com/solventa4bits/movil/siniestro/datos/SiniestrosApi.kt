@@ -11,6 +11,7 @@ import retrofit2.http.Header
 import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.Part
+import retrofit2.http.Path
 import java.util.concurrent.TimeUnit
 
 /** Siniestros del cliente. El contrato vive en bff-mobile, openapi/openapi.yaml. */
@@ -27,6 +28,13 @@ interface SiniestrosApi {
 
     @GET("v1/cuenta/siniestros")
     suspend fun listar(@Header("Authorization") autorizacion: String): Response<List<SiniestroResumenDto>>
+
+    /** 404 si no existe o es de otro cliente. */
+    @GET("v1/cuenta/siniestros/{siniestroId}")
+    suspend fun consultar(
+        @Header("Authorization") autorizacion: String,
+        @Path("siniestroId") id: String,
+    ): Response<SiniestroDto>
 }
 
 /** Los nombres de los campos son los del contrato. */
@@ -57,7 +65,29 @@ data class SiniestroResumenDto(
     val polizaId: String,
     val tipo: String,
     val estado: String,
+    val automatico: Boolean = false,
+    val reportadoEn: String,
+    val actualizadoEn: String,
 )
+
+/** El detalle trae mas campos; la app solo usa estos por ahora. */
+@Serializable
+data class SiniestroDto(
+    val id: String,
+    val numero: String,
+    val polizaId: String,
+    val tipo: String,
+    val estado: String,
+    val automatico: Boolean = false,
+    val reportadoEn: String,
+    val actualizadoEn: String,
+    val fechaOcurrencia: String,
+    val fechaLimite: String? = null,
+    val archivos: List<ArchivoSiniestroDto> = emptyList(),
+)
+
+@Serializable
+data class ArchivoSiniestroDto(val clase: String)
 
 /** Cuerpo de un 400 o un 409: [codigo] dice cual regla no se cumplio. */
 @Serializable

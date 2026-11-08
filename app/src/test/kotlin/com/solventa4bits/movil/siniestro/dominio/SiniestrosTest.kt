@@ -28,21 +28,24 @@ class SiniestrosTest {
     @Test
     @DisplayName("BITS-111, AC-2: hoy y cualquier dia desde la emision se pueden reportar")
     fun dentroDeLaVigencia() {
-        assertTrue(poliza.admiteSiniestroEl(hoy, hoy))
-        assertTrue(poliza.admiteSiniestroEl(LocalDate.of(2026, 10, 25), hoy))
+        assertNull(poliza.problemaConLaFecha(hoy, hoy))
+        assertNull(poliza.problemaConLaFecha(LocalDate.of(2026, 10, 25), hoy))
     }
 
     @Test
     @DisplayName("BITS-111, AC-2: el dia de la emision cuenta en hora de Colombia")
     fun diaDeLaEmision() {
-        assertTrue(poliza.admiteSiniestroEl(LocalDate.of(2026, 10, 19), hoy))
-        assertFalse(poliza.admiteSiniestroEl(LocalDate.of(2026, 10, 18), hoy))
+        assertNull(poliza.problemaConLaFecha(LocalDate.of(2026, 10, 19), hoy))
+        assertEquals(
+            ProblemaDeFecha.ANTES_DE_LA_POLIZA,
+            poliza.problemaConLaFecha(LocalDate.of(2026, 10, 18), hoy),
+        )
     }
 
     @Test
     @DisplayName("BITS-111, AC-2: no se reporta algo que paso en el futuro")
     fun futura() {
-        assertFalse(poliza.admiteSiniestroEl(hoy.plusDays(1), hoy))
+        assertEquals(ProblemaDeFecha.FUTURA, poliza.problemaConLaFecha(hoy.plusDays(1), hoy))
     }
 
     @Test
@@ -50,15 +53,32 @@ class SiniestrosTest {
     fun despuesDeLaVigencia() {
         val luegoDeVencer = LocalDate.of(2027, 12, 1)
 
-        assertTrue(poliza.admiteSiniestroEl(LocalDate.of(2027, 10, 19), luegoDeVencer))
-        assertFalse(poliza.admiteSiniestroEl(LocalDate.of(2027, 10, 20), luegoDeVencer))
+        assertNull(poliza.problemaConLaFecha(LocalDate.of(2027, 10, 19), luegoDeVencer))
+        assertEquals(
+            ProblemaDeFecha.DESPUES_DE_LA_POLIZA,
+            poliza.problemaConLaFecha(LocalDate.of(2027, 10, 20), luegoDeVencer),
+        )
+    }
+
+    @Test
+    @DisplayName("BITS-111, AC-2: los dias cubiertos van de la emision al fin de la vigencia, en Colombia")
+    fun diasCubiertos() {
+        assertEquals(LocalDate.of(2026, 10, 19)..LocalDate.of(2027, 10, 19), poliza.diasCubiertos())
     }
 
     @Test
     @DisplayName("una poliza sin emision o sin vigencia no admite reportes")
     fun sinFechas() {
-        assertFalse(poliza.copy(emitidaEn = null).admiteSiniestroEl(hoy, hoy))
-        assertFalse(poliza.copy(vigencia = null).admiteSiniestroEl(hoy, hoy))
+        assertNull(poliza.copy(emitidaEn = null).diasCubiertos())
+        assertEquals(ProblemaDeFecha.ANTES_DE_LA_POLIZA, poliza.copy(vigencia = null).problemaConLaFecha(hoy, hoy))
+    }
+
+    @Test
+    @DisplayName("BITS-111, AC-1: el sismo automatico y el incendio son de Tu casa; la incapacidad, de Vida")
+    fun cobertura() {
+        assertFalse(TipoDeSiniestro.INCAPACIDAD_TOTAL.deTuCasa)
+        assertTrue(TipoDeSiniestro.INCENDIO_TERREMOTO.deTuCasa)
+        assertTrue(TipoDeSiniestro.SISMO_PARAMETRICO.deTuCasa)
     }
 
     @Test

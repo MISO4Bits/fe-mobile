@@ -9,6 +9,7 @@ import com.solventa4bits.movil.siniestro.dominio.ArchivoDelReporte
 import com.solventa4bits.movil.siniestro.dominio.ClaseDeArchivo
 import com.solventa4bits.movil.siniestro.dominio.EstadoDeSiniestro
 import com.solventa4bits.movil.siniestro.dominio.ReporteDeSiniestro
+import com.solventa4bits.movil.siniestro.dominio.ResultadoDetalle
 import com.solventa4bits.movil.siniestro.dominio.ResultadoReporte
 import com.solventa4bits.movil.siniestro.dominio.ResultadoSiniestros
 import com.solventa4bits.movil.siniestro.dominio.SiniestroResumen
@@ -20,6 +21,7 @@ import okhttp3.mockwebserver.MockWebServer
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -188,7 +190,7 @@ class AdaptadorSiniestrosTest {
     }
 
     @Test
-    @DisplayName("lista los siniestros; un tipo o estado que la app no conoce queda en null")
+    @DisplayName("lista los siniestros, con el automatico; un tipo o estado que la app no conoce queda en null")
     fun lista() = runTest {
         responder(
             200,
@@ -197,26 +199,33 @@ class AdaptadorSiniestrosTest {
                "automatico": false, "estado": "EN_ESTUDIO", "reportadoEn": "2026-11-10T15:02:00Z",
                "actualizadoEn": "2026-11-10T15:02:00Z"},
               {"id": "s2", "numero": "SIN-2", "polizaId": "poliza-1", "tipo": "SISMO_PARAMETRICO",
-               "automatico": true, "estado": "ESTADO_NUEVO", "reportadoEn": "2026-11-01T15:02:00Z",
-               "actualizadoEn": "2026-11-01T15:02:00Z"}
+               "automatico": true, "estado": "PAGADO", "reportadoEn": "2026-11-01T15:02:00Z",
+               "actualizadoEn": "2026-11-02T15:02:00Z"},
+              {"id": "s3", "numero": "SIN-3", "polizaId": "poliza-1", "tipo": "TIPO_NUEVO",
+               "automatico": false, "estado": "ESTADO_NUEVO", "reportadoEn": "2026-10-01T15:02:00Z",
+               "actualizadoEn": "2026-10-01T15:02:00Z"}
             ]""",
         )
 
+        val resultado = adaptador().listar() as ResultadoSiniestros.Exito
+
         assertEquals(
-            ResultadoSiniestros.Exito(
-                listOf(
-                    SiniestroResumen(
-                        "s1",
-                        "SIN-1",
-                        "poliza-1",
-                        TipoDeSiniestro.INCAPACIDAD_TOTAL,
-                        EstadoDeSiniestro.EN_ESTUDIO,
-                    ),
-                    SiniestroResumen("s2", "SIN-2", "poliza-1", null, null),
-                ),
+            SiniestroResumen(
+                id = "s2",
+                numero = "SIN-2",
+                polizaId = "poliza-1",
+                tipo = TipoDeSiniestro.SISMO_PARAMETRICO,
+                estado = EstadoDeSiniestro.PAGADO,
+                automatico = true,
+                reportadoEn = "2026-11-01T15:02:00Z",
+                actualizadoEn = "2026-11-02T15:02:00Z",
             ),
-            adaptador().listar(),
+            resultado.siniestros[1],
         )
+        assertEquals(TipoDeSiniestro.INCAPACIDAD_TOTAL, resultado.siniestros[0].tipo)
+        assertEquals(EstadoDeSiniestro.EN_ESTUDIO, resultado.siniestros[0].estado)
+        assertNull(resultado.siniestros[2].tipo)
+        assertNull(resultado.siniestros[2].estado)
         val peticion = servidor.takeRequest()
         assertEquals("GET", peticion.method)
         assertEquals("/mobile/v1/cuenta/siniestros", peticion.path)
@@ -238,6 +247,59 @@ class AdaptadorSiniestrosTest {
         responder(401)
 
         assertEquals(ResultadoSiniestros.SesionVencida, adaptador().listar())
+    }
+
+    @Test
+    @DisplayName("el detalle trae el plazo, la fecha en que ocurrio y cuenta los documentos y las fotos")
+    fun detalle() = runTest {
+        responder(
+            200,
+            """{"id": "s1", "numero": "SIN-1", "polizaId": "poliza-1", "tipo": "INCAPACIDAD_TOTAL",
+               "automatico": false, "estado": "EN_ESTUDIO", "reportadoEn": "2026-11-02T14:12:00Z",
+               "actualizadoEn": "2026-11-02T14:12:00Z", "fechaOcurrencia": "2026-11-02",
+               "narracion": null, "ultimaEntregaEn": "2026-11-02T14:12:00Z",
+               "fechaLimite": "2026-12-02T14:12:00Z", "evidenciaPedida": null, "motivoRechazo": null,
+               "pago": null, "evento": null,
+               "archivos": [
+                 {"id": "a1", "clase": "DOCUMENTO", "entregadoEn": "2026-11-02T14:12:00Z"},
+                 {"id": "a2", "clase": "DOCUMENTO", "entregadoEn": "2026-11-02T14:12:00Z"},
+                 {"id": "a3", "clase": "FOTO", "entregadoEn": "2026-11-02T14:12:00Z"}
+               ]}""",
+        )
+
+        val detalle = (adaptador().consultar("s1") as ResultadoDetalle.Exito).detalle
+
+        assertEquals("SIN-1", detalle.resumen.numero)
+        assertEquals("2026-11-02", detalle.fechaOcurrencia)
+        assertEquals("2026-12-02T14:12:00Z", detalle.fechaLimite)
+        assertEquals(2, detalle.documentos)
+        assertEquals(1, detalle.fotos)
+        assertEquals("/mobile/v1/cuenta/siniestros/s1", servidor.takeRequest().path)
+    }
+
+    @Test
+    @DisplayName("un siniestro que no existe o es de otro cliente (404) no se muestra")
+    fun detalleQueNoExiste() = runTest {
+        responder(404)
+
+        assertEquals(ResultadoDetalle.NoExiste, adaptador().consultar("s1"))
+    }
+
+    @Test
+    @DisplayName("si el BFF falla al consultar el detalle responde controlado y deja traza")
+    fun falloAlConsultar() = runTest {
+        responder(503)
+
+        assertEquals(ResultadoDetalle.Fallo, adaptador().consultar("s1"))
+        assertTrue(traza.errores.single().mensaje.contains("503"))
+    }
+
+    @Test
+    @DisplayName("si la sesion no se puede refrescar al consultar el detalle, la da por vencida")
+    fun sesionVencidaAlConsultar() = runTest {
+        responder(401)
+
+        assertEquals(ResultadoDetalle.SesionVencida, adaptador().consultar("s1"))
     }
 
     @Test

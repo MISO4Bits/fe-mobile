@@ -5,8 +5,20 @@ import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId
 
-/** Cada cobertura tiene su camino (BITS-111, AC-1): Vida reporta incapacidad y Tu casa, incendio o terremoto. */
-enum class TipoDeSiniestro { INCAPACIDAD_TOTAL, INCENDIO_TERREMOTO }
+/**
+ * Cada cobertura tiene su camino (BITS-111, AC-1): Vida reporta incapacidad y Tu casa, incendio o
+ * terremoto. El sismo lo crea el pago automatico: se ve en la lista, pero no se reporta.
+ */
+enum class TipoDeSiniestro {
+    INCAPACIDAD_TOTAL,
+    INCENDIO_TERREMOTO,
+    SISMO_PARAMETRICO,
+    ;
+
+    /** Los de Tu casa; los demas son de Vida. */
+    val deTuCasa: Boolean
+        get() = this != INCAPACIDAD_TOTAL
+}
 
 /** Lo decide Solventa: la app solo lo muestra. */
 enum class EstadoDeSiniestro {
@@ -24,7 +36,7 @@ enum class EstadoDeSiniestro {
 enum class ClaseDeArchivo { FOTO, DOCUMENTO }
 
 /**
- * Una foto del dano o un documento escaneado, ya preparado (JPEG). La ubicacion viaja aparte
+ * Una foto del dano o una pagina escaneada, ya preparada (JPEG). La ubicacion viaja aparte
  * porque el preparador borra los metadatos de la foto; es null si el cliente nego el permiso.
  */
 class ArchivoDelReporte(
@@ -64,13 +76,20 @@ sealed interface ResultadoReporte {
     data object Fallo : ResultadoReporte
 }
 
-/** Un siniestro de la lista. [tipo] es null en los que la app no reporta, como el pago automatico por sismo. */
+/**
+ * Un siniestro de la lista. [tipo] y [estado] son null si el servidor manda uno que la app no
+ * conoce. Las fechas, en ISO 8601.
+ */
 data class SiniestroResumen(
     val id: String,
     val numero: String,
     val polizaId: String,
     val tipo: TipoDeSiniestro?,
     val estado: EstadoDeSiniestro?,
+    /** El pago automatico por sismo: nadie lo reporto. */
+    val automatico: Boolean = false,
+    val reportadoEn: String = "",
+    val actualizadoEn: String = "",
 )
 
 sealed interface ResultadoSiniestros {
@@ -82,6 +101,27 @@ sealed interface ResultadoSiniestros {
     data object Fallo : ResultadoSiniestros
 }
 
+/** En que va un siniestro. Lo propio de cada estado (pago, rechazo, lo que falta) es de BITS-383 y BITS-384. */
+data class DetalleDeSiniestro(
+    val resumen: SiniestroResumen,
+    /** El dia en que ocurrio, como "2026-11-02". */
+    val fechaOcurrencia: String,
+    /** Hasta cuando tiene Solventa para responder. Solo En estudio. */
+    val fechaLimite: String?,
+    val documentos: Int,
+    val fotos: Int,
+)
+
+sealed interface ResultadoDetalle {
+    data class Exito(val detalle: DetalleDeSiniestro) : ResultadoDetalle
+
+    data object NoExiste : ResultadoDetalle
+
+    data object SesionVencida : ResultadoDetalle
+
+    data object Fallo : ResultadoDetalle
+}
+
 interface ServicioDeSiniestros {
     /**
      * Envia el reporte con su evidencia. [llave] se crea una vez por reporte y se repite en cada
@@ -90,24 +130,39 @@ interface ServicioDeSiniestros {
     suspend fun reportar(reporte: ReporteDeSiniestro, llave: String): ResultadoReporte
 
     suspend fun listar(): ResultadoSiniestros
+
+    suspend fun consultar(id: String): ResultadoDetalle
 }
 
 /** El siniestro en curso de esa cobertura en esa poliza, si lo hay (AC-2A). */
 fun List<SiniestroResumen>.enCurso(polizaId: String, tipo: TipoDeSiniestro): SiniestroResumen? =
     find { it.polizaId == polizaId && it.tipo == tipo && it.estado?.enCurso == true }
 
+/** Por que no se puede reportar algo que paso ese dia (AC-2). */
+enum class ProblemaDeFecha { FUTURA, ANTES_DE_LA_POLIZA, DESPUES_DE_LA_POLIZA }
+
 private val zonaDeColombia = ZoneId.of("America/Bogota")
 
 /**
- * Si se puede reportar algo que paso en [fecha] (AC-2): no en el futuro, ni antes de que se emitiera
- * la poliza, ni despues del fin de su vigencia. Es la misma regla de svc-core, con las fechas en
- * Colombia; se compara con la emision y no con el inicio de la vigencia, que la renovacion corre.
+ * Los dias en que la poliza cubre, en Colombia: desde la emision hasta el fin de la vigencia. Es la
+ * regla de svc-core: se compara con la emision y no con el inicio de la vigencia, que la renovacion
+ * corre. Null si la poliza no trae esas fechas.
  */
-fun Solicitud.admiteSiniestroEl(fecha: LocalDate, hoy: LocalDate, zona: ZoneId = zonaDeColombia): Boolean {
+fun Solicitud.diasCubiertos(zona: ZoneId = zonaDeColombia): ClosedRange<LocalDate>? {
     val desde = emitidaEn?.let { diaEn(it, zona) }
     val hasta = vigencia?.hasta?.let { diaEn(it, zona) }
-    if (desde == null || hasta == null) return false
-    return !fecha.isAfter(hoy) && !fecha.isBefore(desde) && !fecha.isAfter(hasta)
+    return if (desde != null && hasta != null) desde..hasta else null
+}
+
+/** Null si se puede reportar algo que paso en [fecha]; si no, por que. */
+fun Solicitud.problemaConLaFecha(fecha: LocalDate, hoy: LocalDate, zona: ZoneId = zonaDeColombia): ProblemaDeFecha? {
+    val dias = diasCubiertos(zona)
+    return when {
+        fecha.isAfter(hoy) -> ProblemaDeFecha.FUTURA
+        dias == null || fecha.isBefore(dias.start) -> ProblemaDeFecha.ANTES_DE_LA_POLIZA
+        fecha.isAfter(dias.endInclusive) -> ProblemaDeFecha.DESPUES_DE_LA_POLIZA
+        else -> null
+    }
 }
 
 private fun diaEn(fechaIso: String, zona: ZoneId): LocalDate? =

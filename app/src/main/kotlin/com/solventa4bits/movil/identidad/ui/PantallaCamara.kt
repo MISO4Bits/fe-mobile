@@ -79,8 +79,42 @@ private const val ALTO_DEL_OVALO = 0.85f
 private const val PROPORCION_DEL_OVALO = 0.72f
 private val PUNTEADO_DEL_OVALO = floatArrayOf(18f, 12f)
 
-/** Para que es la foto: cambia la camara, la guia, los consejos y si hay galeria. */
-enum class QueFoto { CEDULA, SELFIE }
+// Una pagina carta u oficio, en vertical (BITS-111).
+private const val PROPORCION_DE_PAGINA = 0.77f
+
+/**
+ * Para que es la foto: cambia la camara, la guia, los consejos y si hay galeria. Solo la cedula
+ * deja elegir de la galeria: la selfie es en vivo y los documentos de un siniestro se escanean.
+ */
+enum class QueFoto(
+    val titulo: Int,
+    val subtitulo: Int,
+    val proporcion: Float,
+    val consejos: List<Int>,
+) {
+    CEDULA(
+        R.string.camara_titulo,
+        R.string.camara_subtitulo,
+        PROPORCION_DE_CEDULA,
+        listOf(R.string.camara_consejo_luz, R.string.camara_consejo_reflejos, R.string.camara_consejo_esquinas),
+    ),
+    SELFIE(
+        R.string.camara_selfie_titulo,
+        R.string.camara_selfie_subtitulo,
+        PROPORCION_DE_SELFIE_EN_CAMARA,
+        listOf(
+            R.string.camara_consejo_luz,
+            R.string.camara_selfie_consejo_una_persona,
+            R.string.camara_selfie_consejo_sin_accesorios,
+        ),
+    ),
+    DOCUMENTO(
+        R.string.camara_documento_titulo,
+        R.string.camara_documento_subtitulo,
+        PROPORCION_DE_PAGINA,
+        listOf(R.string.camara_consejo_luz, R.string.camara_consejo_letras, R.string.camara_consejo_pagina_completa),
+    ),
+}
 
 /**
  * De donde sale la foto de una cara. En la app es [camaraReal]; las pruebas
@@ -94,7 +128,8 @@ val camaraReal: Camara = { queFoto, alTenerFoto, modifier -> PantallaCamara(queF
  * Figma 02: la camara trasera con el marco de la cedula (BITS-275, AC-6);
  * desde aqui tambien se elige una foto de la galeria. Figma 08: la camara
  * frontal con el ovalo de la selfie (BITS-235, AC-4), sin galeria porque la
- * selfie es en vivo. [alTenerFoto] recibe la foto tal como sale: el
+ * selfie es en vivo. Los documentos de un siniestro se escanean con la camara
+ * trasera, una pagina por foto y sin galeria (BITS-111). [alTenerFoto] recibe la foto tal como sale: el
  * ViewModel la prepara antes de enviarla.
  */
 @Composable
@@ -127,13 +162,13 @@ fun PantallaCamara(queFoto: QueFoto, alTenerFoto: (ByteArray) -> Unit, modifier:
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(
-            text = stringResource(if (selfie) R.string.camara_selfie_titulo else R.string.camara_titulo),
+            text = stringResource(queFoto.titulo),
             style = MaterialTheme.typography.titleLarge,
             color = TextoClaro,
             textAlign = TextAlign.Center,
         )
         Text(
-            text = stringResource(if (selfie) R.string.camara_selfie_subtitulo else R.string.camara_subtitulo),
+            text = stringResource(queFoto.subtitulo),
             style = MaterialTheme.typography.bodyMedium,
             color = TextoTenue,
             textAlign = TextAlign.Center,
@@ -141,7 +176,7 @@ fun PantallaCamara(queFoto: QueFoto, alTenerFoto: (ByteArray) -> Unit, modifier:
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(if (selfie) PROPORCION_DE_SELFIE_EN_CAMARA else PROPORCION_DE_CEDULA),
+                .aspectRatio(queFoto.proporcion),
             contentAlignment = Alignment.Center,
         ) {
             if (conPermiso) {
@@ -151,17 +186,7 @@ fun PantallaCamara(queFoto: QueFoto, alTenerFoto: (ByteArray) -> Unit, modifier:
                 SinPermiso { pedirPermiso.launch(Manifest.permission.CAMERA) }
             }
         }
-        Consejos(
-            if (selfie) {
-                listOf(
-                    R.string.camara_consejo_luz,
-                    R.string.camara_selfie_consejo_una_persona,
-                    R.string.camara_selfie_consejo_sin_accesorios,
-                )
-            } else {
-                listOf(R.string.camara_consejo_luz, R.string.camara_consejo_reflejos, R.string.camara_consejo_esquinas)
-            },
-        )
+        Consejos(queFoto.consejos)
         if (fallo) {
             Text(
                 text = stringResource(R.string.camara_fallo),
@@ -176,7 +201,7 @@ fun PantallaCamara(queFoto: QueFoto, alTenerFoto: (ByteArray) -> Unit, modifier:
                 tomarFoto(contexto, captura, alTenerFoto) { fallo = true }
             }
         }
-        if (!selfie) {
+        if (queFoto == QueFoto.CEDULA) {
             TextButton(
                 onClick = {
                     fallo = false
