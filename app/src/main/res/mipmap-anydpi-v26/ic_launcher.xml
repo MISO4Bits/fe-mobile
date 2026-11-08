@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Con minSdk 26 basta el icono adaptativo: cada launcher le da su forma (circulo, gota, cuadrado). -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_fondo" />
+    <foreground android:drawable="@drawable/ic_launcher_frente" />
+    <monochrome android:drawable="@drawable/ic_launcher_frente" />
+</adaptive-icon>
