@@ -224,6 +224,7 @@ private fun FinalDelCamino(
         PasoEnMiSeguro.SINIESTRO -> PantallaTuSiniestro(
             estado = misSiniestros.estado,
             nombreDeLaPoliza = nombreDelSeguro(poliza),
+            bancoDelCredito = poliza.credito?.banco,
             alReintentar = misSiniestros::reintentarDetalle,
             alVolver = alAnterior,
             alCerrarSesion = alCerrarSesion,
