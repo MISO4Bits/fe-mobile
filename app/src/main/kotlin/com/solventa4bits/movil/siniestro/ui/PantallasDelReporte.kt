@@ -34,6 +34,8 @@ import com.solventa4bits.movil.ui.BarraSolventa
 /**
  * M03 y M03A: la fecha en que ocurrio, por defecto hoy, y el dictamen escaneado con la camara
  * (BITS-111, AC-1, AC-2 y AC-3). La historia clinica es opcional. Sin dictamen no se sigue.
+ * M03F: lo que falta del dictamen de un siniestro ya reportado (BITS-118, AC-4), sin la fecha ni
+ * la historia clinica.
  */
 @Composable
 fun PantallaTuDictamen(
@@ -42,17 +44,20 @@ fun PantallaTuDictamen(
     alCerrarSesion: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val entrega = estado.entrega
     PasoDelReporte(
-        titulo = stringResource(R.string.dictamen_titulo),
-        subtitulo = stringResource(R.string.dictamen_subtitulo),
+        titulo = stringResource(if (entrega != null) R.string.falta_titulo else R.string.dictamen_titulo),
+        subtitulo = entrega?.let { stringResource(R.string.falta_subtitulo_dictamen, it.numero) }
+            ?: stringResource(R.string.dictamen_subtitulo),
         boton = stringResource(R.string.reporte_continuar),
         botonActivo = estado.puedeContinuar,
         alBoton = acciones.alContinuar,
         alVolver = acciones.alVolver,
         alCerrarSesion = alCerrarSesion,
         modifier = modifier,
+        barra = stringResource(if (entrega != null) R.string.tu_siniestro_titulo else R.string.reporte_titulo),
     ) {
-        CuandoOcurrio(estado, acciones.alCambiarFecha)
+        if (entrega == null) CuandoOcurrio(estado, acciones.alCambiarFecha)
         Tarjeta(alTocar = { acciones.alEscanear(Escaneo.DICTAMEN) }.takeIf { estado.puedeEscanear }) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Icon(Icons.Outlined.AccountBox, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
@@ -79,8 +84,10 @@ fun PantallaTuDictamen(
                 Text(stringResource(R.string.reporte_escanear_otra_vez))
             }
         }
-        TituloDeSeccion(stringResource(R.string.reporte_opcional))
-        HistoriaClinica(estado, acciones)
+        if (entrega == null) {
+            TituloDeSeccion(stringResource(R.string.reporte_opcional))
+            HistoriaClinica(estado, acciones)
+        }
     }
 }
 
@@ -138,7 +145,10 @@ internal fun ArchivoEscaneado(nombre: String, paginas: List<ArchivoDelReporte>, 
     }
 }
 
-/** M08V y M08: el numero de radicado y hasta cuando tiene Solventa para responder (AC-7). */
+/**
+ * M08V y M08: el numero de radicado y hasta cuando tiene Solventa para responder (AC-7). M08F y
+ * M08FV, si [loQueFaltaba]: llego lo que faltaba y el plazo empieza de nuevo (BITS-118, AC-4).
+ */
 @Composable
 fun PantallaReporteEnviado(
     numero: String,
@@ -146,6 +156,7 @@ fun PantallaReporteEnviado(
     alVerSiniestro: () -> Unit,
     alCerrarSesion: () -> Unit,
     modifier: Modifier = Modifier,
+    loQueFaltaba: Boolean = false,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
         BarraSolventa(stringResource(R.string.enviado_barra), alCerrarSesion)
@@ -160,16 +171,24 @@ fun PantallaReporteEnviado(
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(56.dp),
             )
-            Text(stringResource(R.string.enviado_titulo), style = MaterialTheme.typography.headlineSmall)
             Text(
-                text = stringResource(R.string.enviado_radicado, numero),
+                text = stringResource(if (loQueFaltaba) R.string.falta_recibido else R.string.enviado_titulo),
+                style = MaterialTheme.typography.headlineSmall,
+            )
+            Text(
+                text = stringResource(
+                    if (loQueFaltaba) R.string.falta_siniestro else R.string.enviado_radicado,
+                    numero,
+                ),
                 style = MaterialTheme.typography.titleSmall,
                 textAlign = TextAlign.Center,
             )
             Etiqueta(stringResource(R.string.siniestro_estado_en_estudio))
             Text(
                 text = fechaLimite?.let { fechaCorta(it) }
-                    ?.let { stringResource(R.string.enviado_plazo, it) }
+                    ?.let { plazo ->
+                        stringResource(if (loQueFaltaba) R.string.falta_plazo else R.string.enviado_plazo, plazo)
+                    }
                     ?: stringResource(R.string.enviado_sin_plazo),
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,

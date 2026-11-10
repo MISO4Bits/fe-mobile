@@ -1,6 +1,7 @@
 package com.solventa4bits.movil
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -9,11 +10,15 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.solventa4bits.movil.fixtures.BffFalso
 import com.solventa4bits.movil.fixtures.RespuestasBff
 import com.solventa4bits.movil.fixtures.SesionLimpia
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** En que va un siniestro de Tu casa, segun su estado (BITS-118; M09A, M09B, M09C y M09E). */
+/**
+ * En que va un siniestro, segun su estado (BITS-118; M09A, M09B, M09C y M09E), y enviar lo que falta
+ * (M04F a M08F en Tu casa, M03F a M08FV en Vida).
+ */
 @RunWith(AndroidJUnit4::class)
 class TuSiniestroTest {
 
@@ -30,10 +35,7 @@ class TuSiniestroTest {
 
     @Test
     fun enFaltaInformacionMuestraLoQueSePidio() {
-        abrirElSiniestro(
-            "FALTA_INFORMACION",
-            """"evidenciaPedida": {"detalle": "El informe de los bomberos", "pedidaEn": "2026-10-28T15:00:00Z"}""",
-        )
+        abrirElSiniestro("FALTA_INFORMACION", PEDIDO)
 
         // AC-2: lo que falta y que el plazo espera a que llegue.
         composeRule.esperarTexto("PENDIENTES")
@@ -95,9 +97,72 @@ class TuSiniestroTest {
         composeRule.onNodeWithText("LO QUE REPORTASTE").assertDoesNotExist()
     }
 
+    @Test
+    fun enTuCasaEnviaLoQueFaltaYVuelveAEnEstudio() {
+        abrirElSiniestro("FALTA_INFORMACION", PEDIDO)
+
+        composeRule.onNodeWithText("Enviar lo que falta").performClick()
+        composeRule.esperarTexto("Envía lo que falta")
+        composeRule.onNodeWithText("EL INFORME DE LOS BOMBEROS").assertIsDisplayed()
+        composeRule.onNodeWithText("Continuar").assertIsNotEnabled()
+        composeRule.onNodeWithText("Tomar una foto").performClick()
+        composeRule.esperarTexto("¿Nos dejas usar tu ubicación?")
+        composeRule.onNodeWithText("Seguir sin ubicación").performClick()
+        composeRule.usarFotoDePrueba()
+        composeRule.esperarTexto("Foto 1")
+        composeRule.onNodeWithText("Continuar").performClick()
+
+        composeRule.esperarTexto("Revisa y envía")
+        composeRule.onNodeWithText("Foto 1, sin ubicación").assertIsDisplayed()
+        recibir()
+        composeRule.onNodeWithText("Enviar").performClick()
+
+        composeRule.esperarTexto("Recibimos lo que faltaba")
+        composeRule.onNodeWithText("Siniestro SIN-2026-00042").assertIsDisplayed()
+        composeRule.onNodeWithText("Ver mi siniestro").performClick()
+        composeRule.esperarTexto("Estamos revisando tu siniestro SIN-2026-00042.")
+        composeRule.onNodeWithText("Enviar lo que falta").assertDoesNotExist()
+        assertTrue(bff.recibidas.contains("POST $RUTA_SINIESTROS/$ID_DE_SINIESTRO/evidencias"))
+    }
+
+    @Test
+    fun enVidaEnviaLasPaginasQueFaltanDelDictamen() {
+        abrirElSiniestro("FALTA_INFORMACION", PEDIDO, tipo = "INCAPACIDAD_TOTAL")
+
+        composeRule.onNodeWithText("Enviar lo que falta").performClick()
+        composeRule.esperarTexto("Envía lo que falta")
+        composeRule.onNodeWithText("Escanear con la cámara").performClick()
+        composeRule.usarFotoDePrueba()
+        composeRule.esperarTexto("Dictamen, 1 página")
+        composeRule.onNodeWithText("Continuar").performClick()
+
+        composeRule.esperarTexto("Revisa y envía")
+        recibir()
+        composeRule.onNodeWithText("Enviar").performClick()
+
+        composeRule.esperarTexto("Recibimos lo que faltaba")
+    }
+
+    /** El BFF recibe lo que falta y devuelve el siniestro En estudio, con el plazo de nuevo. */
+    private fun recibir() {
+        bff.responderSiempreEn(
+            "$RUTA_SINIESTROS/$ID_DE_SINIESTRO/evidencias",
+            201,
+            """{"id": "$ID_DE_SINIESTRO", "numero": "SIN-2026-00042", "polizaId": "$ID_DE_POLIZA",
+                "tipo": "INCENDIO_TERREMOTO", "automatico": false, "estado": "EN_ESTUDIO",
+                "reportadoEn": "2026-11-02T14:12:00Z", "actualizadoEn": "2026-11-05T14:12:00Z",
+                "fechaOcurrencia": "2026-11-02", "fechaLimite": "2026-12-05T14:12:00Z", "archivos": []}""",
+            metodo = "POST",
+        )
+    }
+
     /** Abre "Mi seguro" con un siniestro en [estado] y entra a su detalle, que trae [loDelEstado]. */
-    private fun abrirElSiniestro(estado: String, loDelEstado: String, automatico: Boolean = false) {
-        val tipo = if (automatico) "SISMO_PARAMETRICO" else "INCENDIO_TERREMOTO"
+    private fun abrirElSiniestro(
+        estado: String,
+        loDelEstado: String,
+        automatico: Boolean = false,
+        tipo: String = if (automatico) "SISMO_PARAMETRICO" else "INCENDIO_TERREMOTO",
+    ) {
         val comun = """"id": "$ID_DE_SINIESTRO", "numero": "SIN-2026-00042", "polizaId": "$ID_DE_POLIZA",
             "tipo": "$tipo", "automatico": $automatico, "estado": "$estado",
             "reportadoEn": "2026-11-02T14:12:00Z", "actualizadoEn": "2026-11-20T14:12:00Z""""
@@ -128,5 +193,7 @@ class TuSiniestroTest {
     private companion object {
         const val RUTA_SINIESTROS = "/v1/cuenta/siniestros"
         const val ID_DE_SINIESTRO = "9b4e7c21-3a5d-4f8e-b612-7d0c2e9f4a83"
+        const val PEDIDO =
+            """"evidenciaPedida": {"detalle": "El informe de los bomberos", "pedidaEn": "2026-10-28T15:00:00Z"}"""
     }
 }

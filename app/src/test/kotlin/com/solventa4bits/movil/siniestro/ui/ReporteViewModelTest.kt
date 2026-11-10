@@ -2,9 +2,14 @@ package com.solventa4bits.movil.siniestro.ui
 
 import com.solventa4bits.movil.siniestro.dominio.ClaseDeArchivo
 import com.solventa4bits.movil.siniestro.dominio.DestinoDePago
+import com.solventa4bits.movil.siniestro.dominio.DetalleDeSiniestro
+import com.solventa4bits.movil.siniestro.dominio.EstadoDeSiniestro
+import com.solventa4bits.movil.siniestro.dominio.EvidenciaPedida
 import com.solventa4bits.movil.siniestro.dominio.ProblemaDeFecha
+import com.solventa4bits.movil.siniestro.dominio.ResultadoEntrega
 import com.solventa4bits.movil.siniestro.dominio.ResultadoReporte
 import com.solventa4bits.movil.siniestro.dominio.TipoDeCuenta
+import com.solventa4bits.movil.siniestro.dominio.SiniestroResumen
 import com.solventa4bits.movil.siniestro.dominio.TipoDeSiniestro
 import com.solventa4bits.movil.siniestro.dominio.Ubicacion
 import com.solventa4bits.movil.solicitud.dominio.EstadoDeSolicitud
@@ -374,5 +379,95 @@ class ReporteViewModelTest {
         val enviado = servicio.reportes.single().first
         assertNull(enviado.narracion)
         assertNull(enviado.destinoPago)
+    }
+
+    // --- Lo que falta (BITS-118, AC-4).
+
+    private fun enFaltaInformacion(tipo: TipoDeSiniestro) = DetalleDeSiniestro(
+        resumen = SiniestroResumen("s3", "SIN-2026-00031", "poliza-1", tipo, EstadoDeSiniestro.FALTA_INFORMACION),
+        fechaOcurrencia = "2026-10-19",
+        fechaLimite = null,
+        documentos = 0,
+        fotos = 1,
+        evidenciaPedida = EvidenciaPedida("El informe de los bomberos", "2026-10-28T15:00:00Z"),
+    )
+
+    private fun loQueFalta(tipo: TipoDeSiniestro) = ReporteViewModel(
+        servicio = servicio,
+        preparar = { byteArrayOf(9) },
+        ubicacion = { enLaCasa },
+        ahora = { ahora },
+        llaveNueva = { "llave-${++llaves}" },
+    ).apply {
+        empezar(poliza)
+        empezarEntrega(enFaltaInformacion(tipo))
+    }
+
+    @Test
+    @DisplayName("BITS-118, AC-4: en Tu casa envia fotos y documentos al siniestro y queda recibido")
+    fun entregaTuCasa() {
+        val recibida = enFaltaInformacion(TipoDeSiniestro.INCENDIO_TERREMOTO)
+        servicio.alEntregar = ResultadoEntrega.Recibida(recibida)
+        val reporte = loQueFalta(TipoDeSiniestro.INCENDIO_TERREMOTO)
+        assertEquals("El informe de los bomberos", reporte.estado.entrega?.pedido)
+        assertFalse(reporte.estado.listoParaEnviar)
+
+        reporte.decidirUbicacion(true)
+        reporte.agregarPagina(Escaneo.DOCUMENTO, foto)
+        assertTrue(reporte.estado.listoParaEnviar)
+        reporte.agregarPagina(Escaneo.FOTO_DEL_DANO, foto)
+        reporte.enviar()
+
+        val (id, archivos, llave) = servicio.entregas.single()
+        assertEquals("s3", id)
+        assertEquals(listOf(ClaseDeArchivo.FOTO, ClaseDeArchivo.DOCUMENTO), archivos.map { it.clase })
+        assertEquals(4.65, archivos.first().latitud)
+        assertEquals("llave-2", llave)
+        assertEquals(recibida, reporte.estado.recibida)
+        assertTrue(servicio.reportes.isEmpty())
+    }
+
+    @Test
+    @DisplayName("BITS-118, AC-4: en Vida envia el dictamen")
+    fun entregaVida() {
+        servicio.alEntregar = ResultadoEntrega.Recibida(enFaltaInformacion(TipoDeSiniestro.INCAPACIDAD_TOTAL))
+        val reporte = loQueFalta(TipoDeSiniestro.INCAPACIDAD_TOTAL)
+        assertFalse(reporte.estado.listoParaEnviar)
+
+        reporte.agregarPagina(Escaneo.DICTAMEN, foto)
+        reporte.agregarPagina(Escaneo.DICTAMEN, foto)
+        reporte.enviar()
+
+        assertEquals(2, servicio.entregas.single().second.size)
+    }
+
+    @Test
+    @DisplayName("BITS-118, AC-4: si falla, el reintento lleva la misma llave")
+    fun reintentoDeLaEntrega() {
+        val reporte = loQueFalta(TipoDeSiniestro.INCENDIO_TERREMOTO)
+        reporte.agregarPagina(Escaneo.FOTO_DEL_DANO, foto)
+
+        reporte.enviar()
+        assertEquals(ProblemaAlEnviar.FALLO, reporte.estado.problemaAlEnviar)
+        servicio.alEntregar = ResultadoEntrega.Recibida(enFaltaInformacion(TipoDeSiniestro.INCENDIO_TERREMOTO))
+        reporte.enviar()
+
+        assertEquals(listOf("llave-2", "llave-2"), servicio.entregas.map { it.third })
+        assertNull(reporte.estado.problemaAlEnviar)
+    }
+
+    @Test
+    @DisplayName("si ya no se pide, o la sesion vencio, lo marca")
+    fun yaNoSePide() {
+        val reporte = loQueFalta(TipoDeSiniestro.INCENDIO_TERREMOTO)
+        reporte.agregarPagina(Escaneo.FOTO_DEL_DANO, foto)
+
+        servicio.alEntregar = ResultadoEntrega.YaNoSePide
+        reporte.enviar()
+        assertTrue(reporte.estado.yaNoSePide)
+
+        servicio.alEntregar = ResultadoEntrega.SesionVencida
+        reporte.enviar()
+        assertTrue(reporte.estado.sesionVencida)
     }
 }

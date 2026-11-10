@@ -8,9 +8,11 @@ import androidx.lifecycle.viewModelScope
 import com.solventa4bits.movil.siniestro.dominio.ArchivoDelReporte
 import com.solventa4bits.movil.siniestro.dominio.ClaseDeArchivo
 import com.solventa4bits.movil.siniestro.dominio.DestinoDePago
+import com.solventa4bits.movil.siniestro.dominio.DetalleDeSiniestro
 import com.solventa4bits.movil.siniestro.dominio.FuenteDeUbicacion
 import com.solventa4bits.movil.siniestro.dominio.ProblemaDeFecha
 import com.solventa4bits.movil.siniestro.dominio.ReporteDeSiniestro
+import com.solventa4bits.movil.siniestro.dominio.ResultadoEntrega
 import com.solventa4bits.movil.siniestro.dominio.ResultadoReporte
 import com.solventa4bits.movil.siniestro.dominio.ServicioDeSiniestros
 import com.solventa4bits.movil.siniestro.dominio.TipoDeCuenta
@@ -43,6 +45,9 @@ data class DatosDePago(val banco: String = "", val tipoCuenta: TipoDeCuenta? = n
         get() = DestinoDePago.desde(banco, tipoCuenta, numeroCuenta)
 }
 
+/** El siniestro en Falta informacion al que se le envia lo que Solventa pidio (BITS-118, AC-4). */
+data class LoQueFalta(val id: String, val numero: String, val pedido: String)
+
 data class EstadoReporte(
     val poliza: Solicitud? = null,
     val tipo: TipoDeSiniestro = TipoDeSiniestro.INCAPACIDAD_TOTAL,
@@ -61,6 +66,12 @@ data class EstadoReporte(
     val problemaAlEnviar: ProblemaAlEnviar? = null,
     val radicado: ResultadoReporte.Radicado? = null,
     val sesionVencida: Boolean = false,
+    /** Si no es null, no es un reporte nuevo: es lo que falta de ese siniestro. */
+    val entrega: LoQueFalta? = null,
+    /** Lo que falta llego: el siniestro, ya En estudio. */
+    val recibida: DetalleDeSiniestro? = null,
+    /** El siniestro ya no esta en Falta informacion. */
+    val yaNoSePide: Boolean = false,
 ) {
     fun de(escaneo: Escaneo): List<ArchivoDelReporte> = escaneados[escaneo].orEmpty()
 
@@ -95,10 +106,28 @@ data class EstadoReporte(
     val relatoListo: Boolean
         get() = problemaConLaFecha == null && narracion.isNotBlank() && !preparando
 
+    /** En Vida, el dictamen. En Tu casa, lo que falta va en fotos o en documentos. */
     val listoParaEnviar: Boolean
-        get() = when (tipo) {
-            TipoDeSiniestro.INCAPACIDAD_TOTAL -> puedeContinuar
+        get() = when {
+            !tipo.deTuCasa -> puedeContinuar
+            entrega != null -> archivos.isNotEmpty() && !preparando
             else -> fotosListas && relatoListo && pago.destino != null
+        }
+
+    val archivos: List<ArchivoDelReporte>
+        get() = if (tipo.deTuCasa) fotos + documentos else dictamen + historia
+
+    /** El reporte nuevo que se envia. En Vida no van lo que paso ni la cuenta: se le paga al banco. */
+    val reporte: ReporteDeSiniestro?
+        get() = poliza?.let {
+            ReporteDeSiniestro(
+                polizaId = it.id,
+                tipo = tipo,
+                fechaOcurrencia = fecha,
+                narracion = narracion.trim().takeIf { tipo.deTuCasa },
+                archivos = archivos,
+                destinoPago = pago.destino.takeIf { tipo.deTuCasa },
+            )
         }
 
     companion object {
@@ -111,8 +140,9 @@ data class EstadoReporte(
 
 /**
  * El reporte que el cliente va armando (BITS-111): incapacidad total en Vida, incendio o terremoto
- * en Tu casa. La llave del reporte se crea al empezar y se repite en cada reintento, para que el
- * servidor cree uno solo (AC-7).
+ * en Tu casa. Tambien lo que falta de un siniestro (BITS-118, AC-4), con las mismas fotos y
+ * documentos. La llave se crea al empezar y se repite en cada reintento, para que el servidor
+ * guarde uno solo (AC-7).
  */
 class ReporteViewModel(
     private val servicio: ServicioDeSiniestros,
@@ -131,6 +161,17 @@ class ReporteViewModel(
         val hoy = ahora().atZone(zonaDeColombia).toLocalDate()
         llave = llaveNueva()
         estado = EstadoReporte(poliza = poliza, tipo = tipo, hoy = hoy, fecha = hoy)
+    }
+
+    /** Empieza a armar lo que Solventa pidio en ese siniestro. */
+    fun empezarEntrega(detalle: DetalleDeSiniestro) {
+        val siniestro = detalle.resumen
+        val tipo = siniestro.tipo ?: return
+        llave = llaveNueva()
+        estado = EstadoReporte(
+            tipo = tipo,
+            entrega = LoQueFalta(siniestro.id, siniestro.numero, detalle.evidenciaPedida?.detalle.orEmpty()),
+        )
     }
 
     fun cambiarFecha(fecha: LocalDate) {
@@ -183,32 +224,37 @@ class ReporteViewModel(
     }
 
     fun enviar() {
-        val poliza = estado.poliza ?: return
         if (!estado.listoParaEnviar || estado.enviando) return
-        val deTuCasa = estado.tipo != TipoDeSiniestro.INCAPACIDAD_TOTAL
-        val reporte = ReporteDeSiniestro(
-            polizaId = poliza.id,
-            tipo = estado.tipo,
-            fechaOcurrencia = estado.fecha,
-            narracion = estado.narracion.trim().takeIf { deTuCasa },
-            archivos = if (deTuCasa) estado.fotos + estado.documentos else estado.dictamen + estado.historia,
-            destinoPago = estado.pago.destino.takeIf { deTuCasa },
-        )
+        val entrega = estado.entrega
+        val reporte = estado.reporte
+        val archivos = estado.archivos
         estado = estado.copy(enviando = true, problemaAlEnviar = null)
         viewModelScope.launch {
-            estado = when (val resultado = servicio.reportar(reporte, llave)) {
-                is ResultadoReporte.Radicado -> estado.copy(enviando = false, radicado = resultado)
-                ResultadoReporte.FueraDeVigencia -> conProblema(ProblemaAlEnviar.FUERA_DE_VIGENCIA)
-                ResultadoReporte.SiniestroEnCurso -> conProblema(ProblemaAlEnviar.EN_CURSO)
-                ResultadoReporte.SesionVencida -> estado.copy(enviando = false, sesionVencida = true)
-                ResultadoReporte.TipoNoCubierto, ResultadoReporte.Fallo -> conProblema(ProblemaAlEnviar.FALLO)
+            estado = when {
+                entrega != null -> estado.con(servicio.entregar(entrega.id, archivos, llave))
+                reporte != null -> estado.con(servicio.reportar(reporte, llave))
+                else -> estado.copy(enviando = false)
             }
         }
     }
 
-    private fun conProblema(problema: ProblemaAlEnviar) = estado.copy(enviando = false, problemaAlEnviar = problema)
-
     private companion object {
         val zonaDeColombia: ZoneId = ZoneId.of("America/Bogota")
     }
+}
+
+private fun EstadoReporte.con(resultado: ResultadoReporte): EstadoReporte = when (resultado) {
+    is ResultadoReporte.Radicado -> copy(enviando = false, radicado = resultado)
+    ResultadoReporte.FueraDeVigencia -> copy(enviando = false, problemaAlEnviar = ProblemaAlEnviar.FUERA_DE_VIGENCIA)
+    ResultadoReporte.SiniestroEnCurso -> copy(enviando = false, problemaAlEnviar = ProblemaAlEnviar.EN_CURSO)
+    ResultadoReporte.SesionVencida -> copy(enviando = false, sesionVencida = true)
+    ResultadoReporte.TipoNoCubierto, ResultadoReporte.Fallo ->
+        copy(enviando = false, problemaAlEnviar = ProblemaAlEnviar.FALLO)
+}
+
+private fun EstadoReporte.con(resultado: ResultadoEntrega): EstadoReporte = when (resultado) {
+    is ResultadoEntrega.Recibida -> copy(enviando = false, recibida = resultado.detalle)
+    ResultadoEntrega.YaNoSePide -> copy(enviando = false, yaNoSePide = true)
+    ResultadoEntrega.SesionVencida -> copy(enviando = false, sesionVencida = true)
+    ResultadoEntrega.Fallo -> copy(enviando = false, problemaAlEnviar = ProblemaAlEnviar.FALLO)
 }

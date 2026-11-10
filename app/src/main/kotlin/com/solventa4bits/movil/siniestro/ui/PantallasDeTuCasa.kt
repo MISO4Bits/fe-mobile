@@ -75,9 +75,12 @@ class AccionesDeRevision(
 class AccionesDeLasFotos(
     val alTomarFoto: () -> Unit,
     val alDecidirUbicacion: (Boolean) -> Unit,
-    val alQuitar: (Int) -> Unit,
+    /** Quita una foto o, al enviar lo que falta, un documento. */
+    val alQuitar: (Escaneo, Int) -> Unit,
     val alContinuar: () -> Unit,
     val alVolver: () -> Unit,
+    /** Solo al enviar lo que falta: ahi tambien se escanean documentos. */
+    val alEscanearDocumento: () -> Unit = {},
 )
 
 /** Lo que el cliente hace en "Cuentanos que paso". */
@@ -96,7 +99,9 @@ private val permisosDeUbicacion =
 /**
  * M04: las fotos del dano, solo con la camara y cada una con donde y cuando se tomo (BITS-111,
  * AC-4). M04A: antes de la primera foto, si no hay permiso de ubicacion, se explica para que es;
- * sin el, la foto queda sin ubicacion y el reporte se envia igual (AC-5).
+ * sin el, la foto queda sin ubicacion y el reporte se envia igual (AC-5). M04F: lo que falta de un
+ * siniestro ya reportado (BITS-118, AC-4); como Solventa lo pide en un texto, se puede enviar en
+ * fotos o en documentos.
  */
 @Composable
 fun PantallaFotosDelDano(
@@ -122,20 +127,32 @@ fun PantallaFotosDelDano(
             else -> preguntando = true
         }
     }
+    val entrega = estado.entrega
     PasoDelReporte(
-        titulo = stringResource(R.string.fotos_titulo),
-        subtitulo = stringResource(R.string.fotos_subtitulo),
+        titulo = stringResource(if (entrega != null) R.string.falta_titulo else R.string.fotos_titulo),
+        subtitulo = entrega?.let { stringResource(R.string.falta_subtitulo_fotos, it.numero) }
+            ?: stringResource(R.string.fotos_subtitulo),
         boton = stringResource(R.string.reporte_continuar),
-        botonActivo = estado.fotosListas,
+        botonActivo = if (entrega != null) estado.listoParaEnviar else estado.fotosListas,
         alBoton = acciones.alContinuar,
         alVolver = acciones.alVolver,
         alCerrarSesion = alCerrarSesion,
         modifier = modifier,
+        barra = stringResource(if (entrega != null) R.string.tu_siniestro_titulo else R.string.reporte_titulo),
     ) {
-        if (estado.fotos.isNotEmpty()) {
+        if (entrega != null) {
+            TituloDeSeccion(entrega.pedido.uppercase())
+        } else if (estado.fotos.isNotEmpty()) {
             TituloDeSeccion(pluralStringResource(R.plurals.fotos_cuantas, estado.fotos.size, estado.fotos.size))
         }
-        estado.fotos.forEachIndexed { i, foto -> TarjetaDeFoto(i + 1, foto) { acciones.alQuitar(i) } }
+        estado.fotos.forEachIndexed { i, foto ->
+            TarjetaDeFoto(i + 1, foto) { acciones.alQuitar(Escaneo.FOTO_DEL_DANO, i) }
+        }
+        estado.documentos.forEachIndexed { i, documento ->
+            ArchivoEscaneado(stringResource(R.string.documento_numero, i + 1), listOf(documento)) {
+                acciones.alQuitar(Escaneo.DOCUMENTO, i)
+            }
+        }
         Preparando(estado)
         BotonDeCamara(
             icono = ImageVector.vectorResource(R.drawable.ic_camara),
@@ -143,6 +160,14 @@ fun PantallaFotosDelDano(
             activo = estado.puedeEscanear,
             alTocar = tomar,
         )
+        if (entrega != null) {
+            BotonDeCamara(
+                icono = Icons.AutoMirrored.Outlined.List,
+                texto = stringResource(R.string.relato_escanear_documento),
+                activo = estado.puedeEscanear,
+                alTocar = acciones.alEscanearDocumento,
+            )
+        }
         Surface(
             color = MaterialTheme.colorScheme.surfaceVariant,
             shape = MaterialTheme.shapes.medium,

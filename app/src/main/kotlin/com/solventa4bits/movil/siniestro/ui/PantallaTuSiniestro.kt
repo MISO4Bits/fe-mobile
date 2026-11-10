@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -30,13 +31,15 @@ import com.solventa4bits.movil.ui.BarraSolventa
 /**
  * M09: en que va un siniestro (BITS-118). Arriba lo que comparten todos; despues, lo de su estado:
  * el plazo, lo que falta, el pago o el motivo del rechazo. El pago automatico por sismo muestra el
- * sismo en vez de "Lo que reportaste", porque nadie lo reporto.
+ * sismo en vez de "Lo que reportaste", porque nadie lo reporto. En Falta informacion, el boton
+ * para enviar lo que falta (AC-4).
  */
 @Composable
 fun PantallaTuSiniestro(
     estado: EstadoMisSiniestros,
     nombreDeLaPoliza: String,
     bancoDelCredito: String?,
+    alEnviarLoQueFalta: (DetalleDeSiniestro) -> Unit,
     alReintentar: () -> Unit,
     alVolver: () -> Unit,
     alCerrarSesion: () -> Unit,
@@ -46,14 +49,29 @@ fun PantallaTuSiniestro(
         BarraSolventa(stringResource(R.string.tu_siniestro_titulo), alCerrarSesion, alVolver = alVolver)
         val detalle = estado.detalle
         when {
-            detalle != null -> Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Encabezado(detalle)
-                LoDeSuEstado(detalle, bancoDelCredito)
-                detalle.evento?.let { ElSismo(it) }
-                if (!detalle.resumen.automatico) LoQueReportaste(detalle, nombreDeLaPoliza)
+            detalle != null -> {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Encabezado(detalle)
+                    LoDeSuEstado(detalle, bancoDelCredito)
+                    detalle.evento?.let { ElSismo(it) }
+                    if (!detalle.resumen.automatico) LoQueReportaste(detalle, nombreDeLaPoliza)
+                }
+                val siniestro = detalle.resumen
+                val faltaAlgo = siniestro.estado == EstadoDeSiniestro.FALTA_INFORMACION && siniestro.tipo != null
+                if (faltaAlgo && detalle.evidenciaPedida != null) {
+                    Button(
+                        onClick = { alEnviarLoQueFalta(detalle) },
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    ) {
+                        Text(stringResource(R.string.tu_siniestro_enviar_lo_que_falta))
+                    }
+                }
             }
             estado.falloDetalle -> Column(
                 modifier = Modifier.fillMaxWidth().padding(16.dp),

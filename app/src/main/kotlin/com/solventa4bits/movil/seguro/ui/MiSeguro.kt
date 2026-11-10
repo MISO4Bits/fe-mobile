@@ -1,5 +1,6 @@
 package com.solventa4bits.movil.seguro.ui
 
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -8,6 +9,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import com.solventa4bits.movil.R
 import com.solventa4bits.movil.identidad.ui.Camara
 import com.solventa4bits.movil.identidad.ui.QueFoto
 import com.solventa4bits.movil.red.GuardiaDeRed
@@ -21,6 +24,7 @@ import com.solventa4bits.movil.siniestro.ui.MisSiniestrosViewModel
 import com.solventa4bits.movil.siniestro.ui.PantallaFotosDelDano
 import com.solventa4bits.movil.siniestro.ui.PantallaQuePaso
 import com.solventa4bits.movil.siniestro.ui.PantallaReporteEnviado
+import com.solventa4bits.movil.siniestro.ui.PantallaRevisaLoQueFalta
 import com.solventa4bits.movil.siniestro.ui.PantallaRevisaYEnvia
 import com.solventa4bits.movil.siniestro.ui.PantallaTuDictamen
 import com.solventa4bits.movil.siniestro.ui.PantallaTuPago
@@ -32,8 +36,12 @@ import com.solventa4bits.movil.solicitud.dominio.Solicitud
 /**
  * Donde va el cliente dentro de "Mi seguro" (BITS-111). Vida: dictamen y revisar. Tu casa: fotos,
  * que paso, la cuenta para el pago y revisar. Los dos terminan en el radicado y en "Tu siniestro".
+ * Desde "Tu siniestro", lo que falta (BITS-118): el dictamen o las fotos, revisar y recibido.
  */
-private enum class PasoEnMiSeguro { POLIZA, DICTAMEN, FOTOS, QUE_PASO, PAGO, REVISA, ENVIADO, SINIESTRO }
+private enum class PasoEnMiSeguro {
+    POLIZA, DICTAMEN, FOTOS, QUE_PASO, PAGO, REVISA, ENVIADO, SINIESTRO,
+    FALTA_DICTAMEN, FALTA_FOTOS, FALTA_REVISA, RECIBIDO,
+}
 
 /** Las piezas que "Mi seguro" necesita para el camino del siniestro. */
 class PiezasDelSiniestro(
@@ -101,7 +109,27 @@ fun MiSeguro(
         }
         return
     }
+    AlTerminarLaEntrega(paso, piezas) { paso = it }
     CaminoDelSiniestro(paso, { paso = it }, poliza, piezas, alCerrarSesion, modifier)
+}
+
+/** Llego lo que faltaba, o ya no se pedia: en los dos casos se ve el siniestro como esta ahora. */
+@Composable
+private fun AlTerminarLaEntrega(paso: PasoEnMiSeguro, piezas: PiezasDelSiniestro, irA: (PasoEnMiSeguro) -> Unit) {
+    val contexto = LocalContext.current
+    val entrega = piezas.reporte.estado
+    LaunchedEffect(entrega.recibida, entrega.yaNoSePide) {
+        val recibida = entrega.recibida
+        if (paso != PasoEnMiSeguro.FALTA_REVISA) return@LaunchedEffect
+        if (recibida != null) {
+            piezas.misSiniestros.mostrar(recibida)
+            irA(PasoEnMiSeguro.RECIBIDO)
+        } else if (entrega.yaNoSePide) {
+            Toast.makeText(contexto, R.string.falta_ya_no_se_pide, Toast.LENGTH_LONG).show()
+            piezas.misSiniestros.reintentarDetalle()
+            irA(PasoEnMiSeguro.SINIESTRO)
+        }
+    }
 }
 
 /** Los pasos del reporte, de la primera pantalla de cada cobertura a "Tu siniestro". */
@@ -156,7 +184,7 @@ private fun CaminoDelSiniestro(
             acciones = AccionesDeLasFotos(
                 alTomarFoto = { escaneando = Escaneo.FOTO_DEL_DANO },
                 alDecidirUbicacion = reporte::decidirUbicacion,
-                alQuitar = { reporte.quitarUno(Escaneo.FOTO_DEL_DANO, it) },
+                alQuitar = reporte::quitarUno,
                 alContinuar = { irA(PasoEnMiSeguro.QUE_PASO) },
                 alVolver = alAnterior,
             ),
@@ -184,7 +212,76 @@ private fun CaminoDelSiniestro(
             alCerrarSesion = alCerrarSesion,
             modifier = modifier,
         )
+        PasoEnMiSeguro.FALTA_DICTAMEN, PasoEnMiSeguro.FALTA_FOTOS, PasoEnMiSeguro.FALTA_REVISA,
+        PasoEnMiSeguro.RECIBIDO,
+        -> LoQueFalta(paso, irA, piezas, { escaneando = it }, alAnterior, alCerrarSesion, modifier)
         else -> FinalDelCamino(paso, irA, poliza, piezas, alAnterior, alCerrarSesion, modifier)
+    }
+}
+
+/** Lo que Solventa pidio: se escanea o se fotografia, se revisa y se envia (BITS-118, AC-4). */
+@Composable
+private fun LoQueFalta(
+    paso: PasoEnMiSeguro,
+    irA: (PasoEnMiSeguro) -> Unit,
+    piezas: PiezasDelSiniestro,
+    escanear: (Escaneo) -> Unit,
+    alAnterior: () -> Unit,
+    alCerrarSesion: () -> Unit,
+    modifier: Modifier,
+) {
+    val reporte = piezas.reporte
+    val alRevisar = { irA(PasoEnMiSeguro.FALTA_REVISA) }
+    when (paso) {
+        PasoEnMiSeguro.FALTA_DICTAMEN -> PantallaTuDictamen(
+            estado = reporte.estado,
+            acciones = AccionesDelDictamen(
+                alCambiarFecha = reporte::cambiarFecha,
+                alEscanear = escanear,
+                alEscanearOtraVez = {
+                    reporte.quitar(Escaneo.DICTAMEN)
+                    escanear(Escaneo.DICTAMEN)
+                },
+                alQuitar = reporte::quitar,
+                alContinuar = alRevisar,
+                alVolver = alAnterior,
+            ),
+            alCerrarSesion = alCerrarSesion,
+            modifier = modifier,
+        )
+        PasoEnMiSeguro.FALTA_FOTOS -> PantallaFotosDelDano(
+            estado = reporte.estado,
+            acciones = AccionesDeLasFotos(
+                alTomarFoto = { escanear(Escaneo.FOTO_DEL_DANO) },
+                alDecidirUbicacion = reporte::decidirUbicacion,
+                alQuitar = reporte::quitarUno,
+                alContinuar = alRevisar,
+                alVolver = alAnterior,
+                alEscanearDocumento = { escanear(Escaneo.DOCUMENTO) },
+            ),
+            alCerrarSesion = alCerrarSesion,
+            modifier = modifier,
+        )
+        PasoEnMiSeguro.FALTA_REVISA -> PantallaRevisaLoQueFalta(
+            estado = reporte.estado,
+            acciones = AccionesDeRevision(
+                alQuitar = reporte::quitar,
+                alQuitarUno = reporte::quitarUno,
+                alEnviar = { piezas.red.conRed(reporte::enviar) },
+                alVolver = alAnterior,
+            ),
+            alCerrarSesion = alCerrarSesion,
+            modifier = modifier,
+        )
+        PasoEnMiSeguro.RECIBIDO -> PantallaReporteEnviado(
+            numero = reporte.estado.entrega?.numero.orEmpty(),
+            fechaLimite = piezas.misSiniestros.estado.detalle?.fechaLimite,
+            alVerSiniestro = { irA(PasoEnMiSeguro.SINIESTRO) },
+            alCerrarSesion = alCerrarSesion,
+            modifier = modifier,
+            loQueFaltaba = true,
+        )
+        else -> Unit
     }
 }
 
@@ -225,6 +322,13 @@ private fun FinalDelCamino(
             estado = misSiniestros.estado,
             nombreDeLaPoliza = nombreDelSeguro(poliza),
             bancoDelCredito = poliza.credito?.banco,
+            alEnviarLoQueFalta = { detalle ->
+                piezas.red.conRed {
+                    reporte.empezarEntrega(detalle)
+                    val deTuCasa = detalle.resumen.tipo?.deTuCasa == true
+                    irA(if (deTuCasa) PasoEnMiSeguro.FALTA_FOTOS else PasoEnMiSeguro.FALTA_DICTAMEN)
+                }
+            },
             alReintentar = misSiniestros::reintentarDetalle,
             alVolver = alAnterior,
             alCerrarSesion = alCerrarSesion,
@@ -239,5 +343,7 @@ private fun anterior(paso: PasoEnMiSeguro, tipo: TipoDeSiniestro) = when (paso) 
     PasoEnMiSeguro.QUE_PASO -> PasoEnMiSeguro.FOTOS
     PasoEnMiSeguro.PAGO -> PasoEnMiSeguro.QUE_PASO
     PasoEnMiSeguro.REVISA -> if (tipo.deTuCasa) PasoEnMiSeguro.PAGO else PasoEnMiSeguro.DICTAMEN
+    PasoEnMiSeguro.FALTA_REVISA -> if (tipo.deTuCasa) PasoEnMiSeguro.FALTA_FOTOS else PasoEnMiSeguro.FALTA_DICTAMEN
+    PasoEnMiSeguro.FALTA_DICTAMEN, PasoEnMiSeguro.FALTA_FOTOS, PasoEnMiSeguro.RECIBIDO -> PasoEnMiSeguro.SINIESTRO
     else -> PasoEnMiSeguro.POLIZA
 }

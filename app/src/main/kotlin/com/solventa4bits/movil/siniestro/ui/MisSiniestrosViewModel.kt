@@ -59,6 +59,12 @@ class MisSiniestrosViewModel(private val servicio: ServicioDeSiniestros) : ViewM
         }
     }
 
+    /** El detalle que el servidor ya devolvio, como al enviar lo que falta: no hace falta pedirlo. */
+    fun mostrar(detalle: DetalleDeSiniestro) {
+        idDelDetalle = detalle.resumen.id
+        estado = estado.copy(detalle = detalle, cargandoDetalle = false, falloDetalle = false)
+    }
+
     fun reintentarDetalle() {
         idDelDetalle?.let(::abrir)
     }
