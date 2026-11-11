@@ -137,15 +137,40 @@ sealed interface ResultadoSiniestros {
     data object Fallo : ResultadoSiniestros
 }
 
-/** En que va un siniestro. Lo propio de cada estado (pago, rechazo, lo que falta) es de BITS-383 y BITS-384. */
+/** Lo que Solventa le pidio al cliente, tal como lo escribio el agente. Solo en Falta informacion. */
+data class EvidenciaPedida(val detalle: String, val pedidaEn: String)
+
+/** A quien se le pago una linea: al banco (abono al credito) o al cliente. */
+enum class Beneficiario { BANCO, CLIENTE }
+
+/**
+ * Una linea del pago. [destino] viene listo para mostrar, como "Cuenta de ahorros terminada en
+ * 4821". [beneficiario] es null si el servidor manda uno que la app no conoce.
+ */
+data class LineaDePago(val beneficiario: Beneficiario?, val valor: Double, val destino: String)
+
+/** La orden de pago de un siniestro Pagado, con una o dos lineas (BITS-118, AC-5). */
+data class PagoDelSiniestro(val pagadoEn: String, val lineas: List<LineaDePago>)
+
+/** El sismo que disparo un pago automatico (BITS-118, AC-6). [fecha] como "2026-11-02". */
+data class EventoSismo(val fecha: String, val municipio: String, val magnitud: Double)
+
+/**
+ * En que va un siniestro (BITS-118). Cada estado trae lo suyo: En estudio, el plazo; Falta
+ * informacion, lo que se pidio; Pagado, el pago (y el sismo, si fue automatico); Rechazado, el motivo.
+ */
 data class DetalleDeSiniestro(
     val resumen: SiniestroResumen,
     /** El dia en que ocurrio, como "2026-11-02". */
     val fechaOcurrencia: String,
-    /** Hasta cuando tiene Solventa para responder. Solo En estudio. */
+    /** Hasta cuando tiene Solventa para responder. Solo En estudio (AC-3). */
     val fechaLimite: String?,
     val documentos: Int,
     val fotos: Int,
+    val evidenciaPedida: EvidenciaPedida? = null,
+    val motivoRechazo: String? = null,
+    val pago: PagoDelSiniestro? = null,
+    val evento: EventoSismo? = null,
 )
 
 sealed interface ResultadoDetalle {
@@ -158,6 +183,19 @@ sealed interface ResultadoDetalle {
     data object Fallo : ResultadoDetalle
 }
 
+sealed interface ResultadoEntrega {
+    /** Volvio a En estudio, con el plazo contando de nuevo desde esta entrega (BITS-118, AC-4). */
+    data class Recibida(val detalle: DetalleDeSiniestro) : ResultadoEntrega
+
+    /** Ya no esta en Falta informacion: no se pidio nada, u otra entrega llego primero. */
+    data object YaNoSePide : ResultadoEntrega
+
+    data object SesionVencida : ResultadoEntrega
+
+    /** No llego al servidor o el servidor fallo. El cliente reintenta con la misma llave. */
+    data object Fallo : ResultadoEntrega
+}
+
 interface ServicioDeSiniestros {
     /**
      * Envia el reporte con su evidencia. [llave] se crea una vez por reporte y se repite en cada
@@ -168,6 +206,12 @@ interface ServicioDeSiniestros {
     suspend fun listar(): ResultadoSiniestros
 
     suspend fun consultar(id: String): ResultadoDetalle
+
+    /**
+     * Envia lo que Solventa pidio en un siniestro en Falta informacion (BITS-118, AC-4). Como el
+     * reporte, [llave] se repite en cada reintento para que el servidor guarde una sola entrega.
+     */
+    suspend fun entregar(id: String, archivos: List<ArchivoDelReporte>, llave: String): ResultadoEntrega
 }
 
 /** El siniestro en curso de esa cobertura en esa poliza, si lo hay (AC-2A). */

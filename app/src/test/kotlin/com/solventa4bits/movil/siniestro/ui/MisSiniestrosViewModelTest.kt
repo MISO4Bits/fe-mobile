@@ -114,4 +114,17 @@ class MisSiniestrosViewModelTest {
 
         assertTrue(mis.estado.sesionVencida)
     }
+
+    @Test
+    @DisplayName("BITS-118, AC-4: muestra el detalle que ya devolvio el envio, y reintentar pide ese siniestro")
+    fun muestraElDetalleRecibido() {
+        servicio.alConsultar = ResultadoDetalle.Exito(detalle)
+        val mis = MisSiniestrosViewModel(servicio)
+
+        mis.mostrar(detalle)
+        mis.reintentarDetalle()
+
+        assertEquals(listOf("s1"), servicio.consultados)
+        assertFalse(mis.estado.falloDetalle)
+    }
 }

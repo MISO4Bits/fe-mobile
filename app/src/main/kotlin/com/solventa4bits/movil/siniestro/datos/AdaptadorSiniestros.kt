@@ -3,16 +3,13 @@ package com.solventa4bits.movil.siniestro.datos
 import com.solventa4bits.movil.red.formatoJson
 import com.solventa4bits.movil.sesion.datos.ConSesion
 import com.solventa4bits.movil.sesion.datos.LlamadaConSesion
-import com.solventa4bits.movil.siniestro.dominio.ClaseDeArchivo
-import com.solventa4bits.movil.siniestro.dominio.DetalleDeSiniestro
-import com.solventa4bits.movil.siniestro.dominio.EstadoDeSiniestro
+import com.solventa4bits.movil.siniestro.dominio.ArchivoDelReporte
 import com.solventa4bits.movil.siniestro.dominio.ReporteDeSiniestro
 import com.solventa4bits.movil.siniestro.dominio.ResultadoDetalle
+import com.solventa4bits.movil.siniestro.dominio.ResultadoEntrega
 import com.solventa4bits.movil.siniestro.dominio.ResultadoReporte
 import com.solventa4bits.movil.siniestro.dominio.ResultadoSiniestros
 import com.solventa4bits.movil.siniestro.dominio.ServicioDeSiniestros
-import com.solventa4bits.movil.siniestro.dominio.SiniestroResumen
-import com.solventa4bits.movil.siniestro.dominio.TipoDeSiniestro
 import com.solventa4bits.movil.traza.Traza
 import kotlinx.serialization.SerializationException
 import okhttp3.MediaType.Companion.toMediaType
@@ -35,9 +32,7 @@ class AdaptadorSiniestros(
     override suspend fun reportar(reporte: ReporteDeSiniestro, llave: String): ResultadoReporte =
         protegido("reportar el siniestro", ResultadoReporte.Fallo) {
             val datos = formatoJson.encodeToString(reporte.aDto()).toRequestBody(JSON)
-            val archivos = reporte.archivos.mapIndexed { i, archivo ->
-                MultipartBody.Part.createFormData("archivos", "archivo-${i + 1}.jpg", archivo.jpeg.toRequestBody(JPEG))
-            }
+            val archivos = partesDe(reporte.archivos)
             when (val llamada = sesion.llamar { autorizacion -> api.reportar(autorizacion, llave, datos, archivos) }) {
                 is LlamadaConSesion.Respondio -> traducir(llamada.respuesta)
                 LlamadaConSesion.SesionVencida -> ResultadoReporte.SesionVencida
@@ -83,13 +78,34 @@ class AdaptadorSiniestros(
             }
         }
 
+    override suspend fun entregar(id: String, archivos: List<ArchivoDelReporte>, llave: String): ResultadoEntrega =
+        protegido("enviar lo que falta", ResultadoEntrega.Fallo) {
+            val datos = formatoJson.encodeToString(EntregarEvidenciasDatosDto(archivos.map { it.aDto() }))
+                .toRequestBody(JSON)
+            val partes = partesDe(archivos)
+            val llamada = sesion.llamar { autorizacion -> api.entregar(autorizacion, llave, id, datos, partes) }
+            when (llamada) {
+                is LlamadaConSesion.Respondio -> {
+                    val respuesta = llamada.respuesta
+                    val cuerpo = respuesta.body()
+                    when {
+                        respuesta.isSuccessful && cuerpo != null -> ResultadoEntrega.Recibida(cuerpo.aDominio())
+                        codigoDelProblema(respuesta) == "ESTADO_NO_PERMITE" -> ResultadoEntrega.YaNoSePide
+                        else -> {
+                            traza.error(ORIGEN, "El BFF respondio ${respuesta.code()} al enviar lo que falta", null)
+                            ResultadoEntrega.Fallo
+                        }
+                    }
+                }
+                LlamadaConSesion.SesionVencida -> ResultadoEntrega.SesionVencida
+                LlamadaConSesion.SinRefresco -> ResultadoEntrega.Fallo
+            }
+        }
+
     private fun traducir(respuesta: Response<SiniestroReportadoDto>): ResultadoReporte {
         val cuerpo = respuesta.body()
         if (respuesta.isSuccessful && cuerpo != null) return ResultadoReporte.Radicado(cuerpo.id, cuerpo.numero)
-        val codigo = respuesta.errorBody()?.string()
-            ?.let { runCatching { formatoJson.decodeFromString<ProblemaSiniestroDto>(it) }.getOrNull() }
-            ?.codigo
-        return when (codigo) {
+        return when (codigoDelProblema(respuesta)) {
             "FUERA_DE_VIGENCIA" -> ResultadoReporte.FueraDeVigencia
             "SINIESTRO_EN_CURSO" -> ResultadoReporte.SiniestroEnCurso
             "TIPO_NO_CUBIERTO" -> ResultadoReporte.TipoNoCubierto
@@ -98,6 +114,17 @@ class AdaptadorSiniestros(
                 ResultadoReporte.Fallo
             }
         }
+    }
+
+    /** El `codigo` de un 400 o un 409, o null si no viene o no se puede leer. */
+    private fun codigoDelProblema(respuesta: Response<*>): String? =
+        respuesta.errorBody()?.string()
+            ?.let { runCatching { formatoJson.decodeFromString<ProblemaSiniestroDto>(it) }.getOrNull() }
+            ?.codigo
+
+    // Las imagenes van en el mismo orden que su descripcion en `datos`.
+    private fun partesDe(archivos: List<ArchivoDelReporte>) = archivos.mapIndexed { i, archivo ->
+        MultipartBody.Part.createFormData("archivos", "archivo-${i + 1}.jpg", archivo.jpeg.toRequestBody(JPEG))
     }
 
     /** Sin red o con una respuesta fuera de contrato, deja traza y devuelve [fallo]. */
@@ -112,41 +139,8 @@ class AdaptadorSiniestros(
             fallo
         }
 
-    private fun ReporteDeSiniestro.aDto() = ReportarSiniestroDatosDto(
-        polizaId = polizaId,
-        tipo = tipo.name,
-        fechaOcurrencia = fechaOcurrencia.toString(),
-        narracion = narracion,
-        archivos = archivos.map { ArchivoReporteDto(it.clase.name, it.capturadoEn, it.latitud, it.longitud) },
-        destinoPago = destinoPago?.let {
-            DestinoPagoDto(TRANSFERENCIA, it.banco, it.tipoCuenta.name, it.numeroCuenta)
-        },
-    )
-
-    // Un tipo o un estado que la app no conoce no la rompe: queda en null.
-    private fun SiniestroDto.aDominio() = DetalleDeSiniestro(
-        resumen = SiniestroResumenDto(id, numero, polizaId, tipo, estado, automatico, reportadoEn, actualizadoEn)
-            .aDominio(),
-        fechaOcurrencia = fechaOcurrencia,
-        fechaLimite = fechaLimite,
-        documentos = archivos.count { it.clase == ClaseDeArchivo.DOCUMENTO.name },
-        fotos = archivos.count { it.clase == ClaseDeArchivo.FOTO.name },
-    )
-
-    private fun SiniestroResumenDto.aDominio() = SiniestroResumen(
-        id = id,
-        numero = numero,
-        polizaId = polizaId,
-        tipo = TipoDeSiniestro.entries.find { it.name == tipo },
-        estado = EstadoDeSiniestro.entries.find { it.name == estado },
-        automatico = automatico,
-        reportadoEn = reportadoEn,
-        actualizadoEn = actualizadoEn,
-    )
-
     private companion object {
         const val ORIGEN = "AdaptadorSiniestros"
-        const val TRANSFERENCIA = "TRANSFERENCIA"
         val JSON = "application/json".toMediaType()
         val JPEG = "image/jpeg".toMediaType()
     }

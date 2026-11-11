@@ -36,10 +36,11 @@ internal fun PasoDelReporte(
     alVolver: () -> Unit,
     alCerrarSesion: () -> Unit,
     modifier: Modifier,
+    barra: String = stringResource(R.string.reporte_titulo),
     contenido: @Composable ColumnScope.() -> Unit,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        BarraSolventa(stringResource(R.string.reporte_titulo), alCerrarSesion, alVolver = alVolver)
+        BarraSolventa(barra, alCerrarSesion, alVolver = alVolver)
         Column(
             modifier = Modifier
                 .weight(1f)

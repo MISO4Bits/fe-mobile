@@ -79,7 +79,7 @@ fun PantallaRevisaYEnvia(
 }
 
 @Composable
-private fun ArchivosDeVida(estado: EstadoReporte, acciones: AccionesDeRevision) {
+internal fun ArchivosDeVida(estado: EstadoReporte, acciones: AccionesDeRevision) {
     val lista = Icons.AutoMirrored.Outlined.List
     if (estado.dictamen.isNotEmpty()) {
         val nombre = pluralStringResource(R.plurals.dictamen_paginas, estado.dictamen.size, estado.dictamen.size)
@@ -92,7 +92,7 @@ private fun ArchivosDeVida(estado: EstadoReporte, acciones: AccionesDeRevision) 
 }
 
 @Composable
-private fun ArchivosDeTuCasa(estado: EstadoReporte, acciones: AccionesDeRevision) {
+internal fun ArchivosDeTuCasa(estado: EstadoReporte, acciones: AccionesDeRevision) {
     val foto = ImageVector.vectorResource(R.drawable.ic_foto)
     estado.fotos.forEachIndexed { i, archivo ->
         val nombre = stringResource(

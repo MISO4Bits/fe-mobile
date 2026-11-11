@@ -35,7 +35,22 @@ interface SiniestrosApi {
         @Header("Authorization") autorizacion: String,
         @Path("siniestroId") id: String,
     ): Response<SiniestroDto>
+
+    /** Lo que Solventa pidio: 201 con el detalle, ya En estudio; 409 si ya no esta en Falta informacion. */
+    @Multipart
+    @POST("v1/cuenta/siniestros/{siniestroId}/evidencias")
+    suspend fun entregar(
+        @Header("Authorization") autorizacion: String,
+        @Header("Idempotency-Key") llave: String,
+        @Path("siniestroId") id: String,
+        @Part("datos") datos: RequestBody,
+        @Part archivos: List<MultipartBody.Part>,
+    ): Response<SiniestroDto>
 }
+
+/** La parte `datos` de una entrega: una entrada por archivo, en el mismo orden. */
+@Serializable
+data class EntregarEvidenciasDatosDto(val archivos: List<ArchivoReporteDto>)
 
 /** Los nombres de los campos son los del contrato. */
 @Serializable
@@ -80,7 +95,7 @@ data class SiniestroResumenDto(
     val actualizadoEn: String,
 )
 
-/** El detalle trae mas campos; la app solo usa estos por ahora. */
+/** El detalle trae mas campos (la ultima entrega, la narracion); la app solo usa estos. */
 @Serializable
 data class SiniestroDto(
     val id: String,
@@ -91,13 +106,30 @@ data class SiniestroDto(
     val automatico: Boolean = false,
     val reportadoEn: String,
     val actualizadoEn: String,
-    val fechaOcurrencia: String,
+    // El pago automatico por sismo no lo reporto nadie: se tolera sin fecha de ocurrencia.
+    val fechaOcurrencia: String = "",
     val fechaLimite: String? = null,
+    val evidenciaPedida: EvidenciaPedidaDto? = null,
+    val motivoRechazo: String? = null,
+    val pago: PagoDto? = null,
+    val evento: EventoSismoDto? = null,
     val archivos: List<ArchivoSiniestroDto> = emptyList(),
 )
 
 @Serializable
 data class ArchivoSiniestroDto(val clase: String)
+
+@Serializable
+data class EvidenciaPedidaDto(val detalle: String, val pedidaEn: String)
+
+@Serializable
+data class PagoDto(val pagadoEn: String, val lineas: List<LineaPagoDto> = emptyList())
+
+@Serializable
+data class LineaPagoDto(val beneficiario: String, val valor: Double, val destino: String)
+
+@Serializable
+data class EventoSismoDto(val fecha: String, val municipio: String, val magnitud: Double)
 
 /** Cuerpo de un 400 o un 409: [codigo] dice cual regla no se cumplio. */
 @Serializable

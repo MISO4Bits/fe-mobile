@@ -401,6 +401,33 @@
     </plurals>
     <string name="tu_siniestro_pagamos">Te pagamos por</string>
     <string name="tu_siniestro_abono">Abono al saldo de tu crédito</string>
+    <string name="tu_siniestro_pagado_el">%1$s, pagado el %2$s</string>
+    <string name="tu_siniestro_pendientes">PENDIENTES</string>
+    <string name="tu_siniestro_pedido_el">Pedido el %1$s</string>
+    <string name="tu_siniestro_plazo_al_recibir">El plazo para responderte empieza a contar cuando recibamos lo que falta.</string>
+    <string name="tu_siniestro_tu_pago">TU PAGO</string>
+    <string name="tu_siniestro_pagamos_a">Pagamos a</string>
+    <string name="tu_siniestro_a_ti">A ti</string>
+    <string name="tu_siniestro_a_tu_banco">Tu banco</string>
+    <string name="tu_siniestro_valor">Valor</string>
+    <string name="tu_siniestro_destino">Destino</string>
+    <string name="tu_siniestro_fecha">Fecha</string>
+    <string name="tu_siniestro_nuestra_respuesta">NUESTRA RESPUESTA</string>
+    <string name="tu_siniestro_no_podemos_pagar">No podemos pagar este siniestro.</string>
+    <string name="tu_siniestro_motivo">Motivo: %1$s</string>
+    <string name="tu_siniestro_dudas">Si tienes dudas, escríbenos a ayuda@solventa4bits.com.</string>
+    <string name="tu_siniestro_el_sismo">EL SISMO</string>
+    <string name="tu_siniestro_municipio">Municipio</string>
+    <string name="tu_siniestro_magnitud">Magnitud</string>
+    <string name="tu_siniestro_enviar_lo_que_falta">Enviar lo que falta</string>
+    <string name="falta_titulo">Envía lo que falta</string>
+    <string name="falta_subtitulo_fotos">Siniestro %1$s. Tómalo con la cámara, igual que en el reporte.</string>
+    <string name="falta_subtitulo_dictamen">Siniestro %1$s. Escanéalo con la cámara.</string>
+    <string name="falta_siniestro">Siniestro %1$s</string>
+    <string name="falta_al_enviar">Al enviarlo, tu siniestro vuelve a En estudio y el plazo para responderte empieza a contar desde hoy.</string>
+    <string name="falta_recibido">Recibimos lo que faltaba</string>
+    <string name="falta_plazo">Te respondemos a más tardar el %1$s. Te avisamos en tu teléfono.</string>
+    <string name="falta_ya_no_se_pide">Tu siniestro cambió de estado y ya no necesitamos esto.</string>
     <string name="tu_siniestro_fallo">No pudimos traer tu siniestro. Revisa tu conexión.</string>
     <string name="tu_siniestro_reintentar">Reintentar</string>
 
