@@ -10,6 +10,7 @@ import com.solventa4bits.movil.AplicacionSolventa
 import com.solventa4bits.movil.MainActivity
 import com.solventa4bits.movil.R
 import com.solventa4bits.movil.avisos.dominio.DestinoDeAviso
+import com.solventa4bits.movil.avisos.dominio.numeroDeAviso
 
 /**
  * Recibe de Firebase los avisos con la app abierta y los cambios de token. Con la app cerrada o
@@ -26,6 +27,7 @@ class ServicioDeAvisos : FirebaseMessagingService() {
         val aviso = mensaje.notification ?: return
         val manager = NotificationManagerCompat.from(this)
         if (!manager.areNotificationsEnabled()) return
+        val numero = numeroDeAviso(mensaje.messageId, System.currentTimeMillis())
         val abrir = Intent(this, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             .putExtra(DestinoDeAviso.CLAVE_DESTINO, mensaje.data[DestinoDeAviso.CLAVE_DESTINO])
@@ -34,17 +36,16 @@ class ServicioDeAvisos : FirebaseMessagingService() {
             .setSmallIcon(R.drawable.ic_escudo)
             .setContentTitle(aviso.title)
             .setContentText(aviso.body)
-            .setContentIntent(PendingIntent.getActivity(this, 0, abrir, BANDERAS_DE_LA_INTENCION))
+            .setContentIntent(PendingIntent.getActivity(this, numero, abrir, BANDERAS_DE_LA_INTENCION))
             .setAutoCancel(true)
             .build()
-        // La etiqueta del aviso reemplaza al que Firebase ya haya mostrado en lugar de duplicarlo.
+        // Cada aviso con su numero: uno nuevo no reemplaza al anterior en la barra de notificaciones (M12).
         @Suppress("MissingPermission") // areNotificationsEnabled() ya se comprobo arriba.
-        manager.notify(aviso.tag ?: ETIQUETA, ID_NOTIFICACION, notificacion)
+        manager.notify(aviso.tag ?: ETIQUETA, numero, notificacion)
     }
 
     private companion object {
         const val ETIQUETA = "avisos"
         const val BANDERAS_DE_LA_INTENCION = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        const val ID_NOTIFICACION = 1
     }
 }
