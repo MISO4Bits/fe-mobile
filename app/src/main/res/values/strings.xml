@@ -462,12 +462,14 @@
     <string name="relato_documentos_ejemplo">Por ejemplo, el informe de los bomberos.</string>
     <string name="relato_escanear_documento">Escanear un documento</string>
     <string name="documento_numero">Documento %1$d</string>
-    <string name="pago_titulo">¿Cómo te pagamos?</string>
-    <string name="pago_subtitulo">Si aprobamos tu reporte, te transferimos el pago a esta cuenta.</string>
+    <string name="pago_titulo">¿Cómo quieres recibir tu pago?</string>
+    <string name="pago_transferencia">Transferencia a tu cuenta</string>
+    <string name="pago_transferencia_detalle">Llega a una cuenta de ahorros o corriente a tu nombre.</string>
+    <string name="pago_a_quien">Si el daño es reparable, te pagamos a ti para el arreglo. Si la casa es pérdida total, pagamos primero a tu banco hasta el saldo del crédito y el resto te lo pagamos a ti.</string>
+    <string name="pago_tu_cuenta">TU CUENTA</string>
     <string name="pago_banco">Banco</string>
-    <string name="pago_tipo">TIPO DE CUENTA</string>
     <string name="pago_ahorros">Ahorros</string>
     <string name="pago_corriente">Corriente</string>
     <string name="pago_numero">Número de cuenta</string>
-    <string name="pago_numero_ayuda">Solo números, de 4 a 20 dígitos.</string>
+    <string name="pago_numero_ayuda">La cuenta debe estar a tu nombre. Escribe solo los números.</string>
 </resources>

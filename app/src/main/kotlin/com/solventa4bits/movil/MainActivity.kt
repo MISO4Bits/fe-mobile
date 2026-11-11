@@ -31,6 +31,7 @@ import com.solventa4bits.movil.cotizacion.datos.crearCotizacionesApi
 import com.solventa4bits.movil.cotizacion.datos.crearCreditosApi
 import com.solventa4bits.movil.cotizacion.dominio.Cotizacion
 import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCotizaciones
+import com.solventa4bits.movil.cotizacion.dominio.ResultadoCreditos
 import com.solventa4bits.movil.cotizacion.dominio.ServicioDeCreditos
 import com.solventa4bits.movil.cotizacion.ui.AccionesDeCotizacion
 import com.solventa4bits.movil.cotizacion.ui.Declinacion
@@ -215,7 +216,11 @@ fun AppSolventa(
     val seguro = viewModel { SeguroViewModel(solicitudes) }
     // Los siniestros de la poliza y el reporte de uno nuevo (BITS-111).
     val misSiniestros = viewModel { MisSiniestrosViewModel(siniestros) }
-    val reporte = viewModel { ReporteViewModel(siniestros, preparar, ubicacion) }
+    val reporte = viewModel {
+        ReporteViewModel(siniestros, preparar, ubicacion, bancos = {
+            (creditos.consultar() as? ResultadoCreditos.Exito)?.creditos?.entidades?.map { it.nombre }
+        })
+    }
     var cotizando by rememberSaveable { mutableStateOf(false) }
     // Viendo el detalle de una poliza emitida (BITS-104).
     var viendoSeguro by rememberSaveable { mutableStateOf(false) }

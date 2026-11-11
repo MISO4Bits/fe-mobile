@@ -10,6 +10,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.solventa4bits.movil.fixtures.BffFalso
+import com.solventa4bits.movil.fixtures.Personas
 import com.solventa4bits.movil.fixtures.RespuestasBff
 import com.solventa4bits.movil.fixtures.SesionLimpia
 import org.junit.Rule
@@ -58,8 +59,11 @@ class SiniestroTuCasaTest {
         composeRule.onNodeWithText("Qué pasó").performTextInput("Se prendió la estufa de la cocina.")
         composeRule.onNodeWithText("Continuar").performClick()
 
-        composeRule.esperarTexto("¿Cómo te pagamos?")
-        composeRule.onNodeWithText("Banco").performTextInput("Bancolombia")
+        // BITS-116, AC-2 y AC-3: a quien se le paga y el banco de la lista.
+        composeRule.esperarTexto("¿Cómo quieres recibir tu pago?")
+        composeRule.onNodeWithText("Transferencia a tu cuenta").assertIsDisplayed()
+        composeRule.onNodeWithText("Banco").performClick()
+        composeRule.onNodeWithText("Banco de Bogotá").performClick()
         composeRule.onNodeWithText("Ahorros").performClick()
         composeRule.onNodeWithText("Número de cuenta").performTextInput("48210012345")
         composeRule.onNodeWithText("Continuar").assertIsEnabled().performClick()
@@ -107,6 +111,7 @@ class SiniestroTuCasaTest {
             metodo = "GET",
         )
         bff.responderSiempreEn(RUTA_SINIESTROS, 200, siniestros, metodo = "GET")
+        bff.responderSiempreEn("/v1/creditos-hipotecarios", 200, RespuestasBff.creditosDe(Personas.DANIEL))
         composeRule.iniciarSesion()
         composeRule.esperarTexto("Tus seguros")
         composeRule.onNodeWithText("SOL-VH-2026-K7M2Q9").performScrollTo().performClick()

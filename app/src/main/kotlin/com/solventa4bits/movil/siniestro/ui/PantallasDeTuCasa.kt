@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.outlined.Close
@@ -27,7 +25,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,13 +40,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.solventa4bits.movil.R
 import com.solventa4bits.movil.siniestro.dominio.ArchivoDelReporte
-import com.solventa4bits.movil.siniestro.dominio.TipoDeCuenta
 import com.solventa4bits.movil.solicitud.ui.fechaDeSolicitud
 import java.time.LocalDate
 
@@ -302,73 +297,8 @@ fun PantallaQuePaso(
     }
 }
 
-/**
- * La cuenta a la que se transfiere el pago de Tu casa. El Figma no la tiene: es lo minimo que el
- * contrato pide, solo por transferencia.
- */
-@Composable
-fun PantallaTuPago(
-    estado: EstadoReporte,
-    alCambiarPago: (DatosDePago) -> Unit,
-    alContinuar: () -> Unit,
-    alVolver: () -> Unit,
-    alCerrarSesion: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val pago = estado.pago
-    PasoDelReporte(
-        titulo = stringResource(R.string.pago_titulo),
-        subtitulo = stringResource(R.string.pago_subtitulo),
-        boton = stringResource(R.string.reporte_continuar),
-        botonActivo = pago.destino != null,
-        alBoton = alContinuar,
-        alVolver = alVolver,
-        alCerrarSesion = alCerrarSesion,
-        modifier = modifier,
-    ) {
-        OutlinedTextField(
-            value = pago.banco,
-            onValueChange = { alCambiarPago(pago.copy(banco = it.take(LARGO_DEL_BANCO))) },
-            label = { Text(stringResource(R.string.pago_banco)) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        TituloDeSeccion(stringResource(R.string.pago_tipo))
-        OpcionDeCuenta(stringResource(R.string.pago_ahorros), pago.tipoCuenta == TipoDeCuenta.AHORROS) {
-            alCambiarPago(pago.copy(tipoCuenta = TipoDeCuenta.AHORROS))
-        }
-        OpcionDeCuenta(stringResource(R.string.pago_corriente), pago.tipoCuenta == TipoDeCuenta.CORRIENTE) {
-            alCambiarPago(pago.copy(tipoCuenta = TipoDeCuenta.CORRIENTE))
-        }
-        OutlinedTextField(
-            value = pago.numeroCuenta,
-            onValueChange = { numero ->
-                alCambiarPago(pago.copy(numeroCuenta = numero.filter(Char::isDigit).take(DIGITOS_DE_LA_CUENTA)))
-            },
-            label = { Text(stringResource(R.string.pago_numero)) },
-            supportingText = { Text(stringResource(R.string.pago_numero_ayuda)) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-}
-
-@Composable
-private fun OpcionDeCuenta(texto: String, elegida: Boolean, alElegir: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().selectable(selected = elegida, onClick = alElegir),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RadioButton(selected = elegida, onClick = null)
-        Text(texto, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(start = 8.dp))
-    }
-}
-
 private fun conPermisoDeUbicacion(contexto: Context) = permisosDeUbicacion.any {
     ContextCompat.checkSelfPermission(contexto, it) == PackageManager.PERMISSION_GRANTED
 }
 
 private const val LINEAS_DEL_RELATO = 4
-private const val LARGO_DEL_BANCO = 100
-private const val DIGITOS_DE_LA_CUENTA = 20

@@ -470,4 +470,33 @@ class ReporteViewModelTest {
         reporte.enviar()
         assertTrue(reporte.estado.sesionVencida)
     }
+
+    @Test
+    @DisplayName("BITS-116, AC-3: en Tu casa trae los bancos para elegir la cuenta; en Vida no")
+    fun bancosDeLaLista() {
+        var consultas = 0
+        val reporte = ReporteViewModel(
+            servicio = servicio,
+            preparar = { byteArrayOf(9) },
+            bancos = {
+                consultas++
+                listOf("Bancolombia", "Davivienda")
+            },
+        )
+
+        reporte.empezar(poliza)
+        assertEquals(0, consultas)
+        reporte.empezar(poliza, TipoDeSiniestro.INCENDIO_TERREMOTO)
+
+        assertEquals(listOf("Bancolombia", "Davivienda"), reporte.estado.bancos)
+        assertEquals(1, consultas)
+    }
+
+    @Test
+    @DisplayName("si la lista de bancos no llega, queda vacia y el banco se escribe a mano")
+    fun sinListaDeBancos() {
+        val reporte = deTuCasa()
+
+        assertTrue(reporte.estado.bancos.isEmpty())
+    }
 }
