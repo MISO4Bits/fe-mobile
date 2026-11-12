@@ -190,4 +190,4 @@ internal fun nombreDeLaOficina(oficina: Oficina): String =
     stringResource(R.string.oficina_nombre, oficina.banco, oficina.nombre)
 
 /** "0,8": con coma decimal, como se escribe en Colombia. */
-private fun enKm(km: Double): String = String.format(Locale.forLanguageTag("es-CO"), "%.1f", km)
+internal fun enKm(km: Double): String = String.format(Locale.forLanguageTag("es-CO"), "%.1f", km)

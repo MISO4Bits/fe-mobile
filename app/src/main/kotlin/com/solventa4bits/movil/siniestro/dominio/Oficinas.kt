@@ -24,7 +24,7 @@ val BANCOS_DEL_CHEQUE = listOf("BBVA", "Bancolombia")
 data class OficinaCercana(val oficina: Oficina, val km: Double?)
 
 sealed interface ResultadoCatalogo {
-    data class Exito(val oficinas: List<Oficina>) : ResultadoCatalogo
+    data class Exito(val catalogo: CatalogoDeSiniestros) : ResultadoCatalogo
 
     data object SesionVencida : ResultadoCatalogo
 
@@ -34,11 +34,14 @@ sealed interface ResultadoCatalogo {
 private const val RADIO_DE_LA_TIERRA_KM = 6371.0
 
 /** La distancia en linea recta, en km. Se calcula en el telefono: la ubicacion no sale de el. */
-fun Oficina.kmHasta(ubicacion: Ubicacion): Double {
-    val lat1 = Math.toRadians(ubicacion.latitud)
-    val lat2 = Math.toRadians(latitud)
+fun Oficina.kmHasta(ubicacion: Ubicacion): Double = ubicacion.kmHasta(Ubicacion(latitud, longitud))
+
+/** La distancia en linea recta entre dos puntos, en km. */
+fun Ubicacion.kmHasta(otra: Ubicacion): Double {
+    val lat1 = Math.toRadians(latitud)
+    val lat2 = Math.toRadians(otra.latitud)
     val dLat = lat2 - lat1
-    val dLon = Math.toRadians(longitud - ubicacion.longitud)
+    val dLon = Math.toRadians(otra.longitud - longitud)
     val a = sin(dLat / 2).pow(2) + cos(lat1) * cos(lat2) * sin(dLon / 2).pow(2)
     return 2 * RADIO_DE_LA_TIERRA_KM * asin(sqrt(a))
 }

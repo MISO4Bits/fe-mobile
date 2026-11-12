@@ -198,7 +198,7 @@ private fun Banco(banco: String, bancos: List<String>, alCambiar: (String) -> Un
 
 /** Una opcion con su circulo; el [detalle], si lo hay, va debajo en gris. */
 @Composable
-private fun Opcion(
+internal fun Opcion(
     titulo: String,
     elegida: Boolean,
     modifier: Modifier = Modifier,

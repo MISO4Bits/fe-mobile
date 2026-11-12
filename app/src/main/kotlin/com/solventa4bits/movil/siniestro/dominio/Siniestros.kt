@@ -177,6 +177,10 @@ data class DetalleDeSiniestro(
     val motivoRechazo: String? = null,
     val pago: PagoDelSiniestro? = null,
     val evento: EventoSismo? = null,
+    /** La primera foto con ubicacion: alli se envia la ayuda en sitio si el cliente no dice otra cosa. */
+    val ubicacionDeLasFotos: Ubicacion? = null,
+    /** Las ayudas en sitio pedidas, de la mas antigua a la mas reciente (BITS-239, AC-7). */
+    val asistencias: List<Asistencia> = emptyList(),
 )
 
 sealed interface ResultadoDetalle {
@@ -219,8 +223,14 @@ interface ServicioDeSiniestros {
      */
     suspend fun entregar(id: String, archivos: List<ArchivoDelReporte>, llave: String): ResultadoEntrega
 
-    /** Las oficinas donde se reclama el cheque (BITS-116, AC-4). */
-    suspend fun oficinas(): ResultadoCatalogo
+    /** Los tipos de ayuda, las localidades, los prestadores y las oficinas del cheque. */
+    suspend fun catalogo(): ResultadoCatalogo
+
+    /**
+     * Pide ayuda en sitio para un siniestro de Tu casa (BITS-239, AC-6). Como el reporte, [llave] se
+     * repite en cada reintento para que el servidor guarde una sola solicitud.
+     */
+    suspend fun pedirAyuda(siniestroId: String, solicitud: SolicitudDeAyuda, llave: String): ResultadoAyuda
 }
 
 /** El siniestro en curso de esa cobertura en esa poliza, si lo hay (AC-2A). */

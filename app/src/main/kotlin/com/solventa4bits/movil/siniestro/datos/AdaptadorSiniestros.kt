@@ -5,12 +5,14 @@ import com.solventa4bits.movil.sesion.datos.ConSesion
 import com.solventa4bits.movil.sesion.datos.LlamadaConSesion
 import com.solventa4bits.movil.siniestro.dominio.ArchivoDelReporte
 import com.solventa4bits.movil.siniestro.dominio.ReporteDeSiniestro
+import com.solventa4bits.movil.siniestro.dominio.ResultadoAyuda
 import com.solventa4bits.movil.siniestro.dominio.ResultadoCatalogo
 import com.solventa4bits.movil.siniestro.dominio.ResultadoDetalle
 import com.solventa4bits.movil.siniestro.dominio.ResultadoEntrega
 import com.solventa4bits.movil.siniestro.dominio.ResultadoReporte
 import com.solventa4bits.movil.siniestro.dominio.ResultadoSiniestros
 import com.solventa4bits.movil.siniestro.dominio.ServicioDeSiniestros
+import com.solventa4bits.movil.siniestro.dominio.SolicitudDeAyuda
 import com.solventa4bits.movil.traza.Traza
 import kotlinx.serialization.SerializationException
 import okhttp3.MediaType.Companion.toMediaType
@@ -18,6 +20,7 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.Response
 import java.io.IOException
+import java.net.HttpURLConnection.HTTP_CONFLICT
 import java.net.HttpURLConnection.HTTP_NOT_FOUND
 
 /**
@@ -103,21 +106,43 @@ class AdaptadorSiniestros(
             }
         }
 
-    override suspend fun oficinas(): ResultadoCatalogo =
-        protegido("traer las oficinas", ResultadoCatalogo.Fallo) {
+    override suspend fun catalogo(): ResultadoCatalogo =
+        protegido("traer el catalogo", ResultadoCatalogo.Fallo) {
             when (val llamada = sesion.llamar { autorizacion -> api.catalogo(autorizacion) }) {
                 is LlamadaConSesion.Respondio -> {
                     val cuerpo = llamada.respuesta.body()
                     if (llamada.respuesta.isSuccessful && cuerpo != null) {
-                        ResultadoCatalogo.Exito(cuerpo.oficinas.map { it.aDominio() })
+                        ResultadoCatalogo.Exito(cuerpo.aDominio())
                     } else {
                         val codigo = llamada.respuesta.code()
-                        traza.error(ORIGEN, "El BFF respondio $codigo al traer las oficinas", null)
+                        traza.error(ORIGEN, "El BFF respondio $codigo al traer el catalogo", null)
                         ResultadoCatalogo.Fallo
                     }
                 }
                 LlamadaConSesion.SesionVencida -> ResultadoCatalogo.SesionVencida
                 LlamadaConSesion.SinRefresco -> ResultadoCatalogo.Fallo
+            }
+        }
+
+    override suspend fun pedirAyuda(siniestroId: String, solicitud: SolicitudDeAyuda, llave: String): ResultadoAyuda =
+        protegido("pedir la ayuda en sitio", ResultadoAyuda.Fallo) {
+            val cuerpo = solicitud.aDto()
+            val llamada = sesion.llamar { autorizacion -> api.pedirAyuda(autorizacion, llave, siniestroId, cuerpo) }
+            when (llamada) {
+                is LlamadaConSesion.Respondio -> {
+                    val respuesta = llamada.respuesta
+                    val asistencia = respuesta.body()
+                    when {
+                        respuesta.isSuccessful && asistencia != null -> ResultadoAyuda.Pedida(asistencia.aDominio())
+                        respuesta.code() == HTTP_CONFLICT -> ResultadoAyuda.NoSePuede
+                        else -> {
+                            traza.error(ORIGEN, "El BFF respondio ${respuesta.code()} al pedir la ayuda", null)
+                            ResultadoAyuda.Fallo
+                        }
+                    }
+                }
+                LlamadaConSesion.SesionVencida -> ResultadoAyuda.SesionVencida
+                LlamadaConSesion.SinRefresco -> ResultadoAyuda.Fallo
             }
         }
 

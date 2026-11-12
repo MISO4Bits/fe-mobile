@@ -77,6 +77,7 @@ import com.solventa4bits.movil.siniestro.datos.UbicacionDelTelefono
 import com.solventa4bits.movil.siniestro.datos.crearSiniestrosApi
 import com.solventa4bits.movil.siniestro.dominio.FuenteDeUbicacion
 import com.solventa4bits.movil.siniestro.dominio.ServicioDeSiniestros
+import com.solventa4bits.movil.siniestro.ui.AyudaViewModel
 import com.solventa4bits.movil.siniestro.ui.MisSiniestrosViewModel
 import com.solventa4bits.movil.siniestro.ui.OficinasViewModel
 import com.solventa4bits.movil.siniestro.ui.ReporteViewModel
@@ -218,6 +219,7 @@ fun AppSolventa(
     // Los siniestros de la poliza y el reporte de uno nuevo (BITS-111).
     val misSiniestros = viewModel { MisSiniestrosViewModel(siniestros) }
     val oficinas = viewModel { OficinasViewModel(siniestros, ubicacion) }
+    val ayuda = viewModel { AyudaViewModel(siniestros, ubicacion) }
     val reporte = viewModel {
         ReporteViewModel(siniestros, preparar, ubicacion, bancos = {
             (creditos.consultar() as? ResultadoCreditos.Exito)?.creditos?.entidades?.map { it.nombre }
@@ -291,7 +293,7 @@ fun AppSolventa(
 
                 viendoSeguro -> MiSeguro(
                     seguro = seguro,
-                    piezas = PiezasDelSiniestro(misSiniestros, reporte, camara, red, oficinas),
+                    piezas = PiezasDelSiniestro(misSiniestros, reporte, camara, red, oficinas, ayuda),
                     abrirEnlace = abrirEnlace,
                     alInicio = { viendoSeguro = false },
                     alCerrarSesion = cerrarSesion,
