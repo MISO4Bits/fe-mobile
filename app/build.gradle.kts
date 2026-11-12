@@ -20,9 +20,11 @@ val propiedadesLocales = Properties()
     .apply { rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use(::load) }
 val urlBffDeDepuracion: String = propiedadesLocales.getProperty("bff.url", "http://10.0.2.2:8082/")
 
-// Token publico de Mapbox para el mapa de las oficinas (BITS-368), tambien en
-// local.properties: mapbox.token=pk.... Sin el, la app funciona y no muestra el mapa.
-val tokenDeMapbox: String = propiedadesLocales.getProperty("mapbox.token", "")
+// Token publico de Mapbox para el mapa de las oficinas (BITS-368). En local va en
+// local.properties (mapbox.token=pk...); en el pipeline, en el secreto MAPBOX_TOKEN.
+// Sin el, la app funciona y no muestra el mapa.
+val tokenDeMapbox: String = propiedadesLocales.getProperty("mapbox.token")
+    ?: System.getenv("MAPBOX_TOKEN").orEmpty()
 
 // Cobertura de pruebas automatizadas. El umbral es el 80 % que declara la
 // Estrategia de Pruebas y al que apunta el criterio CP-4 de cada historia.
