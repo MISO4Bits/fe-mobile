@@ -7,12 +7,21 @@ import com.solventa4bits.movil.sesion.dominio.ServicioDeSesion
 import com.solventa4bits.movil.sesion.dominio.Sesion
 import com.solventa4bits.movil.siniestro.dominio.ArchivoDelReporte
 import com.solventa4bits.movil.siniestro.dominio.Beneficiario
+import com.solventa4bits.movil.siniestro.dominio.CatalogoDeSiniestros
 import com.solventa4bits.movil.siniestro.dominio.ClaseDeArchivo
 import com.solventa4bits.movil.siniestro.dominio.DestinoDePago
 import com.solventa4bits.movil.siniestro.dominio.EstadoDeSiniestro
 import com.solventa4bits.movil.siniestro.dominio.EventoSismo
 import com.solventa4bits.movil.siniestro.dominio.EvidenciaPedida
 import com.solventa4bits.movil.siniestro.dominio.LineaDePago
+import com.solventa4bits.movil.siniestro.dominio.Ubicacion
+import com.solventa4bits.movil.siniestro.dominio.TipoDeAyuda
+import com.solventa4bits.movil.siniestro.dominio.SolicitudDeAyuda
+import com.solventa4bits.movil.siniestro.dominio.ResultadoAyuda
+import com.solventa4bits.movil.siniestro.dominio.PuntoDeAyuda
+import com.solventa4bits.movil.siniestro.dominio.Prestador
+import com.solventa4bits.movil.siniestro.dominio.OrigenDeAyuda
+import com.solventa4bits.movil.siniestro.dominio.Localidad
 import com.solventa4bits.movil.siniestro.dominio.Oficina
 import com.solventa4bits.movil.siniestro.dominio.ResultadoCatalogo
 import com.solventa4bits.movil.siniestro.dominio.ReporteDeSiniestro
@@ -530,9 +539,9 @@ class AdaptadorSiniestrosTest {
                   "direccion": "Calle 117 # 1-33", "ciudad": "Bogotá", "latitud": 4.7008, "longitud": -74.024}]}""",
         )
 
-        val resultado = adaptador().oficinas()
+        val resultado = adaptador().catalogo()
 
-        assertEquals(ResultadoCatalogo.Exito(listOf(cedritos)), resultado)
+        assertEquals(ResultadoCatalogo.Exito(CatalogoDeSiniestros(oficinas = listOf(cedritos))), resultado)
         val pedida = servidor.takeRequest()
         assertEquals("/mobile/v1/catalogos/siniestros", pedida.path)
         assertEquals("Bearer jwt-de-acceso", pedida.getHeader("Authorization"))
@@ -542,10 +551,117 @@ class AdaptadorSiniestrosTest {
     @DisplayName("si el catalogo falla o no hay red, deja traza y responde Fallo")
     fun catalogoQueFalla() = runTest {
         responder(503, "")
-        assertEquals(ResultadoCatalogo.Fallo, adaptador().oficinas())
+        assertEquals(ResultadoCatalogo.Fallo, adaptador().catalogo())
 
         servidor.shutdown()
-        assertEquals(ResultadoCatalogo.Fallo, adaptador().oficinas())
+        assertEquals(ResultadoCatalogo.Fallo, adaptador().catalogo())
         assertEquals(2, traza.errores.size)
     }
+
+    // --- Ayuda en sitio (BITS-239).
+
+    private val plomeria = TipoDeAyuda("plomeria", "Plomería", 1)
+    private val plomeros = Prestador(
+        "pr-001", "Plomería Rápida Chapinero", listOf("plomeria"), "chapinero", "Calle 60 # 9-12", 4.65, -74.06, 35,
+    )
+    private val chapinero = Localidad("chapinero", "Chapinero", "Bogotá", 4.649, -74.063)
+    private val asistencia = """{"id": "a1", "numero": "ASI-2026-K7M2Q9", "tipo": "plomeria",
+        "prestador": {"id": "pr-001", "nombre": "Plomería Rápida Chapinero", "direccion": "Calle 60 # 9-12",
+          "tiempoLlegadaMin": 35},
+        "tiempoLlegadaMin": 35, "origen": "FOTOS", "latitud": 4.65, "longitud": -74.06,
+        "direccion": null, "localidad": null, "solicitadaEn": "2026-11-12T14:30:00Z"}"""
+
+    @Test
+    @DisplayName("BITS-239, AC-6: pide la ayuda donde se tomaron las fotos, con la llave, y queda con su numero")
+    fun pideAyudaDondeLasFotos() = runTest {
+        responder(201, asistencia)
+        val solicitud = SolicitudDeAyuda(plomeria, plomeros, PuntoDeAyuda.DondeTomoLasFotos(Ubicacion(4.65, -74.06)))
+
+        val resultado = adaptador().pedirAyuda("s1", solicitud, "llave-9")
+
+        val pedida = servidor.takeRequest()
+        assertEquals("/mobile/v1/cuenta/siniestros/s1/asistencias", pedida.path)
+        assertEquals("llave-9", pedida.getHeader("Idempotency-Key"))
+        val cuerpo = pedida.body.readUtf8()
+        assertEquals(
+            """{"tipo":"plomeria","prestador":{"id":"pr-001","nombre":"Plomería Rápida Chapinero",""" +
+                """"direccion":"Calle 60 # 9-12","tiempoLlegadaMin":35},"origen":"FOTOS","latitud":4.65,""" +
+                """"longitud":-74.06}""",
+            cuerpo,
+        )
+        val pedidaComo = (resultado as ResultadoAyuda.Pedida).asistencia
+        assertEquals("ASI-2026-K7M2Q9", pedidaComo.numero)
+        assertEquals("Plomería Rápida Chapinero", pedidaComo.prestador)
+        assertEquals(OrigenDeAyuda.FOTOS, pedidaComo.origen)
+    }
+
+    @Test
+    @DisplayName("BITS-239, AC-4: con una direccion escrita viajan la direccion y el id de la localidad, sin GPS")
+    fun pideAyudaEnUnaDireccion() = runTest {
+        responder(201, asistencia)
+        val punto = PuntoDeAyuda.EnUnaDireccion("Calle 63 # 11-40", chapinero)
+
+        adaptador().pedirAyuda("s1", SolicitudDeAyuda(plomeria, plomeros, punto), "llave-9")
+
+        val cuerpo = servidor.takeRequest().body.readUtf8()
+        assertTrue(cuerpo.contains(""""origen":"DIRECCION","direccion":"Calle 63 # 11-40","localidad":"chapinero""""))
+        assertFalse(cuerpo.contains("latitud"))
+    }
+
+    @Test
+    @DisplayName("BITS-239: si el siniestro ya no admite ayuda (409) lo dice; si falla, deja traza")
+    fun ayudaQueNoSePuede() = runTest {
+        val solicitud = SolicitudDeAyuda(plomeria, plomeros, PuntoDeAyuda.DondeEstaElTelefono(Ubicacion(4.6, -74.0)))
+        responder(409, """{"codigo": "ESTADO_NO_PERMITE"}""")
+        assertEquals(ResultadoAyuda.NoSePuede, adaptador().pedirAyuda("s1", solicitud, "llave-9"))
+
+        responder(500)
+        assertEquals(ResultadoAyuda.Fallo, adaptador().pedirAyuda("s1", solicitud, "llave-9"))
+        assertEquals(1, traza.errores.size)
+    }
+
+    @Test
+    @DisplayName("BITS-239, AC-3 y AC-7: el detalle trae la primera foto con ubicacion y las ayudas pedidas")
+    fun detalleConLaAyuda() = runTest {
+        responder(
+            200,
+            """{"id": "s1", "numero": "SIN-1", "polizaId": "poliza-1", "tipo": "INCENDIO_TERREMOTO",
+               "automatico": false, "estado": "EN_ESTUDIO", "reportadoEn": "2026-10-20T14:12:00Z",
+               "actualizadoEn": "2026-10-28T14:12:00Z", "fechaOcurrencia": "2026-10-19",
+               "archivos": [
+                 {"id": "a1", "clase": "DOCUMENTO", "latitud": 1.0, "longitud": 1.0, "entregadoEn": "2026-10-20T14:12:00Z"},
+                 {"id": "a2", "clase": "FOTO", "latitud": null, "longitud": null, "entregadoEn": "2026-10-20T14:12:00Z"},
+                 {"id": "a3", "clase": "FOTO", "latitud": 4.65, "longitud": -74.06, "entregadoEn": "2026-10-20T14:12:00Z"}
+               ],
+               "asistencias": [$asistencia]}""",
+        )
+
+        val detalle = (adaptador().consultar("s1") as ResultadoDetalle.Exito).detalle
+
+        assertEquals(Ubicacion(4.65, -74.06), detalle.ubicacionDeLasFotos)
+        assertEquals(listOf("ASI-2026-K7M2Q9"), detalle.asistencias.map { it.numero })
+    }
+
+    @Test
+    @DisplayName("BITS-239: el catalogo trae los tipos, las localidades y los prestadores")
+    fun catalogoDeAyuda() = runTest {
+        responder(
+            200,
+            """{"mercado": "CO", "version": 1,
+                "tiposAyuda": [{"id": "plomeria", "nombre": "Plomería", "orden": 1}],
+                "localidades": [{"id": "chapinero", "nombre": "Chapinero", "ciudad": "Bogotá",
+                  "latitud": 4.649, "longitud": -74.063}],
+                "prestadores": [{"id": "pr-001", "nombre": "Plomería Rápida Chapinero", "tipos": ["plomeria"],
+                  "localidad": "chapinero", "direccion": "Calle 60 # 9-12", "latitud": 4.65, "longitud": -74.06,
+                  "tiempoLlegadaMin": 35}],
+                "oficinas": []}""",
+        )
+
+        val catalogo = (adaptador().catalogo() as ResultadoCatalogo.Exito).catalogo
+
+        assertEquals(listOf(plomeria), catalogo.tiposAyuda)
+        assertEquals(listOf(chapinero), catalogo.localidades)
+        assertEquals(listOf(plomeros), catalogo.prestadores)
+    }
 }
+

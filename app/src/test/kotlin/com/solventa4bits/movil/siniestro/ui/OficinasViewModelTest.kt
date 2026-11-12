@@ -1,8 +1,8 @@
 package com.solventa4bits.movil.siniestro.ui
 
+import com.solventa4bits.movil.siniestro.dominio.CatalogoDeSiniestros
 import com.solventa4bits.movil.siniestro.dominio.Oficina
 import com.solventa4bits.movil.siniestro.dominio.ResultadoCatalogo
-import com.solventa4bits.movil.siniestro.dominio.ServicioDeSiniestros
 import com.solventa4bits.movil.siniestro.dominio.Ubicacion
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -43,7 +43,7 @@ class OficinasViewModelTest {
     @Test
     @DisplayName("BITS-116, AC-4: con la ubicacion, propone la mas cercana")
     fun conUbicacion() {
-        servicio.alPedirOficinas = ResultadoCatalogo.Exito(listOf(salitre, chapinero))
+        servicio.alPedirCatalogo = ResultadoCatalogo.Exito(CatalogoDeSiniestros(oficinas = listOf(salitre, chapinero)))
         val vm = oficinas()
 
         vm.cargar()
@@ -56,7 +56,7 @@ class OficinasViewModelTest {
     @DisplayName("BITS-116, AC-4: sin la ubicacion, se elige la ciudad")
     fun sinUbicacion() {
         donde = null
-        servicio.alPedirOficinas = ResultadoCatalogo.Exito(listOf(salitre, chapinero))
+        servicio.alPedirCatalogo = ResultadoCatalogo.Exito(CatalogoDeSiniestros(oficinas = listOf(salitre, chapinero)))
         val vm = oficinas()
         vm.cargar()
         assertNull(vm.estado.ubicacion)
@@ -70,22 +70,14 @@ class OficinasViewModelTest {
     @Test
     @DisplayName("las oficinas se traen una vez; la ubicacion, cada vez que se abre")
     fun soloUnaVez() {
-        var pedidas = 0
-        servicio.alPedirOficinas = ResultadoCatalogo.Exito(listOf(chapinero))
-        val vm = OficinasViewModel(
-            object : ServicioDeSiniestros by servicio {
-                override suspend fun oficinas(): ResultadoCatalogo {
-                    pedidas++
-                    return servicio.oficinas()
-                }
-            },
-        ) { donde }
+        servicio.alPedirCatalogo = ResultadoCatalogo.Exito(CatalogoDeSiniestros(oficinas = listOf(chapinero)))
+        val vm = oficinas()
         donde = null
         vm.cargar()
         donde = Ubicacion(4.6497, -74.0631)
         vm.cargar()
 
-        assertEquals(1, pedidas)
+        assertEquals(1, servicio.catalogosPedidos)
         assertEquals(donde, vm.estado.ubicacion)
     }
 
@@ -96,7 +88,7 @@ class OficinasViewModelTest {
         vm.cargar()
         assertTrue(vm.estado.fallo)
 
-        servicio.alPedirOficinas = ResultadoCatalogo.SesionVencida
+        servicio.alPedirCatalogo = ResultadoCatalogo.SesionVencida
         vm.cargar()
         assertTrue(vm.estado.sesionVencida)
         assertFalse(vm.estado.fallo)

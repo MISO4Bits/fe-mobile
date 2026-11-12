@@ -9,11 +9,11 @@ import com.solventa4bits.movil.siniestro.dominio.EstadoDeSiniestro
 import com.solventa4bits.movil.siniestro.dominio.EventoSismo
 import com.solventa4bits.movil.siniestro.dominio.EvidenciaPedida
 import com.solventa4bits.movil.siniestro.dominio.LineaDePago
-import com.solventa4bits.movil.siniestro.dominio.Oficina
 import com.solventa4bits.movil.siniestro.dominio.PagoDelSiniestro
 import com.solventa4bits.movil.siniestro.dominio.ReporteDeSiniestro
 import com.solventa4bits.movil.siniestro.dominio.SiniestroResumen
 import com.solventa4bits.movil.siniestro.dominio.TipoDeSiniestro
+import com.solventa4bits.movil.siniestro.dominio.Ubicacion
 
 /*
  * Del dominio al contrato del BFF y de vuelta. Un tipo, un estado o un beneficiario que la app no
@@ -40,8 +40,6 @@ internal fun DestinoDePago.aDto() = when (this) {
     )
 }
 
-internal fun OficinaDto.aDominio() = Oficina(id, banco, nombre, direccion, ciudad, latitud, longitud)
-
 internal fun ArchivoDelReporte.aDto() = ArchivoReporteDto(clase.name, capturadoEn, latitud, longitud)
 
 internal fun SiniestroDto.aDominio() = DetalleDeSiniestro(
@@ -62,6 +60,16 @@ internal fun SiniestroDto.aDominio() = DetalleDeSiniestro(
         )
     },
     evento = evento?.let { EventoSismo(it.fecha, it.municipio, it.magnitud) },
+    ubicacionDeLasFotos = archivos.firstNotNullOfOrNull { archivo ->
+        val latitud = archivo.latitud
+        val longitud = archivo.longitud
+        if (archivo.clase == ClaseDeArchivo.FOTO.name && latitud != null && longitud != null) {
+            Ubicacion(latitud, longitud)
+        } else {
+            null
+        }
+    },
+    asistencias = asistencias.map { it.aDominio() },
 )
 
 internal fun SiniestroResumenDto.aDominio() = SiniestroResumen(

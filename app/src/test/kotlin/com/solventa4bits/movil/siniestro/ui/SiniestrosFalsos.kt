@@ -2,7 +2,9 @@ package com.solventa4bits.movil.siniestro.ui
 
 import com.solventa4bits.movil.siniestro.dominio.ArchivoDelReporte
 import com.solventa4bits.movil.siniestro.dominio.ReporteDeSiniestro
+import com.solventa4bits.movil.siniestro.dominio.ResultadoAyuda
 import com.solventa4bits.movil.siniestro.dominio.ResultadoCatalogo
+import com.solventa4bits.movil.siniestro.dominio.SolicitudDeAyuda
 import com.solventa4bits.movil.siniestro.dominio.ResultadoDetalle
 import com.solventa4bits.movil.siniestro.dominio.ResultadoEntrega
 import com.solventa4bits.movil.siniestro.dominio.ResultadoReporte
@@ -30,9 +32,21 @@ class SiniestrosFalsos(
         return alConsultar
     }
 
-    var alPedirOficinas: ResultadoCatalogo = ResultadoCatalogo.Fallo
+    var alPedirCatalogo: ResultadoCatalogo = ResultadoCatalogo.Fallo
+    var catalogosPedidos = 0
 
-    override suspend fun oficinas() = alPedirOficinas
+    override suspend fun catalogo(): ResultadoCatalogo {
+        catalogosPedidos++
+        return alPedirCatalogo
+    }
+
+    var alPedirAyuda: ResultadoAyuda = ResultadoAyuda.Fallo
+    val ayudas = mutableListOf<Triple<String, SolicitudDeAyuda, String>>()
+
+    override suspend fun pedirAyuda(siniestroId: String, solicitud: SolicitudDeAyuda, llave: String): ResultadoAyuda {
+        ayudas += Triple(siniestroId, solicitud, llave)
+        return alPedirAyuda
+    }
 
     var alEntregar: ResultadoEntrega = ResultadoEntrega.Fallo
     val entregas = mutableListOf<Triple<String, List<ArchivoDelReporte>, String>>()

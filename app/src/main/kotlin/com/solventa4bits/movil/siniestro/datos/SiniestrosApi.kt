@@ -6,6 +6,7 @@ import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody
 import retrofit2.Response
+import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.Multipart
@@ -50,10 +51,82 @@ interface SiniestrosApi {
     /** El catalogo de siniestros. La app solo usa las oficinas; los prestadores son de BITS-371. */
     @GET("v1/catalogos/siniestros")
     suspend fun catalogo(@Header("Authorization") autorizacion: String): Response<CatalogoSiniestrosDto>
+
+    /** Ayuda en sitio: 201 con la solicitud; 409 si el siniestro no la admite. */
+    @POST("v1/cuenta/siniestros/{siniestroId}/asistencias")
+    suspend fun pedirAyuda(
+        @Header("Authorization") autorizacion: String,
+        @Header("Idempotency-Key") llave: String,
+        @Path("siniestroId") id: String,
+        @Body solicitud: PedirAyudaDto,
+    ): Response<AsistenciaDto>
 }
 
 @Serializable
-data class CatalogoSiniestrosDto(val oficinas: List<OficinaDto> = emptyList())
+data class CatalogoSiniestrosDto(
+    val tiposAyuda: List<TipoAyudaDto> = emptyList(),
+    val localidades: List<LocalidadDto> = emptyList(),
+    val prestadores: List<PrestadorDto> = emptyList(),
+    val oficinas: List<OficinaDto> = emptyList(),
+)
+
+@Serializable
+data class TipoAyudaDto(val id: String, val nombre: String, val orden: Int)
+
+@Serializable
+data class LocalidadDto(
+    val id: String,
+    val nombre: String,
+    val ciudad: String,
+    val latitud: Double,
+    val longitud: Double,
+)
+
+@Serializable
+data class PrestadorDto(
+    val id: String,
+    val nombre: String,
+    val tipos: List<String> = emptyList(),
+    val localidad: String,
+    val direccion: String,
+    val latitud: Double,
+    val longitud: Double,
+    val tiempoLlegadaMin: Int,
+)
+
+/** Lo que se guarda del prestador con la solicitud, para mostrarlo sin consultar el catalogo. */
+@Serializable
+data class PrestadorAsistenciaDto(
+    val id: String,
+    val nombre: String,
+    val direccion: String,
+    val tiempoLlegadaMin: Int,
+)
+
+/** FOTOS y TELEFONO llevan latitud y longitud; DIRECCION, la direccion y el id de la localidad. */
+@Serializable
+data class PedirAyudaDto(
+    val tipo: String,
+    val prestador: PrestadorAsistenciaDto,
+    val origen: String,
+    val latitud: Double? = null,
+    val longitud: Double? = null,
+    val direccion: String? = null,
+    val localidad: String? = null,
+)
+
+@Serializable
+data class AsistenciaDto(
+    val id: String,
+    val numero: String,
+    val tipo: String,
+    val prestador: PrestadorAsistenciaDto,
+    val tiempoLlegadaMin: Int,
+    val origen: String,
+    val direccion: String? = null,
+    val localidad: String? = null,
+    val solicitadaEn: String,
+)
 
 @Serializable
 data class OficinaDto(
@@ -137,10 +210,11 @@ data class SiniestroDto(
     val pago: PagoDto? = null,
     val evento: EventoSismoDto? = null,
     val archivos: List<ArchivoSiniestroDto> = emptyList(),
+    val asistencias: List<AsistenciaDto> = emptyList(),
 )
 
 @Serializable
-data class ArchivoSiniestroDto(val clase: String)
+data class ArchivoSiniestroDto(val clase: String, val latitud: Double? = null, val longitud: Double? = null)
 
 @Serializable
 data class EvidenciaPedidaDto(val detalle: String, val pedidaEn: String)

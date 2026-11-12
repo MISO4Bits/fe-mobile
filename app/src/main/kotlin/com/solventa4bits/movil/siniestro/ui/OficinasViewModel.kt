@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.solventa4bits.movil.siniestro.dominio.CatalogoDeSiniestros
 import com.solventa4bits.movil.siniestro.dominio.FuenteDeUbicacion
 import com.solventa4bits.movil.siniestro.dominio.Oficina
 import com.solventa4bits.movil.siniestro.dominio.OficinaCercana
@@ -57,11 +58,12 @@ class OficinasViewModel(
         estado = estado.copy(cargando = true, fallo = false, sesionVencida = false)
         viewModelScope.launch {
             val donde = async { ubicacion.actual() }
-            val oficinas = estado.oficinas.takeIf { it.isNotEmpty() }?.let { ResultadoCatalogo.Exito(it) }
-                ?: servicio.oficinas()
-            estado = when (oficinas) {
+            val catalogo = estado.oficinas.takeIf { it.isNotEmpty() }
+                ?.let { ResultadoCatalogo.Exito(CatalogoDeSiniestros(oficinas = it)) }
+                ?: servicio.catalogo()
+            estado = when (catalogo) {
                 is ResultadoCatalogo.Exito ->
-                    estado.copy(oficinas = oficinas.oficinas, ubicacion = donde.await(), cargando = false)
+                    estado.copy(oficinas = catalogo.catalogo.oficinas, ubicacion = donde.await(), cargando = false)
                 ResultadoCatalogo.SesionVencida -> estado.copy(cargando = false, sesionVencida = true)
                 ResultadoCatalogo.Fallo -> estado.copy(cargando = false, fallo = true)
             }
