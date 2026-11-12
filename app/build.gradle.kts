@@ -16,9 +16,15 @@ plugins {
 // localhost de ese computador). Para probar contra otro ambiente se define
 // bff.url en local.properties, que no se versiona:
 //   bff.url=https://dev.solventa4bits.com/mobile/
-val urlBffDeDepuracion: String = Properties()
+val propiedadesLocales = Properties()
     .apply { rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use(::load) }
-    .getProperty("bff.url", "http://10.0.2.2:8082/")
+val urlBffDeDepuracion: String = propiedadesLocales.getProperty("bff.url", "http://10.0.2.2:8082/")
+
+// Token publico de Mapbox para el mapa de las oficinas (BITS-368). En local va en
+// local.properties (mapbox.token=pk...); en el pipeline, en el secreto MAPBOX_TOKEN.
+// Sin el, la app funciona y no muestra el mapa.
+val tokenDeMapbox: String = propiedadesLocales.getProperty("mapbox.token")
+    ?: System.getenv("MAPBOX_TOKEN").orEmpty()
 
 // Cobertura de pruebas automatizadas. El umbral es el 80 % que declara la
 // Estrategia de Pruebas y al que apunta el criterio CP-4 de cada historia.
@@ -97,6 +103,8 @@ android {
 
         // URL del BFF del canal movil. Retrofit exige que termine en "/".
         buildConfigField("String", "URL_BASE_BFF", "\"https://dev.solventa4bits.com/mobile/\"")
+        // Mapbox lo lee solo de este recurso.
+        resValue("string", "mapbox_access_token", tokenDeMapbox)
     }
 
     buildTypes {
@@ -183,6 +191,10 @@ dependencies {
 
     // Huella (BITS-353): el dialogo biometrico del sistema.
     implementation(libs.androidx.biometric)
+
+    // Mapa de las oficinas para reclamar el cheque (BITS-368).
+    implementation(libs.mapbox.maps)
+    implementation(libs.mapbox.maps.compose)
     // biometric trae fragment 1.2.5, que no acepta el permiso de avisos que pide Compose (BITS-229).
     implementation(libs.androidx.fragment)
 

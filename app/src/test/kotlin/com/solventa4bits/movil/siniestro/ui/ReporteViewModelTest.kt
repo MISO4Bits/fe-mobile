@@ -5,6 +5,7 @@ import com.solventa4bits.movil.siniestro.dominio.DestinoDePago
 import com.solventa4bits.movil.siniestro.dominio.DetalleDeSiniestro
 import com.solventa4bits.movil.siniestro.dominio.EstadoDeSiniestro
 import com.solventa4bits.movil.siniestro.dominio.EvidenciaPedida
+import com.solventa4bits.movil.siniestro.dominio.Oficina
 import com.solventa4bits.movil.siniestro.dominio.ProblemaDeFecha
 import com.solventa4bits.movil.siniestro.dominio.ResultadoEntrega
 import com.solventa4bits.movil.siniestro.dominio.ResultadoReporte
@@ -361,7 +362,8 @@ class ReporteViewModelTest {
         assertEquals(TipoDeSiniestro.INCENDIO_TERREMOTO, enviado.tipo)
         assertEquals("Se incendio la cocina", enviado.narracion)
         assertEquals(listOf(ClaseDeArchivo.FOTO, ClaseDeArchivo.DOCUMENTO), enviado.archivos.map { it.clase })
-        assertEquals(DestinoDePago("Bancolombia", TipoDeCuenta.AHORROS, "48210012345"), enviado.destinoPago)
+        val cuenta = DestinoDePago.Transferencia("Bancolombia", TipoDeCuenta.AHORROS, "48210012345")
+        assertEquals(cuenta, enviado.destinoPago)
         assertEquals("SIN-2026-00042", reporte.estado.radicado?.numero)
     }
 
@@ -469,5 +471,51 @@ class ReporteViewModelTest {
         servicio.alEntregar = ResultadoEntrega.SesionVencida
         reporte.enviar()
         assertTrue(reporte.estado.sesionVencida)
+    }
+
+    @Test
+    @DisplayName("BITS-116, AC-3: en Tu casa trae los bancos para elegir la cuenta; en Vida no")
+    fun bancosDeLaLista() {
+        var consultas = 0
+        val reporte = ReporteViewModel(
+            servicio = servicio,
+            preparar = { byteArrayOf(9) },
+            bancos = {
+                consultas++
+                listOf("Bancolombia", "Davivienda")
+            },
+        )
+
+        reporte.empezar(poliza)
+        assertEquals(0, consultas)
+        reporte.empezar(poliza, TipoDeSiniestro.INCENDIO_TERREMOTO)
+
+        assertEquals(listOf("Bancolombia", "Davivienda"), reporte.estado.bancos)
+        assertEquals(1, consultas)
+    }
+
+    @Test
+    @DisplayName("si la lista de bancos no llega, queda vacia y el banco se escribe a mano")
+    fun sinListaDeBancos() {
+        val reporte = deTuCasa()
+
+        assertTrue(reporte.estado.bancos.isEmpty())
+    }
+
+    @Test
+    @DisplayName("BITS-116, AC-4 y AC-5: con cheque, el destino es la oficina; sin oficina no se sigue")
+    fun destinoConCheque() {
+        servicio.alReportar = ResultadoReporte.Radicado("s2", "SIN-2026-00042")
+        val oficina = Oficina("b1", "Bancolombia", "Oficina Chapinero", "Calle 57 # 9-20", "Bogotá", 4.6486, -74.0628)
+        val reporte = deTuCasa()
+        reporte.agregarPagina(Escaneo.FOTO_DEL_DANO, foto)
+        reporte.cambiarNarracion("Se incendio la cocina")
+        reporte.cambiarPago(cuenta.copy(forma = FormaDePago.CHEQUE, bancoDelCheque = "Bancolombia"))
+        assertNull(reporte.estado.pago.destino)
+
+        reporte.cambiarPago(reporte.estado.pago.copy(oficina = oficina))
+        reporte.enviar()
+
+        assertEquals(DestinoDePago.Cheque(oficina), servicio.reportes.single().first.destinoPago)
     }
 }

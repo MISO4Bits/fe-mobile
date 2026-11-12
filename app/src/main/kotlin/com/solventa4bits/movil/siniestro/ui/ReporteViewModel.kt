@@ -10,6 +10,7 @@ import com.solventa4bits.movil.siniestro.dominio.ClaseDeArchivo
 import com.solventa4bits.movil.siniestro.dominio.DestinoDePago
 import com.solventa4bits.movil.siniestro.dominio.DetalleDeSiniestro
 import com.solventa4bits.movil.siniestro.dominio.FuenteDeUbicacion
+import com.solventa4bits.movil.siniestro.dominio.Oficina
 import com.solventa4bits.movil.siniestro.dominio.ProblemaDeFecha
 import com.solventa4bits.movil.siniestro.dominio.ReporteDeSiniestro
 import com.solventa4bits.movil.siniestro.dominio.ResultadoEntrega
@@ -39,10 +40,23 @@ enum class Escaneo(val clase: ClaseDeArchivo) {
 /** Lo que salio mal al enviar, para decirselo al cliente en "Revisa y envia". */
 enum class ProblemaAlEnviar { FALLO, FUERA_DE_VIGENCIA, EN_CURSO }
 
-/** Lo que el cliente va escribiendo de su cuenta, aunque todavia este incompleto. */
-data class DatosDePago(val banco: String = "", val tipoCuenta: TipoDeCuenta? = null, val numeroCuenta: String = "") {
+enum class FormaDePago { TRANSFERENCIA, CHEQUE }
+
+/** Lo que el cliente va eligiendo para recibir el pago, aunque todavia este incompleto (BITS-116). */
+data class DatosDePago(
+    val banco: String = "",
+    val tipoCuenta: TipoDeCuenta? = null,
+    val numeroCuenta: String = "",
+    val forma: FormaDePago = FormaDePago.TRANSFERENCIA,
+    /** BBVA o Bancolombia: el banco donde se reclama el cheque. */
+    val bancoDelCheque: String? = null,
+    val oficina: Oficina? = null,
+) {
     val destino: DestinoDePago?
-        get() = DestinoDePago.desde(banco, tipoCuenta, numeroCuenta)
+        get() = when (forma) {
+            FormaDePago.TRANSFERENCIA -> DestinoDePago.desde(banco, tipoCuenta, numeroCuenta)
+            FormaDePago.CHEQUE -> oficina?.let { DestinoDePago.Cheque(it) }
+        }
 }
 
 /** El siniestro en Falta informacion al que se le envia lo que Solventa pidio (BITS-118, AC-4). */
@@ -58,6 +72,8 @@ data class EstadoReporte(
     /** Lo que paso, con las palabras del cliente. Solo en Tu casa. */
     val narracion: String = "",
     val pago: DatosDePago = DatosDePago(),
+    /** Los bancos para elegir la cuenta. Vacia si no cargo: el banco se escribe a mano. */
+    val bancos: List<String> = emptyList(),
     /** Si las fotos llevan ubicacion. Null mientras el cliente no ha decidido (M04A). */
     val usarUbicacion: Boolean? = null,
     val preparando: Boolean = false,
@@ -150,6 +166,8 @@ class ReporteViewModel(
     private val ubicacion: FuenteDeUbicacion = FuenteDeUbicacion { null },
     private val ahora: () -> Instant = Instant::now,
     private val llaveNueva: () -> String = { UUID.randomUUID().toString() },
+    /** Los nombres de los bancos del mercado, o null si no se pudieron traer. */
+    private val bancos: suspend () -> List<String>? = { null },
 ) : ViewModel() {
 
     var estado by mutableStateOf(EstadoReporte())
@@ -161,6 +179,10 @@ class ReporteViewModel(
         val hoy = ahora().atZone(zonaDeColombia).toLocalDate()
         llave = llaveNueva()
         estado = EstadoReporte(poliza = poliza, tipo = tipo, hoy = hoy, fecha = hoy)
+        // Se traen desde ya: cuando el cliente llegue a la cuenta, la lista ya esta.
+        if (tipo.deTuCasa) {
+            viewModelScope.launch { estado = estado.copy(bancos = bancos().orEmpty()) }
+        }
     }
 
     /** Empieza a armar lo que Solventa pidio en ese siniestro. */

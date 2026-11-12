@@ -50,11 +50,17 @@ class ArchivoDelReporte(
 
 enum class TipoDeCuenta { AHORROS, CORRIENTE }
 
-/** La cuenta a la que Solventa le transfiere al cliente el pago de Tu casa. El cheque no se ofrece en la app. */
-data class DestinoDePago(val banco: String, val tipoCuenta: TipoDeCuenta, val numeroCuenta: String) {
-    /** "4821": lo que se muestra de la cuenta. */
-    val terminadaEn: String
-        get() = numeroCuenta.takeLast(DIGITOS_A_LA_VISTA)
+/** Como recibe el cliente el pago de Tu casa (BITS-116): transferencia a su cuenta o cheque en una oficina. */
+sealed interface DestinoDePago {
+    data class Transferencia(val banco: String, val tipoCuenta: TipoDeCuenta, val numeroCuenta: String) :
+        DestinoDePago {
+        /** "4821": lo que se muestra de la cuenta (AC-5). */
+        val terminadaEn: String
+            get() = numeroCuenta.takeLast(DIGITOS_A_LA_VISTA)
+    }
+
+    /** Un cheque de gerencia que el cliente reclama con su cedula en [oficina]. */
+    data class Cheque(val oficina: Oficina) : DestinoDePago
 
     companion object {
         private const val DIGITOS_A_LA_VISTA = 4
@@ -62,11 +68,11 @@ data class DestinoDePago(val banco: String, val tipoCuenta: TipoDeCuenta, val nu
         private val FORMA_DEL_NUMERO = Regex("^[0-9]{4,20}$")
 
         /** Null si falta algo o no cumple el contrato: el banco, el tipo y un numero de 4 a 20 digitos. */
-        fun desde(banco: String, tipoCuenta: TipoDeCuenta?, numeroCuenta: String): DestinoDePago? {
+        fun desde(banco: String, tipoCuenta: TipoDeCuenta?, numeroCuenta: String): Transferencia? {
             val nombre = banco.trim()
             val completo = nombre.isNotEmpty() && nombre.length <= LARGO_MAXIMO_DEL_BANCO && tipoCuenta != null
             return if (completo && FORMA_DEL_NUMERO.matches(numeroCuenta)) {
-                DestinoDePago(nombre, checkNotNull(tipoCuenta), numeroCuenta)
+                Transferencia(nombre, checkNotNull(tipoCuenta), numeroCuenta)
             } else {
                 null
             }
@@ -212,6 +218,9 @@ interface ServicioDeSiniestros {
      * reporte, [llave] se repite en cada reintento para que el servidor guarde una sola entrega.
      */
     suspend fun entregar(id: String, archivos: List<ArchivoDelReporte>, llave: String): ResultadoEntrega
+
+    /** Las oficinas donde se reclama el cheque (BITS-116, AC-4). */
+    suspend fun oficinas(): ResultadoCatalogo
 }
 
 /** El siniestro en curso de esa cobertura en esa poliza, si lo hay (AC-2A). */

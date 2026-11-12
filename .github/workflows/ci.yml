@@ -119,6 +119,9 @@ jobs:
 
       - name: Construir el APK de depuracion
         run: ./gradlew assembleDebug
+        env:
+          # El mapa de las oficinas (BITS-368).
+          MAPBOX_TOKEN: ${{ secrets.MAPBOX_TOKEN }}
 
       - uses: actions/upload-artifact@v7
         with:

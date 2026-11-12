@@ -50,7 +50,7 @@ internal fun PasoDelReporte(
         ) {
             Column {
                 Text(titulo, style = MaterialTheme.typography.headlineSmall)
-                TextoTenue(subtitulo)
+                if (subtitulo.isNotEmpty()) TextoTenue(subtitulo)
             }
             contenido()
         }

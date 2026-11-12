@@ -5,6 +5,7 @@ import com.solventa4bits.movil.sesion.datos.ConSesion
 import com.solventa4bits.movil.sesion.datos.LlamadaConSesion
 import com.solventa4bits.movil.siniestro.dominio.ArchivoDelReporte
 import com.solventa4bits.movil.siniestro.dominio.ReporteDeSiniestro
+import com.solventa4bits.movil.siniestro.dominio.ResultadoCatalogo
 import com.solventa4bits.movil.siniestro.dominio.ResultadoDetalle
 import com.solventa4bits.movil.siniestro.dominio.ResultadoEntrega
 import com.solventa4bits.movil.siniestro.dominio.ResultadoReporte
@@ -99,6 +100,24 @@ class AdaptadorSiniestros(
                 }
                 LlamadaConSesion.SesionVencida -> ResultadoEntrega.SesionVencida
                 LlamadaConSesion.SinRefresco -> ResultadoEntrega.Fallo
+            }
+        }
+
+    override suspend fun oficinas(): ResultadoCatalogo =
+        protegido("traer las oficinas", ResultadoCatalogo.Fallo) {
+            when (val llamada = sesion.llamar { autorizacion -> api.catalogo(autorizacion) }) {
+                is LlamadaConSesion.Respondio -> {
+                    val cuerpo = llamada.respuesta.body()
+                    if (llamada.respuesta.isSuccessful && cuerpo != null) {
+                        ResultadoCatalogo.Exito(cuerpo.oficinas.map { it.aDominio() })
+                    } else {
+                        val codigo = llamada.respuesta.code()
+                        traza.error(ORIGEN, "El BFF respondio $codigo al traer las oficinas", null)
+                        ResultadoCatalogo.Fallo
+                    }
+                }
+                LlamadaConSesion.SesionVencida -> ResultadoCatalogo.SesionVencida
+                LlamadaConSesion.SinRefresco -> ResultadoCatalogo.Fallo
             }
         }
 

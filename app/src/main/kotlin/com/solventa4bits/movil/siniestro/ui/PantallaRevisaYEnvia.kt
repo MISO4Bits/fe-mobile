@@ -15,6 +15,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import com.solventa4bits.movil.R
+import com.solventa4bits.movil.siniestro.dominio.DestinoDePago
 import com.solventa4bits.movil.siniestro.dominio.TipoDeSiniestro
 import com.solventa4bits.movil.solicitud.ui.fechaCorta
 
@@ -46,14 +47,7 @@ fun PantallaRevisaYEnvia(
             FilaDeDato(stringResource(R.string.revisa_poliza), nombreDeLaPoliza)
             FilaDeDato(stringResource(R.string.revisa_que_paso), nombreDelTipo(estado.tipo))
             FilaDeDato(stringResource(R.string.revisa_cuando), fechaCorta(estado.fecha))
-            FilaDeDato(
-                stringResource(R.string.revisa_pago),
-                if (deVida) {
-                    stringResource(R.string.revisa_pago_banco)
-                } else {
-                    stringResource(R.string.revisa_pago_transferencia, estado.pago.destino?.terminadaEn.orEmpty())
-                },
-            )
+            FilaDeDato(stringResource(R.string.revisa_pago), comoSePaga(deVida, estado.pago.destino))
             if (!deVida) {
                 HorizontalDivider()
                 TextoTenue(stringResource(R.string.revisa_lo_que_contaste))
@@ -76,6 +70,16 @@ fun PantallaRevisaYEnvia(
             )
         }
     }
+}
+
+/** En Vida, al banco. En Tu casa, la transferencia con los 4 ultimos digitos o el cheque con su oficina (AC-5). */
+@Composable
+private fun comoSePaga(deVida: Boolean, destino: DestinoDePago?): String = when {
+    deVida -> stringResource(R.string.revisa_pago_banco)
+    destino is DestinoDePago.Transferencia -> stringResource(R.string.revisa_pago_transferencia, destino.terminadaEn)
+    destino is DestinoDePago.Cheque ->
+        stringResource(R.string.revisa_pago_cheque, destino.oficina.banco, destino.oficina.nombre)
+    else -> ""
 }
 
 @Composable

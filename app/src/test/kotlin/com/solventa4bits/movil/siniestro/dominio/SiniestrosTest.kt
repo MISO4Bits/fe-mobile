@@ -86,7 +86,7 @@ class SiniestrosTest {
     fun destinoDePago() {
         val cuenta = DestinoDePago.desde(" Bancolombia ", TipoDeCuenta.AHORROS, "48210012345")
 
-        assertEquals(DestinoDePago("Bancolombia", TipoDeCuenta.AHORROS, "48210012345"), cuenta)
+        assertEquals(DestinoDePago.Transferencia("Bancolombia", TipoDeCuenta.AHORROS, "48210012345"), cuenta)
         assertEquals("2345", cuenta?.terminadaEn)
         assertNull(DestinoDePago.desde("", TipoDeCuenta.AHORROS, "48210012345"))
         assertNull(DestinoDePago.desde("Bancolombia", null, "48210012345"))
