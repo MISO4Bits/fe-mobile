@@ -10,6 +10,7 @@ import com.solventa4bits.movil.siniestro.dominio.ClaseDeArchivo
 import com.solventa4bits.movil.siniestro.dominio.DestinoDePago
 import com.solventa4bits.movil.siniestro.dominio.DetalleDeSiniestro
 import com.solventa4bits.movil.siniestro.dominio.FuenteDeUbicacion
+import com.solventa4bits.movil.siniestro.dominio.Oficina
 import com.solventa4bits.movil.siniestro.dominio.ProblemaDeFecha
 import com.solventa4bits.movil.siniestro.dominio.ReporteDeSiniestro
 import com.solventa4bits.movil.siniestro.dominio.ResultadoEntrega
@@ -39,10 +40,23 @@ enum class Escaneo(val clase: ClaseDeArchivo) {
 /** Lo que salio mal al enviar, para decirselo al cliente en "Revisa y envia". */
 enum class ProblemaAlEnviar { FALLO, FUERA_DE_VIGENCIA, EN_CURSO }
 
-/** Lo que el cliente va escribiendo de su cuenta, aunque todavia este incompleto. */
-data class DatosDePago(val banco: String = "", val tipoCuenta: TipoDeCuenta? = null, val numeroCuenta: String = "") {
+enum class FormaDePago { TRANSFERENCIA, CHEQUE }
+
+/** Lo que el cliente va eligiendo para recibir el pago, aunque todavia este incompleto (BITS-116). */
+data class DatosDePago(
+    val banco: String = "",
+    val tipoCuenta: TipoDeCuenta? = null,
+    val numeroCuenta: String = "",
+    val forma: FormaDePago = FormaDePago.TRANSFERENCIA,
+    /** BBVA o Bancolombia: el banco donde se reclama el cheque. */
+    val bancoDelCheque: String? = null,
+    val oficina: Oficina? = null,
+) {
     val destino: DestinoDePago?
-        get() = DestinoDePago.desde(banco, tipoCuenta, numeroCuenta)
+        get() = when (forma) {
+            FormaDePago.TRANSFERENCIA -> DestinoDePago.desde(banco, tipoCuenta, numeroCuenta)
+            FormaDePago.CHEQUE -> oficina?.let { DestinoDePago.Cheque(it) }
+        }
 }
 
 /** El siniestro en Falta informacion al que se le envia lo que Solventa pidio (BITS-118, AC-4). */

@@ -2,6 +2,7 @@ package com.solventa4bits.movil.siniestro.ui
 
 import com.solventa4bits.movil.siniestro.dominio.ArchivoDelReporte
 import com.solventa4bits.movil.siniestro.dominio.ReporteDeSiniestro
+import com.solventa4bits.movil.siniestro.dominio.ResultadoCatalogo
 import com.solventa4bits.movil.siniestro.dominio.ResultadoDetalle
 import com.solventa4bits.movil.siniestro.dominio.ResultadoEntrega
 import com.solventa4bits.movil.siniestro.dominio.ResultadoReporte
@@ -28,6 +29,10 @@ class SiniestrosFalsos(
         consultados += id
         return alConsultar
     }
+
+    var alPedirOficinas: ResultadoCatalogo = ResultadoCatalogo.Fallo
+
+    override suspend fun oficinas() = alPedirOficinas
 
     var alEntregar: ResultadoEntrega = ResultadoEntrega.Fallo
     val entregas = mutableListOf<Triple<String, List<ArchivoDelReporte>, String>>()

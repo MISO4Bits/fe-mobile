@@ -5,6 +5,7 @@ import com.solventa4bits.movil.siniestro.dominio.DestinoDePago
 import com.solventa4bits.movil.siniestro.dominio.DetalleDeSiniestro
 import com.solventa4bits.movil.siniestro.dominio.EstadoDeSiniestro
 import com.solventa4bits.movil.siniestro.dominio.EvidenciaPedida
+import com.solventa4bits.movil.siniestro.dominio.Oficina
 import com.solventa4bits.movil.siniestro.dominio.ProblemaDeFecha
 import com.solventa4bits.movil.siniestro.dominio.ResultadoEntrega
 import com.solventa4bits.movil.siniestro.dominio.ResultadoReporte
@@ -361,7 +362,8 @@ class ReporteViewModelTest {
         assertEquals(TipoDeSiniestro.INCENDIO_TERREMOTO, enviado.tipo)
         assertEquals("Se incendio la cocina", enviado.narracion)
         assertEquals(listOf(ClaseDeArchivo.FOTO, ClaseDeArchivo.DOCUMENTO), enviado.archivos.map { it.clase })
-        assertEquals(DestinoDePago("Bancolombia", TipoDeCuenta.AHORROS, "48210012345"), enviado.destinoPago)
+        val cuenta = DestinoDePago.Transferencia("Bancolombia", TipoDeCuenta.AHORROS, "48210012345")
+        assertEquals(cuenta, enviado.destinoPago)
         assertEquals("SIN-2026-00042", reporte.estado.radicado?.numero)
     }
 
@@ -498,5 +500,22 @@ class ReporteViewModelTest {
         val reporte = deTuCasa()
 
         assertTrue(reporte.estado.bancos.isEmpty())
+    }
+
+    @Test
+    @DisplayName("BITS-116, AC-4 y AC-5: con cheque, el destino es la oficina; sin oficina no se sigue")
+    fun destinoConCheque() {
+        servicio.alReportar = ResultadoReporte.Radicado("s2", "SIN-2026-00042")
+        val oficina = Oficina("b1", "Bancolombia", "Oficina Chapinero", "Calle 57 # 9-20", "Bogotá", 4.6486, -74.0628)
+        val reporte = deTuCasa()
+        reporte.agregarPagina(Escaneo.FOTO_DEL_DANO, foto)
+        reporte.cambiarNarracion("Se incendio la cocina")
+        reporte.cambiarPago(cuenta.copy(forma = FormaDePago.CHEQUE, bancoDelCheque = "Bancolombia"))
+        assertNull(reporte.estado.pago.destino)
+
+        reporte.cambiarPago(reporte.estado.pago.copy(oficina = oficina))
+        reporte.enviar()
+
+        assertEquals(DestinoDePago.Cheque(oficina), servicio.reportes.single().first.destinoPago)
     }
 }

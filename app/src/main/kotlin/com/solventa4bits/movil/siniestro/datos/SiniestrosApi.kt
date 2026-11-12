@@ -46,7 +46,25 @@ interface SiniestrosApi {
         @Part("datos") datos: RequestBody,
         @Part archivos: List<MultipartBody.Part>,
     ): Response<SiniestroDto>
+
+    /** El catalogo de siniestros. La app solo usa las oficinas; los prestadores son de BITS-371. */
+    @GET("v1/catalogos/siniestros")
+    suspend fun catalogo(@Header("Authorization") autorizacion: String): Response<CatalogoSiniestrosDto>
 }
+
+@Serializable
+data class CatalogoSiniestrosDto(val oficinas: List<OficinaDto> = emptyList())
+
+@Serializable
+data class OficinaDto(
+    val id: String,
+    val banco: String,
+    val nombre: String,
+    val direccion: String,
+    val ciudad: String,
+    val latitud: Double,
+    val longitud: Double,
+)
 
 /** La parte `datos` de una entrega: una entrada por archivo, en el mismo orden. */
 @Serializable
@@ -63,14 +81,19 @@ data class ReportarSiniestroDatosDto(
     val destinoPago: DestinoPagoDto? = null,
 )
 
-/** Solo la transferencia; [tipo] sin valor por defecto para que siempre viaje. */
+/** Transferencia (banco, tipo y numero) o cheque (la oficina); [tipo] sin valor por defecto para que siempre viaje. */
 @Serializable
 data class DestinoPagoDto(
     val tipo: String,
-    val banco: String,
-    val tipoCuenta: String,
-    val numeroCuenta: String,
+    val banco: String? = null,
+    val tipoCuenta: String? = null,
+    val numeroCuenta: String? = null,
+    val oficina: OficinaDelChequeDto? = null,
 )
+
+/** Lo que se guarda de la oficina con el siniestro, para mostrarla sin consultar el catalogo. */
+@Serializable
+data class OficinaDelChequeDto(val id: String, val banco: String, val nombre: String, val direccion: String)
 
 @Serializable
 data class ArchivoReporteDto(

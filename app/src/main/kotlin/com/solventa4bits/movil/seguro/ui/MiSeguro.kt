@@ -15,12 +15,15 @@ import com.solventa4bits.movil.identidad.ui.Camara
 import com.solventa4bits.movil.identidad.ui.QueFoto
 import com.solventa4bits.movil.red.GuardiaDeRed
 import com.solventa4bits.movil.siniestro.dominio.TipoDeSiniestro
+import com.solventa4bits.movil.siniestro.ui.AccionesDeLaOficina
 import com.solventa4bits.movil.siniestro.ui.AccionesDeLasFotos
 import com.solventa4bits.movil.siniestro.ui.AccionesDeRevision
 import com.solventa4bits.movil.siniestro.ui.AccionesDelDictamen
 import com.solventa4bits.movil.siniestro.ui.AccionesDelRelato
 import com.solventa4bits.movil.siniestro.ui.Escaneo
 import com.solventa4bits.movil.siniestro.ui.MisSiniestrosViewModel
+import com.solventa4bits.movil.siniestro.ui.OficinasViewModel
+import com.solventa4bits.movil.siniestro.ui.PantallaOficinaDelCheque
 import com.solventa4bits.movil.siniestro.ui.PantallaFotosDelDano
 import com.solventa4bits.movil.siniestro.ui.PantallaQuePaso
 import com.solventa4bits.movil.siniestro.ui.PantallaReporteEnviado
@@ -39,7 +42,7 @@ import com.solventa4bits.movil.solicitud.dominio.Solicitud
  * Desde "Tu siniestro", lo que falta (BITS-118): el dictamen o las fotos, revisar y recibido.
  */
 private enum class PasoEnMiSeguro {
-    POLIZA, DICTAMEN, FOTOS, QUE_PASO, PAGO, REVISA, ENVIADO, SINIESTRO,
+    POLIZA, DICTAMEN, FOTOS, QUE_PASO, PAGO, OFICINA, REVISA, ENVIADO, SINIESTRO,
     FALTA_DICTAMEN, FALTA_FOTOS, FALTA_REVISA, RECIBIDO,
 }
 
@@ -49,6 +52,7 @@ class PiezasDelSiniestro(
     val reporte: ReporteViewModel,
     val camara: Camara,
     val red: GuardiaDeRed,
+    val oficinas: OficinasViewModel,
 )
 
 /**
@@ -75,10 +79,7 @@ fun MiSeguro(
     LaunchedEffect(poliza?.id, enLaPoliza) {
         if (enLaPoliza && poliza != null && conConexion) misSiniestros.listar()
     }
-    // El reporte solo cuenta mientras se esta reportando: el de una sesion anterior ya se atendio.
-    LaunchedEffect(misSiniestros.estado.sesionVencida, reporte.estado.sesionVencida) {
-        if (misSiniestros.estado.sesionVencida || (!enLaPoliza && reporte.estado.sesionVencida)) alCerrarSesion()
-    }
+    AlVencerLaSesion(paso, piezas, alCerrarSesion)
     LaunchedEffect(reporte.estado.radicado) {
         val radicado = reporte.estado.radicado
         if (radicado != null && paso == PasoEnMiSeguro.REVISA) {
@@ -111,6 +112,20 @@ fun MiSeguro(
     }
     AlTerminarLaEntrega(paso, piezas) { paso = it }
     CaminoDelSiniestro(paso, { paso = it }, poliza, piezas, alCerrarSesion, modifier)
+}
+
+/**
+ * Cierra la sesion si alguna consulta la encontro vencida. El reporte y las oficinas solo cuentan
+ * mientras se estan usando: lo de una sesion anterior ya se atendio.
+ */
+@Composable
+private fun AlVencerLaSesion(paso: PasoEnMiSeguro, piezas: PiezasDelSiniestro, alCerrarSesion: () -> Unit) {
+    val delReporte = paso != PasoEnMiSeguro.POLIZA && piezas.reporte.estado.sesionVencida
+    val deLasOficinas = paso == PasoEnMiSeguro.OFICINA && piezas.oficinas.estado.sesionVencida
+    val vencida = piezas.misSiniestros.estado.sesionVencida || delReporte || deLasOficinas
+    LaunchedEffect(vencida) {
+        if (vencida) alCerrarSesion()
+    }
 }
 
 /** Llego lo que faltaba, o ya no se pedia: en los dos casos se ve el siniestro como esta ahora. */
@@ -207,6 +222,10 @@ private fun CaminoDelSiniestro(
         PasoEnMiSeguro.PAGO -> PantallaTuPago(
             estado = reporte.estado,
             alCambiarPago = reporte::cambiarPago,
+            alElegirOficina = {
+                piezas.oficinas.cargar()
+                irA(PasoEnMiSeguro.OFICINA)
+            },
             alContinuar = { irA(PasoEnMiSeguro.REVISA) },
             alVolver = alAnterior,
             alCerrarSesion = alCerrarSesion,
@@ -299,6 +318,22 @@ private fun FinalDelCamino(
     val reporte = piezas.reporte
     val misSiniestros = piezas.misSiniestros
     when (paso) {
+        PasoEnMiSeguro.OFICINA -> PantallaOficinaDelCheque(
+            estado = piezas.oficinas.estado,
+            banco = reporte.estado.pago.bancoDelCheque.orEmpty(),
+            elegida = reporte.estado.pago.oficina,
+            acciones = AccionesDeLaOficina(
+                alElegir = { oficina ->
+                    reporte.cambiarPago(reporte.estado.pago.copy(oficina = oficina))
+                    irA(PasoEnMiSeguro.PAGO)
+                },
+                alElegirCiudad = piezas.oficinas::elegirCiudad,
+                alRecargar = piezas.oficinas::cargar,
+                alVolver = alAnterior,
+            ),
+            alCerrarSesion = alCerrarSesion,
+            modifier = modifier,
+        )
         PasoEnMiSeguro.REVISA -> PantallaRevisaYEnvia(
             estado = reporte.estado,
             nombreDeLaPoliza = nombreDelSeguro(poliza),
@@ -342,6 +377,7 @@ private fun FinalDelCamino(
 private fun anterior(paso: PasoEnMiSeguro, tipo: TipoDeSiniestro) = when (paso) {
     PasoEnMiSeguro.QUE_PASO -> PasoEnMiSeguro.FOTOS
     PasoEnMiSeguro.PAGO -> PasoEnMiSeguro.QUE_PASO
+    PasoEnMiSeguro.OFICINA -> PasoEnMiSeguro.PAGO
     PasoEnMiSeguro.REVISA -> if (tipo.deTuCasa) PasoEnMiSeguro.PAGO else PasoEnMiSeguro.DICTAMEN
     PasoEnMiSeguro.FALTA_REVISA -> if (tipo.deTuCasa) PasoEnMiSeguro.FALTA_FOTOS else PasoEnMiSeguro.FALTA_DICTAMEN
     PasoEnMiSeguro.FALTA_DICTAMEN, PasoEnMiSeguro.FALTA_FOTOS, PasoEnMiSeguro.RECIBIDO -> PasoEnMiSeguro.SINIESTRO

@@ -23,6 +23,10 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // El mapa de las oficinas (BITS-368). La descarga no pide token.
+        maven("https://api.mapbox.com/downloads/v2/releases/maven") {
+            content { includeGroupByRegex("com\\.mapbox.*") }
+        }
     }
 }
 

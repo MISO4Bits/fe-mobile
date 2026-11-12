@@ -13,6 +13,8 @@ import com.solventa4bits.movil.siniestro.dominio.EstadoDeSiniestro
 import com.solventa4bits.movil.siniestro.dominio.EventoSismo
 import com.solventa4bits.movil.siniestro.dominio.EvidenciaPedida
 import com.solventa4bits.movil.siniestro.dominio.LineaDePago
+import com.solventa4bits.movil.siniestro.dominio.Oficina
+import com.solventa4bits.movil.siniestro.dominio.ResultadoCatalogo
 import com.solventa4bits.movil.siniestro.dominio.ReporteDeSiniestro
 import com.solventa4bits.movil.siniestro.dominio.ResultadoDetalle
 import com.solventa4bits.movil.siniestro.dominio.ResultadoEntrega
@@ -134,7 +136,8 @@ class AdaptadorSiniestrosTest {
     @DisplayName("Tu casa: la cuenta viaja como transferencia")
     fun destinoComoTransferencia() = runTest {
         responder(201, """{"id": "sin-1", "numero": "SIN-1", "estado": "EN_ESTUDIO"}""")
-        val conCuenta = reporte.copy(destinoPago = DestinoDePago("Bancolombia", TipoDeCuenta.AHORROS, "48210012345"))
+        val cuenta = DestinoDePago.Transferencia("Bancolombia", TipoDeCuenta.AHORROS, "48210012345")
+        val conCuenta = reporte.copy(destinoPago = cuenta)
 
         adaptador().reportar(conCuenta, "llave-1")
 
@@ -493,5 +496,56 @@ class AdaptadorSiniestrosTest {
         responder(200, """{"no": "es una lista"}""")
 
         assertEquals(ResultadoSiniestros.Fallo, adaptador().listar())
+    }
+
+    // --- El cheque (BITS-116).
+
+    private val cedritos = Oficina(
+        "ofi-bancolombia-001", "Bancolombia", "Oficina Cedritos", "Calle 117 # 1-33", "Bogotá", 4.7008, -74.024,
+    )
+
+    @Test
+    @DisplayName("BITS-116, AC-4: el cheque viaja con la oficina elegida, sin su ciudad ni su ubicacion")
+    fun destinoComoCheque() = runTest {
+        responder(201, """{"id": "sin-1", "numero": "SIN-1", "estado": "EN_ESTUDIO"}""")
+
+        adaptador().reportar(reporte.copy(destinoPago = DestinoDePago.Cheque(cedritos)), "llave-1")
+
+        val cuerpo = servidor.takeRequest().body.readUtf8()
+        assertTrue(
+            cuerpo.contains(
+                """"destinoPago":{"tipo":"CHEQUE","oficina":{"id":"ofi-bancolombia-001","banco":"Bancolombia",""" +
+                    """"nombre":"Oficina Cedritos","direccion":"Calle 117 # 1-33"}}""",
+            ),
+        )
+    }
+
+    @Test
+    @DisplayName("BITS-116, AC-4: trae las oficinas del catalogo e ignora lo que no usa")
+    fun oficinasDelCatalogo() = runTest {
+        responder(
+            200,
+            """{"mercado": "CO", "version": 1, "tiposAyuda": [], "prestadores": [],
+                "oficinas": [{"id": "ofi-bancolombia-001", "banco": "Bancolombia", "nombre": "Oficina Cedritos",
+                  "direccion": "Calle 117 # 1-33", "ciudad": "Bogotá", "latitud": 4.7008, "longitud": -74.024}]}""",
+        )
+
+        val resultado = adaptador().oficinas()
+
+        assertEquals(ResultadoCatalogo.Exito(listOf(cedritos)), resultado)
+        val pedida = servidor.takeRequest()
+        assertEquals("/mobile/v1/catalogos/siniestros", pedida.path)
+        assertEquals("Bearer jwt-de-acceso", pedida.getHeader("Authorization"))
+    }
+
+    @Test
+    @DisplayName("si el catalogo falla o no hay red, deja traza y responde Fallo")
+    fun catalogoQueFalla() = runTest {
+        responder(503, "")
+        assertEquals(ResultadoCatalogo.Fallo, adaptador().oficinas())
+
+        servidor.shutdown()
+        assertEquals(ResultadoCatalogo.Fallo, adaptador().oficinas())
+        assertEquals(2, traza.errores.size)
     }
 }

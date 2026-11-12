@@ -118,6 +118,50 @@ class SiniestroTuCasaTest {
         composeRule.esperarTexto("VIDA PARA TU CRÉDITO")
     }
 
+    @Test
+    fun eligeElChequeEnUnaOficinaDeSuCiudad() {
+        abrirMiSeguro()
+        bff.responderSiempreEn("/v1/catalogos/siniestros", 200, CATALOGO)
+        llegarAlPago()
+
+        // BITS-116, AC-1 y AC-4: cheque en Bancolombia; sin oficina no se sigue.
+        composeRule.onNodeWithText("Cheque en una oficina").performClick()
+        composeRule.onNodeWithText("Bancolombia").performClick()
+        composeRule.onNodeWithText("Continuar").assertIsNotEnabled()
+        composeRule.onNodeWithText("Elegir la oficina").performScrollTo().performClick()
+
+        // Sin la ubicacion, el cliente elige su ciudad y la oficina.
+        composeRule.esperarTexto("Elige la oficina")
+        composeRule.onNodeWithText("Ciudad").performClick()
+        composeRule.onNodeWithText("Bogotá").performClick()
+        composeRule.onNodeWithText("Bancolombia · Oficina Salitre").performScrollTo().performClick()
+        composeRule.onNodeWithText("Elegir esta oficina").performClick()
+
+        composeRule.esperarTexto("¿Cómo quieres recibir tu pago?")
+        composeRule.onNodeWithText("Bancolombia · Oficina Salitre").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Continuar").assertIsEnabled().performClick()
+
+        // AC-5: el resumen lleva la oficina.
+        composeRule.esperarTexto("Revisa y envía")
+        composeRule.onNodeWithText("Cheque en Bancolombia · Oficina Salitre").assertIsDisplayed()
+    }
+
+    /** Del inicio del reporte de Tu casa hasta M06: una foto sin ubicacion y lo que paso. */
+    private fun llegarAlPago() {
+        composeRule.onNodeWithText("Reportar incendio o terremoto").performScrollTo().performClick()
+        composeRule.esperarTexto("Fotos del daño")
+        composeRule.onNodeWithText("Tomar una foto").performClick()
+        composeRule.esperarTexto("¿Nos dejas usar tu ubicación?")
+        composeRule.onNodeWithText("Seguir sin ubicación").performClick()
+        composeRule.usarFotoDePrueba()
+        composeRule.esperarTexto("Foto 1")
+        composeRule.onNodeWithText("Continuar").performClick()
+        composeRule.esperarTexto("Cuéntanos qué pasó")
+        composeRule.onNodeWithText("Qué pasó").performTextInput("Se prendió la estufa de la cocina.")
+        composeRule.onNodeWithText("Continuar").performClick()
+        composeRule.esperarTexto("¿Cómo quieres recibir tu pago?")
+    }
+
     private fun radicar() {
         bff.responderSiempreEn(
             RUTA_SINIESTROS,
@@ -129,6 +173,19 @@ class SiniestroTuCasaTest {
     }
 
     private companion object {
+        /** Lo que trae el catalogo de Daniel, recortado: tres oficinas de Bancolombia y una de BBVA. */
+        const val CATALOGO = """{"mercado": "CO", "version": 1, "tiposAyuda": [], "localidades": [], "prestadores": [],
+            "oficinas": [
+              {"id": "ofi-bancolombia-001", "banco": "Bancolombia", "nombre": "Oficina Cedritos",
+               "direccion": "Calle 117 # 1-33", "ciudad": "Bogotá", "latitud": 4.7008, "longitud": -74.024},
+              {"id": "ofi-bancolombia-002", "banco": "Bancolombia", "nombre": "Oficina Salitre",
+               "direccion": "Avenida Calle 26 # 69-76", "ciudad": "Bogotá", "latitud": 4.6584, "longitud": -74.1103},
+              {"id": "ofi-bancolombia-003", "banco": "Bancolombia", "nombre": "Oficina Chía",
+               "direccion": "Calle 12 # 10-50", "ciudad": "Chía", "latitud": 4.8619, "longitud": -74.0336},
+              {"id": "ofi-bbva-001", "banco": "BBVA", "nombre": "Oficina Lourdes",
+               "direccion": "Carrera 13 # 63-39", "ciudad": "Bogotá", "latitud": 4.6503, "longitud": -74.062}
+            ]}"""
+
         const val RUTA_SINIESTROS = "/v1/cuenta/siniestros"
         const val ID_DE_SINIESTRO = "5a1c9d2e-8b3f-4c6a-9d70-1e2f3a4b5c6d"
 

@@ -9,6 +9,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -32,17 +33,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.solventa4bits.movil.R
+import com.solventa4bits.movil.siniestro.dominio.BANCOS_DEL_CHEQUE
 import com.solventa4bits.movil.siniestro.dominio.TipoDeCuenta
 
 /**
- * M06: como recibe el cliente el pago de Tu casa (BITS-116). A quien se le paga (AC-2) y la
- * cuenta para la transferencia, con el banco de la lista (AC-3). Si la lista no cargo, el banco
- * se escribe a mano.
+ * M06: como recibe el cliente el pago de Tu casa (BITS-116, AC-1). A quien se le paga (AC-2); la
+ * cuenta para la transferencia, con el banco de la lista (AC-3), o el banco y la oficina del cheque
+ * (AC-4). Si la lista de bancos no cargo, el banco se escribe a mano.
  */
 @Composable
 fun PantallaTuPago(
     estado: EstadoReporte,
     alCambiarPago: (DatosDePago) -> Unit,
+    alElegirOficina: () -> Unit,
     alContinuar: () -> Unit,
     alVolver: () -> Unit,
     alCerrarSesion: () -> Unit,
@@ -62,9 +65,13 @@ fun PantallaTuPago(
         Opcion(
             titulo = stringResource(R.string.pago_transferencia),
             detalle = stringResource(R.string.pago_transferencia_detalle),
-            elegida = true,
-            alElegir = {},
-        )
+            elegida = pago.forma == FormaDePago.TRANSFERENCIA,
+        ) { alCambiarPago(pago.copy(forma = FormaDePago.TRANSFERENCIA)) }
+        Opcion(
+            titulo = stringResource(R.string.pago_cheque),
+            detalle = stringResource(R.string.pago_cheque_detalle),
+            elegida = pago.forma == FormaDePago.CHEQUE,
+        ) { alCambiarPago(pago.copy(forma = FormaDePago.CHEQUE)) }
         Surface(
             color = MaterialTheme.colorScheme.secondaryContainer,
             shape = MaterialTheme.shapes.medium,
@@ -75,9 +82,21 @@ fun PantallaTuPago(
                 Text(stringResource(R.string.pago_a_quien), style = MaterialTheme.typography.bodyMedium)
             }
         }
-        TituloDeSeccion(stringResource(R.string.pago_tu_cuenta))
-        Banco(pago.banco, estado.bancos) { alCambiarPago(pago.copy(banco = it.take(LARGO_DEL_BANCO))) }
-        Row {
+        if (pago.forma == FormaDePago.CHEQUE) {
+            TuOficina(pago, alCambiarPago, alElegirOficina)
+        } else {
+            TuCuenta(estado, alCambiarPago)
+        }
+    }
+}
+
+/** AC-3: la cuenta de la transferencia. */
+@Composable
+private fun TuCuenta(estado: EstadoReporte, alCambiarPago: (DatosDePago) -> Unit) {
+    val pago = estado.pago
+    TituloDeSeccion(stringResource(R.string.pago_tu_cuenta))
+    Banco(pago.banco, estado.bancos) { alCambiarPago(pago.copy(banco = it.take(LARGO_DEL_BANCO))) }
+    Row {
             Opcion(
                 titulo = stringResource(R.string.pago_ahorros),
                 elegida = pago.tipoCuenta == TipoDeCuenta.AHORROS,
@@ -89,17 +108,53 @@ fun PantallaTuPago(
                 modifier = Modifier.weight(1f),
             ) { alCambiarPago(pago.copy(tipoCuenta = TipoDeCuenta.CORRIENTE)) }
         }
-        OutlinedTextField(
-            value = pago.numeroCuenta,
-            onValueChange = { numero ->
-                alCambiarPago(pago.copy(numeroCuenta = numero.filter(Char::isDigit).take(DIGITOS_DE_LA_CUENTA)))
-            },
-            label = { Text(stringResource(R.string.pago_numero)) },
-            supportingText = { Text(stringResource(R.string.pago_numero_ayuda)) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
+    OutlinedTextField(
+        value = pago.numeroCuenta,
+        onValueChange = { numero ->
+            alCambiarPago(pago.copy(numeroCuenta = numero.filter(Char::isDigit).take(DIGITOS_DE_LA_CUENTA)))
+        },
+        label = { Text(stringResource(R.string.pago_numero)) },
+        supportingText = { Text(stringResource(R.string.pago_numero_ayuda)) },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+/** AC-4: el banco del cheque y la oficina, que se elige en M06A. Cambiar de banco olvida la oficina. */
+@Composable
+private fun TuOficina(pago: DatosDePago, alCambiarPago: (DatosDePago) -> Unit, alElegirOficina: () -> Unit) {
+    TituloDeSeccion(stringResource(R.string.pago_tu_oficina))
+    Row {
+        BANCOS_DEL_CHEQUE.forEach { banco ->
+            Opcion(titulo = banco, elegida = pago.bancoDelCheque == banco, modifier = Modifier.weight(1f)) {
+                alCambiarPago(pago.copy(bancoDelCheque = banco, oficina = pago.oficina?.takeIf { it.banco == banco }))
+            }
+        }
+    }
+    if (pago.bancoDelCheque == null) return
+    val oficina = pago.oficina
+    Tarjeta(alTocar = alElegirOficina) {
+        Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Column(modifier = Modifier.weight(1f)) {
+            if (oficina == null) {
+                Text(stringResource(R.string.pago_elegir_oficina), style = MaterialTheme.typography.bodyLarge)
+            } else {
+                Text(
+                    text = nombreDeLaOficina(oficina),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                TextoTenue(oficina.direccion)
+            }
+        }
+        if (oficina != null) {
+            Text(
+                text = stringResource(R.string.pago_cambiar),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
     }
 }
 
