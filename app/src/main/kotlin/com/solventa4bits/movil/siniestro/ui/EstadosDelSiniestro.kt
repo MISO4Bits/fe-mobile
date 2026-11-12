@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,9 +21,11 @@ import androidx.compose.ui.unit.dp
 import com.solventa4bits.movil.R
 import com.solventa4bits.movil.cotizacion.ui.enPesos
 import com.solventa4bits.movil.siniestro.dominio.Beneficiario
+import com.solventa4bits.movil.siniestro.dominio.DetalleDeSiniestro
 import com.solventa4bits.movil.siniestro.dominio.EventoSismo
 import com.solventa4bits.movil.siniestro.dominio.EvidenciaPedida
 import com.solventa4bits.movil.siniestro.dominio.PagoDelSiniestro
+import com.solventa4bits.movil.siniestro.dominio.puedePedirAyuda
 import com.solventa4bits.movil.solicitud.ui.fechaCorta
 import com.solventa4bits.movil.solicitud.ui.fechaCortaDelDia
 
@@ -118,4 +121,58 @@ internal fun ElSismo(evento: EventoSismo) {
         FilaDeDato(stringResource(R.string.tu_siniestro_municipio), evento.municipio)
         FilaDeDato(stringResource(R.string.tu_siniestro_magnitud), evento.magnitud.toString().replace('.', ','))
     }
+}
+
+/** "Tu siniestro": las ayudas pedidas y, si se puede, pedir otra (AC-7). */
+@Composable
+internal fun AyudaEnSitio(detalle: DetalleDeSiniestro, alPedirAyuda: () -> Unit) {
+    val puede = detalle.puedePedirAyuda
+    if (!puede && detalle.asistencias.isEmpty()) return
+    TituloDeSeccion(stringResource(R.string.tu_siniestro_ayuda))
+    detalle.asistencias.forEach { ayuda ->
+        Tarjeta {
+            Icon(
+                painterResource(iconoDeAyuda(ayuda.tipo)),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = nombreDeAyuda(ayuda.tipo),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                val pedidaEl = fechaCorta(ayuda.solicitadaEn).orEmpty()
+                TextoTenue(stringResource(R.string.tu_siniestro_ayuda_numero, ayuda.numero, pedidaEl))
+                TextoTenue(stringResource(R.string.tu_siniestro_ayuda_llega, ayuda.prestador, ayuda.tiempoLlegadaMin))
+            }
+        }
+    }
+    if (puede) {
+        OutlinedButton(onClick = alPedirAyuda, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.tu_siniestro_pedir_ayuda))
+        }
+    }
+}
+
+internal fun iconoDeAyuda(tipo: String): Int = when (tipo) {
+    "plomeria" -> R.drawable.ic_ayuda_plomeria
+    "electricidad" -> R.drawable.ic_ayuda_electricidad
+    "cerrajeria" -> R.drawable.ic_ayuda_cerrajeria
+    "vidrios" -> R.drawable.ic_ayuda_vidrios
+    "escombros" -> R.drawable.ic_ayuda_escombros
+    "techos" -> R.drawable.ic_ayuda_techos
+    else -> R.drawable.ic_escudo
+}
+
+/** El nombre del tipo cuando no esta el catalogo, como en "Tu siniestro". */
+@Composable
+internal fun nombreDeAyuda(tipo: String): String = when (tipo) {
+    "plomeria" -> stringResource(R.string.ayuda_tipo_plomeria)
+    "electricidad" -> stringResource(R.string.ayuda_tipo_electricidad)
+    "cerrajeria" -> stringResource(R.string.ayuda_tipo_cerrajeria)
+    "vidrios" -> stringResource(R.string.ayuda_tipo_vidrios)
+    "escombros" -> stringResource(R.string.ayuda_tipo_escombros)
+    "techos" -> stringResource(R.string.ayuda_tipo_techos)
+    else -> tipo
 }

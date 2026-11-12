@@ -157,6 +157,8 @@ fun PantallaReporteEnviado(
     alCerrarSesion: () -> Unit,
     modifier: Modifier = Modifier,
     loQueFaltaba: Boolean = false,
+    /** Solo en Tu casa, mientras se puede pedir ayuda en sitio (BITS-239, AC-1). */
+    alPedirAyuda: (() -> Unit)? = null,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
         BarraSolventa(stringResource(R.string.enviado_barra), alCerrarSesion)
@@ -196,6 +198,14 @@ fun PantallaReporteEnviado(
         }
         Button(onClick = alVerSiniestro, modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             Text(stringResource(R.string.enviado_ver))
+        }
+        alPedirAyuda?.let {
+            TextButton(
+                onClick = it,
+                modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+            ) {
+                Text(stringResource(R.string.tu_siniestro_pedir_ayuda))
+            }
         }
     }
 }

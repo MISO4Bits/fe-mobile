@@ -32,7 +32,7 @@ import com.solventa4bits.movil.ui.BarraSolventa
  * M09: en que va un siniestro (BITS-118). Arriba lo que comparten todos; despues, lo de su estado:
  * el plazo, lo que falta, el pago o el motivo del rechazo. El pago automatico por sismo muestra el
  * sismo en vez de "Lo que reportaste", porque nadie lo reporto. En Falta informacion, el boton
- * para enviar lo que falta (AC-4).
+ * para enviar lo que falta (AC-4). En Tu casa, las ayudas en sitio pedidas (BITS-239, AC-7).
  */
 @Composable
 fun PantallaTuSiniestro(
@@ -40,6 +40,7 @@ fun PantallaTuSiniestro(
     nombreDeLaPoliza: String,
     bancoDelCredito: String?,
     alEnviarLoQueFalta: (DetalleDeSiniestro) -> Unit,
+    alPedirAyuda: (DetalleDeSiniestro) -> Unit,
     alReintentar: () -> Unit,
     alVolver: () -> Unit,
     alCerrarSesion: () -> Unit,
@@ -59,6 +60,7 @@ fun PantallaTuSiniestro(
                 ) {
                     Encabezado(detalle)
                     LoDeSuEstado(detalle, bancoDelCredito)
+                    AyudaEnSitio(detalle) { alPedirAyuda(detalle) }
                     detalle.evento?.let { ElSismo(it) }
                     if (!detalle.resumen.automatico) LoQueReportaste(detalle, nombreDeLaPoliza)
                 }

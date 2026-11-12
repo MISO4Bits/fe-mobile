@@ -14,21 +14,29 @@ import com.solventa4bits.movil.R
 import com.solventa4bits.movil.identidad.ui.Camara
 import com.solventa4bits.movil.identidad.ui.QueFoto
 import com.solventa4bits.movil.red.GuardiaDeRed
+import com.solventa4bits.movil.siniestro.dominio.DetalleDeSiniestro
+import com.solventa4bits.movil.siniestro.dominio.PuntoDeAyuda
 import com.solventa4bits.movil.siniestro.dominio.TipoDeSiniestro
+import com.solventa4bits.movil.siniestro.dominio.puedePedirAyuda
 import com.solventa4bits.movil.siniestro.ui.AccionesDeLaOficina
 import com.solventa4bits.movil.siniestro.ui.AccionesDeLasFotos
 import com.solventa4bits.movil.siniestro.ui.AccionesDeRevision
 import com.solventa4bits.movil.siniestro.ui.AccionesDelDictamen
 import com.solventa4bits.movil.siniestro.ui.AccionesDelRelato
+import com.solventa4bits.movil.siniestro.ui.AyudaViewModel
 import com.solventa4bits.movil.siniestro.ui.Escaneo
 import com.solventa4bits.movil.siniestro.ui.MisSiniestrosViewModel
 import com.solventa4bits.movil.siniestro.ui.OficinasViewModel
+import com.solventa4bits.movil.siniestro.ui.PantallaAyudaPedida
+import com.solventa4bits.movil.siniestro.ui.PantallaDondeVaLaAyuda
 import com.solventa4bits.movil.siniestro.ui.PantallaOficinaDelCheque
 import com.solventa4bits.movil.siniestro.ui.PantallaFotosDelDano
+import com.solventa4bits.movil.siniestro.ui.PantallaPrestadores
 import com.solventa4bits.movil.siniestro.ui.PantallaQuePaso
 import com.solventa4bits.movil.siniestro.ui.PantallaReporteEnviado
 import com.solventa4bits.movil.siniestro.ui.PantallaRevisaLoQueFalta
 import com.solventa4bits.movil.siniestro.ui.PantallaRevisaYEnvia
+import com.solventa4bits.movil.siniestro.ui.PantallaTipoDeAyuda
 import com.solventa4bits.movil.siniestro.ui.PantallaTuDictamen
 import com.solventa4bits.movil.siniestro.ui.PantallaTuPago
 import com.solventa4bits.movil.siniestro.ui.PantallaTuSiniestro
@@ -39,12 +47,21 @@ import com.solventa4bits.movil.solicitud.dominio.Solicitud
 /**
  * Donde va el cliente dentro de "Mi seguro" (BITS-111). Vida: dictamen y revisar. Tu casa: fotos,
  * que paso, la cuenta para el pago y revisar. Los dos terminan en el radicado y en "Tu siniestro".
- * Desde "Tu siniestro", lo que falta (BITS-118): el dictamen o las fotos, revisar y recibido.
+ * Desde "Tu siniestro", lo que falta (BITS-118): el dictamen o las fotos, revisar y recibido. Y en
+ * Tu casa, la ayuda en sitio (BITS-239): el tipo, a donde va, quien la presta y la ayuda pedida.
  */
 private enum class PasoEnMiSeguro {
     POLIZA, DICTAMEN, FOTOS, QUE_PASO, PAGO, OFICINA, REVISA, ENVIADO, SINIESTRO,
     FALTA_DICTAMEN, FALTA_FOTOS, FALTA_REVISA, RECIBIDO,
+    AYUDA_TIPO, AYUDA_DONDE, AYUDA_PRESTADOR, AYUDA_PEDIDA,
 }
+
+private val PASOS_DE_LA_AYUDA = setOf(
+    PasoEnMiSeguro.AYUDA_TIPO,
+    PasoEnMiSeguro.AYUDA_DONDE,
+    PasoEnMiSeguro.AYUDA_PRESTADOR,
+    PasoEnMiSeguro.AYUDA_PEDIDA,
+)
 
 /** Las piezas que "Mi seguro" necesita para el camino del siniestro. */
 class PiezasDelSiniestro(
@@ -53,6 +70,7 @@ class PiezasDelSiniestro(
     val camara: Camara,
     val red: GuardiaDeRed,
     val oficinas: OficinasViewModel,
+    val ayuda: AyudaViewModel,
 )
 
 /**
@@ -115,14 +133,15 @@ fun MiSeguro(
 }
 
 /**
- * Cierra la sesion si alguna consulta la encontro vencida. El reporte y las oficinas solo cuentan
- * mientras se estan usando: lo de una sesion anterior ya se atendio.
+ * Cierra la sesion si alguna consulta la encontro vencida. El reporte, las oficinas y la ayuda solo
+ * cuentan mientras se estan usando: lo de una sesion anterior ya se atendio.
  */
 @Composable
 private fun AlVencerLaSesion(paso: PasoEnMiSeguro, piezas: PiezasDelSiniestro, alCerrarSesion: () -> Unit) {
     val delReporte = paso != PasoEnMiSeguro.POLIZA && piezas.reporte.estado.sesionVencida
     val deLasOficinas = paso == PasoEnMiSeguro.OFICINA && piezas.oficinas.estado.sesionVencida
-    val vencida = piezas.misSiniestros.estado.sesionVencida || delReporte || deLasOficinas
+    val deLaAyuda = paso in PASOS_DE_LA_AYUDA && piezas.ayuda.estado.sesionVencida
+    val vencida = piezas.misSiniestros.estado.sesionVencida || delReporte || deLasOficinas || deLaAyuda
     LaunchedEffect(vencida) {
         if (vencida) alCerrarSesion()
     }
@@ -174,7 +193,7 @@ private fun CaminoDelSiniestro(
         )
         return
     }
-    val alAnterior = { irA(anterior(paso, reporte.estado.tipo)) }
+    val alAnterior = { irA(anterior(paso, reporte.estado.tipo, piezas.ayuda.estado.punto)) }
     BackHandler(onBack = alAnterior)
     when (paso) {
         PasoEnMiSeguro.POLIZA -> Unit
@@ -234,6 +253,7 @@ private fun CaminoDelSiniestro(
         PasoEnMiSeguro.FALTA_DICTAMEN, PasoEnMiSeguro.FALTA_FOTOS, PasoEnMiSeguro.FALTA_REVISA,
         PasoEnMiSeguro.RECIBIDO,
         -> LoQueFalta(paso, irA, piezas, { escaneando = it }, alAnterior, alCerrarSesion, modifier)
+        in PASOS_DE_LA_AYUDA -> PedirAyuda(paso, irA, piezas, alAnterior, alCerrarSesion, modifier)
         else -> FinalDelCamino(paso, irA, poliza, piezas, alAnterior, alCerrarSesion, modifier)
     }
 }
@@ -317,6 +337,12 @@ private fun FinalDelCamino(
 ) {
     val reporte = piezas.reporte
     val misSiniestros = piezas.misSiniestros
+    val alPedirAyuda = { detalle: DetalleDeSiniestro ->
+        piezas.red.conRed {
+            piezas.ayuda.empezar(detalle)
+            irA(PasoEnMiSeguro.AYUDA_TIPO)
+        }
+    }
     when (paso) {
         PasoEnMiSeguro.OFICINA -> PantallaOficinaDelCheque(
             estado = piezas.oficinas.estado,
@@ -352,6 +378,8 @@ private fun FinalDelCamino(
             alVerSiniestro = { irA(PasoEnMiSeguro.SINIESTRO) },
             alCerrarSesion = alCerrarSesion,
             modifier = modifier,
+            alPedirAyuda = misSiniestros.estado.detalle?.takeIf { it.puedePedirAyuda }
+                ?.let { detalle -> { alPedirAyuda(detalle) } },
         )
         PasoEnMiSeguro.SINIESTRO -> PantallaTuSiniestro(
             estado = misSiniestros.estado,
@@ -364,6 +392,7 @@ private fun FinalDelCamino(
                     irA(if (deTuCasa) PasoEnMiSeguro.FALTA_FOTOS else PasoEnMiSeguro.FALTA_DICTAMEN)
                 }
             },
+            alPedirAyuda = alPedirAyuda,
             alReintentar = misSiniestros::reintentarDetalle,
             alVolver = alAnterior,
             alCerrarSesion = alCerrarSesion,
@@ -373,13 +402,83 @@ private fun FinalDelCamino(
     }
 }
 
+/**
+ * La ayuda en sitio para la casa (BITS-239). Despues de escribir otra direccion se sigue al tipo si
+ * aun no se eligio. Al ver el siniestro, ya trae la ayuda pedida (AC-7).
+ */
+@Composable
+private fun PedirAyuda(
+    paso: PasoEnMiSeguro,
+    irA: (PasoEnMiSeguro) -> Unit,
+    piezas: PiezasDelSiniestro,
+    alAnterior: () -> Unit,
+    alCerrarSesion: () -> Unit,
+    modifier: Modifier,
+) {
+    val ayuda = piezas.ayuda
+    val alUbicar = {
+        irA(if (ayuda.estado.tipo == null) PasoEnMiSeguro.AYUDA_TIPO else PasoEnMiSeguro.AYUDA_PRESTADOR)
+    }
+    when (paso) {
+        PasoEnMiSeguro.AYUDA_TIPO -> PantallaTipoDeAyuda(
+            estado = ayuda.estado,
+            alElegir = ayuda::elegirTipo,
+            alOtraDireccion = { irA(PasoEnMiSeguro.AYUDA_DONDE) },
+            alContinuar = {
+                irA(if (ayuda.estado.punto == null) PasoEnMiSeguro.AYUDA_DONDE else PasoEnMiSeguro.AYUDA_PRESTADOR)
+            },
+            alReintentar = ayuda::cargar,
+            alVolver = alAnterior,
+            alCerrarSesion = alCerrarSesion,
+            modifier = modifier,
+        )
+        PasoEnMiSeguro.AYUDA_DONDE -> PantallaDondeVaLaAyuda(
+            estado = ayuda.estado,
+            alUsarElTelefono = { ayuda.usarUbicacionDelTelefono(alUbicar) },
+            alCambiarDireccion = ayuda::cambiarDireccion,
+            alUsarLaDireccion = {
+                ayuda.usarDireccion()
+                alUbicar()
+            },
+            alVolver = alAnterior,
+            alCerrarSesion = alCerrarSesion,
+            modifier = modifier,
+        )
+        PasoEnMiSeguro.AYUDA_PRESTADOR -> PantallaPrestadores(
+            estado = ayuda.estado,
+            alPedir = { prestador ->
+                piezas.red.conRed { ayuda.pedir(prestador) { irA(PasoEnMiSeguro.AYUDA_PEDIDA) } }
+            },
+            alOtraAyuda = { irA(PasoEnMiSeguro.AYUDA_TIPO) },
+            alVolver = alAnterior,
+            alCerrarSesion = alCerrarSesion,
+            modifier = modifier,
+        )
+        PasoEnMiSeguro.AYUDA_PEDIDA -> {
+            val alVerSiniestro = {
+                ayuda.estado.siniestroConLaAyuda?.let(piezas.misSiniestros::mostrar)
+                irA(PasoEnMiSeguro.SINIESTRO)
+            }
+            BackHandler(onBack = alVerSiniestro)
+            PantallaAyudaPedida(ayuda.estado, alVerSiniestro, alCerrarSesion, modifier)
+        }
+        else -> Unit
+    }
+}
+
 /** A donde vuelve el gesto atras o la flecha de cada paso. */
-private fun anterior(paso: PasoEnMiSeguro, tipo: TipoDeSiniestro) = when (paso) {
+private fun anterior(paso: PasoEnMiSeguro, tipo: TipoDeSiniestro, punto: PuntoDeAyuda?) = when (paso) {
     PasoEnMiSeguro.QUE_PASO -> PasoEnMiSeguro.FOTOS
     PasoEnMiSeguro.PAGO -> PasoEnMiSeguro.QUE_PASO
     PasoEnMiSeguro.OFICINA -> PasoEnMiSeguro.PAGO
     PasoEnMiSeguro.REVISA -> if (tipo.deTuCasa) PasoEnMiSeguro.PAGO else PasoEnMiSeguro.DICTAMEN
     PasoEnMiSeguro.FALTA_REVISA -> if (tipo.deTuCasa) PasoEnMiSeguro.FALTA_FOTOS else PasoEnMiSeguro.FALTA_DICTAMEN
-    PasoEnMiSeguro.FALTA_DICTAMEN, PasoEnMiSeguro.FALTA_FOTOS, PasoEnMiSeguro.RECIBIDO -> PasoEnMiSeguro.SINIESTRO
+    PasoEnMiSeguro.FALTA_DICTAMEN, PasoEnMiSeguro.FALTA_FOTOS, PasoEnMiSeguro.RECIBIDO,
+    PasoEnMiSeguro.AYUDA_TIPO, PasoEnMiSeguro.AYUDA_PEDIDA,
+    -> PasoEnMiSeguro.SINIESTRO
+    PasoEnMiSeguro.AYUDA_DONDE -> PasoEnMiSeguro.AYUDA_TIPO
+    // Si la ayuda va a donde se tomaron las fotos, no se paso por "Estas en tu casa".
+    PasoEnMiSeguro.AYUDA_PRESTADOR ->
+        if (punto is PuntoDeAyuda.DondeTomoLasFotos) PasoEnMiSeguro.AYUDA_TIPO else PasoEnMiSeguro.AYUDA_DONDE
     else -> PasoEnMiSeguro.POLIZA
 }
