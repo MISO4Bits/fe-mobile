@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.solventa4bits.movil.solicitud.dominio.EstadoDeSolicitud
+import com.solventa4bits.movil.inicio.ui.DE_MIS_SEGUROS
 import com.solventa4bits.movil.solicitud.dominio.ResultadoConsulta
 import com.solventa4bits.movil.solicitud.dominio.ResultadoDocumento
 import com.solventa4bits.movil.solicitud.dominio.ServicioDeSolicitudes
@@ -42,14 +42,15 @@ class SeguroViewModel(private val solicitudes: ServicioDeSolicitudes) : ViewMode
 
     /**
      * Abre la poliza a la que lleva un aviso: la trae del servidor, porque no viene de la lista del
-     * Inicio. Solo se muestra si esta emitida; si no, [EstadoSeguro.noDisponible] y se vuelve al Inicio.
+     * Inicio. Solo se muestra si esta emitida o desactivada; si no, [EstadoSeguro.noDisponible] y se vuelve
+     * al Inicio.
      */
     fun abrir(id: String) {
         estado = EstadoSeguro(cargando = true)
         viewModelScope.launch {
             estado = when (val resultado = solicitudes.consultar(id)) {
                 is ResultadoConsulta.Exito ->
-                    if (resultado.solicitud.estado == EstadoDeSolicitud.EMITIDA) {
+                    if (resultado.solicitud.estado in DE_MIS_SEGUROS) {
                         EstadoSeguro(seguro = resultado.solicitud)
                     } else {
                         EstadoSeguro(noDisponible = true)

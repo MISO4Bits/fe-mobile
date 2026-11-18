@@ -38,7 +38,29 @@ enum class EstadoDeSolicitud {
 
     /** Seguia pendiente cuando vencio la cotizacion: el cliente cotiza de nuevo. */
     VENCIDA,
+
+    /** Fue emitida y cumplio el año sin renovarse (BITS-237, AC-6). */
+    DESACTIVADA,
 }
+
+/** Lo que el cliente hizo con la propuesta de renovacion (BITS-237). */
+enum class EstadoDeRenovacion { PROPUESTA, ACEPTADA, RECHAZADA }
+
+/** La renovacion con el aumento por IPC. Llega desde 45 dias antes del aniversario. Fechas en ISO 8601. */
+data class Renovacion(
+    val estado: EstadoDeRenovacion,
+    val primaActual: Double,
+    /** La actual mas el IPC, sobre toda la prima. */
+    val primaNueva: Double,
+    /** En fraccion: 0.052 es 5,2 %. */
+    val ipc: Double,
+    /** El aniversario: el dia que se renueva o queda desactivada. */
+    val fechaRenovacion: String,
+    /** Hasta cuando puede decidir: el aniversario menos 30 dias. */
+    val decidirHasta: String,
+    /** Cuando se le aviso al banco que la poliza termina. Null si aun no. */
+    val avisoAlBancoEn: String?,
+)
 
 /** Por que la solicitud sigue pendiente. */
 enum class CodigoDePendiente { CORREO_SIN_CONFIRMAR, EVIDENCIA_FALTANTE, EVIDENCIA_EN_REVISION, CREDITO_NO_VERIFICADO }
@@ -75,6 +97,8 @@ data class Solicitud(
     val credito: CreditoAsegurado? = null,
     /** Lo que vale cada cobertura al mes, con IVA (BITS-102). */
     val primasPorCobertura: Map<CodigoCobertura, Double> = emptyMap(),
+    /** Null antes de los 45 dias del aniversario. */
+    val renovacion: Renovacion? = null,
 ) {
     /** Si ademas de la vida tomo "Tu casa". */
     val conTuCasa: Boolean
@@ -124,6 +148,18 @@ sealed interface ResultadoLista {
     data object Fallo : ResultadoLista
 }
 
+sealed interface ResultadoRenovacion {
+    /** El servidor guardo la decision: la poliza se consulta de nuevo para verla. */
+    data object Respondida : ResultadoRenovacion
+
+    /** No hay propuesta o ya paso el dia limite para decidir (409). */
+    data object YaNoSePuede : ResultadoRenovacion
+
+    data object SesionVencida : ResultadoRenovacion
+
+    data object Fallo : ResultadoRenovacion
+}
+
 interface ServicioDeSolicitudes {
     suspend fun condiciones(): ResultadoCondiciones
 
@@ -136,4 +172,7 @@ interface ServicioDeSolicitudes {
 
     /** El documento de una poliza emitida. */
     suspend fun documento(id: String): ResultadoDocumento
+
+    /** Acepta o rechaza la propuesta de renovacion de una poliza (BITS-237). */
+    suspend fun responderRenovacion(id: String, aceptar: Boolean): ResultadoRenovacion
 }

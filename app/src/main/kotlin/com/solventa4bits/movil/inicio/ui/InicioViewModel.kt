@@ -25,7 +25,7 @@ data class EstadoInicio(
      * reciente (BITS-305, AC-1); si no hay, la mas reciente si fue rechazada. Emitida, va en [seguros].
      */
     val solicitudReciente: Solicitud? = null,
-    /** Las polizas emitidas, para "Mis seguros" (BITS-104, AC-3). */
+    /** Las polizas emitidas, para "Mis seguros" (BITS-104, AC-3), y las desactivadas (BITS-307, AC-1). */
     val seguros: List<Solicitud> = emptyList(),
     val sesionVencida: Boolean = false,
     /** No se pudo llegar al servidor: [seguros] son los guardados en el telefono (BITS-217, AC-2). */
@@ -33,6 +33,9 @@ data class EstadoInicio(
     /** Cuando se guardaron los [seguros] que se ven sin conexion, en ISO 8601. Null si llegaron del servidor. */
     val actualizadosEn: String? = null,
 )
+
+/** Las polizas que van en "Mis seguros". */
+val DE_MIS_SEGUROS = setOf(EstadoDeSolicitud.EMITIDA, EstadoDeSolicitud.DESACTIVADA)
 
 /** Decide que muestra el Home: ofrecer cotizar, la cotizacion en curso y la solicitud enviada. */
 class InicioViewModel(
@@ -98,7 +101,7 @@ class InicioViewModel(
             cotizacionEnCurso = cotizacion?.takeIf { it.vigente && it.creadaEn !in usadas },
             solicitudReciente = enviadas.firstOrNull { it.estado == EstadoDeSolicitud.PENDIENTE }
                 ?: enviadas.firstOrNull()?.takeIf { it.estado == EstadoDeSolicitud.RECHAZADA },
-            seguros = enviadas.filter { it.estado == EstadoDeSolicitud.EMITIDA },
+            seguros = enviadas.filter { it.estado in DE_MIS_SEGUROS },
         )
     }
 }

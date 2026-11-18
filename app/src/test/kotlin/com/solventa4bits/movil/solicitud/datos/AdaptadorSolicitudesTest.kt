@@ -13,7 +13,10 @@ import com.solventa4bits.movil.solicitud.dominio.ResultadoDocumento
 import com.solventa4bits.movil.solicitud.dominio.Vigencia
 import com.solventa4bits.movil.solicitud.dominio.CodigoDePendiente
 import com.solventa4bits.movil.solicitud.dominio.EstadoDeSolicitud
+import com.solventa4bits.movil.solicitud.dominio.EstadoDeRenovacion
 import com.solventa4bits.movil.solicitud.dominio.Pendiente
+import com.solventa4bits.movil.solicitud.dominio.Renovacion
+import com.solventa4bits.movil.solicitud.dominio.ResultadoRenovacion
 import com.solventa4bits.movil.solicitud.dominio.ResultadoConsulta
 import com.solventa4bits.movil.solicitud.dominio.ResultadoLista
 import com.solventa4bits.movil.solicitud.dominio.ResultadoCondiciones
@@ -415,6 +418,92 @@ class AdaptadorSolicitudesTest {
 
         servidor.shutdown()
         assertEquals(ResultadoDocumento.Fallo, adaptador().documento(ID))
+    }
+
+    // --- BITS-237: la renovacion con el aumento por IPC.
+
+    private fun conRenovacion(estado: String, avisoBanco: String = "null") = """{
+        "polizaId": "$ID", "numero": "SOL-VH-2026-K7M2Q9", "estado": "$estado",
+        "creadaEn": "2025-12-17T14:41:00Z",
+        "renovacion": {"estado": "RECHAZADA", "primaActual": 77374, "primaNueva": 81397, "ipc": 0.052,
+            "fechaRenovacion": "2026-12-17T15:00:00Z", "decidirHasta": "2026-11-17T15:00:00Z",
+            "avisoBanco": $avisoBanco}
+    }"""
+
+    @Test
+    @DisplayName("BITS-237: lee la propuesta de renovacion y cuando se le aviso al banco")
+    fun renovacion() = runTest {
+        responder(200, conRenovacion("EMITIDA", """{"registradoEn": "2026-11-17T15:00:00Z"}"""))
+
+        val resultado = assertInstanceOf(ResultadoConsulta.Exito::class.java, adaptador().consultar(ID))
+
+        assertEquals(
+            Renovacion(
+                estado = EstadoDeRenovacion.RECHAZADA,
+                primaActual = 77_374.0,
+                primaNueva = 81_397.0,
+                ipc = 0.052,
+                fechaRenovacion = "2026-12-17T15:00:00Z",
+                decidirHasta = "2026-11-17T15:00:00Z",
+                avisoAlBancoEn = "2026-11-17T15:00:00Z",
+            ),
+            resultado.solicitud.renovacion,
+        )
+    }
+
+    @Test
+    @DisplayName("BITS-307, AC-1: una poliza desactivada se lee como tal; sin propuesta, no hay renovacion")
+    fun desactivada() = runTest {
+        responder(200, poliza("DESACTIVADA"))
+
+        val resultado = assertInstanceOf(ResultadoConsulta.Exito::class.java, adaptador().consultar(ID))
+
+        assertEquals(EstadoDeSolicitud.DESACTIVADA, resultado.solicitud.estado)
+        assertNull(resultado.solicitud.renovacion)
+    }
+
+    @Test
+    @DisplayName("una renovacion en un estado que la app no conoce no se muestra")
+    fun renovacionDesconocida() = runTest {
+        responder(200, conRenovacion("EMITIDA").replace("\"RECHAZADA\"", "\"OTRO\""))
+
+        val resultado = assertInstanceOf(ResultadoConsulta.Exito::class.java, adaptador().consultar(ID))
+
+        assertNull(resultado.solicitud.renovacion)
+    }
+
+    @Test
+    @DisplayName("BITS-237: acepta o rechaza la renovacion con el token")
+    fun respondeLaRenovacion() = runTest {
+        responder(200)
+        responder(204)
+
+        assertEquals(ResultadoRenovacion.Respondida, adaptador().responderRenovacion(ID, aceptar = true))
+        assertEquals(ResultadoRenovacion.Respondida, adaptador().responderRenovacion(ID, aceptar = false))
+
+        val aceptar = servidor.takeRequest()
+        assertEquals("POST", aceptar.method)
+        assertEquals("/mobile/v1/cuenta/polizas/$ID/renovacion", aceptar.path)
+        assertEquals("Bearer jwt-de-acceso", aceptar.getHeader("Authorization"))
+        assertEquals("""{"decision":"ACEPTAR"}""", aceptar.body.readUtf8())
+        assertEquals("""{"decision":"RECHAZAR"}""", servidor.takeRequest().body.readUtf8())
+    }
+
+    @Test
+    @DisplayName("BITS-237: sin propuesta o pasado el dia limite (409) ya no se puede; las fallas responden controlado")
+    fun renovacionConFallas() = runTest {
+        responder(409, """{"codigo": "RENOVACION_CERRADA"}""")
+        assertEquals(ResultadoRenovacion.YaNoSePuede, adaptador().responderRenovacion(ID, aceptar = false))
+
+        responder(401)
+        assertEquals(ResultadoRenovacion.SesionVencida, adaptador().responderRenovacion(ID, aceptar = false))
+
+        responder(503)
+        assertEquals(ResultadoRenovacion.Fallo, adaptador().responderRenovacion(ID, aceptar = false))
+        assertTrue(traza.errores.single().mensaje.contains("503"))
+
+        servidor.shutdown()
+        assertEquals(ResultadoRenovacion.Fallo, adaptador().responderRenovacion(ID, aceptar = false))
     }
 
     private companion object {

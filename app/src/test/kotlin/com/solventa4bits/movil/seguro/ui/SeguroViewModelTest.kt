@@ -7,6 +7,7 @@ import com.solventa4bits.movil.solicitud.dominio.ResultadoConsulta
 import com.solventa4bits.movil.solicitud.dominio.ResultadoDocumento
 import com.solventa4bits.movil.solicitud.dominio.ResultadoEnvio
 import com.solventa4bits.movil.solicitud.dominio.ResultadoLista
+import com.solventa4bits.movil.solicitud.dominio.ResultadoRenovacion
 import com.solventa4bits.movil.solicitud.dominio.ServicioDeSolicitudes
 import com.solventa4bits.movil.solicitud.dominio.Solicitud
 import kotlinx.coroutines.Dispatchers
@@ -49,6 +50,8 @@ class SeguroViewModelTest {
             pedidos += id
             return documento
         }
+
+        override suspend fun responderRenovacion(id: String, aceptar: Boolean) = ResultadoRenovacion.Fallo
     }
 
     private fun seguroQueResponde(documento: ResultadoDocumento) =

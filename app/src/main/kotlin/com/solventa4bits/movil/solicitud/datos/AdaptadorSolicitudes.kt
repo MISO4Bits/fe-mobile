@@ -7,13 +7,16 @@ import com.solventa4bits.movil.solicitud.dominio.CodigoDePendiente
 import com.solventa4bits.movil.solicitud.dominio.CondicionesDelSeguro
 import com.solventa4bits.movil.solicitud.dominio.CreditoAsegurado
 import com.solventa4bits.movil.solicitud.dominio.DatosDeLaSolicitud
+import com.solventa4bits.movil.solicitud.dominio.EstadoDeRenovacion
 import com.solventa4bits.movil.solicitud.dominio.EstadoDeSolicitud
 import com.solventa4bits.movil.solicitud.dominio.Pendiente
+import com.solventa4bits.movil.solicitud.dominio.Renovacion
 import com.solventa4bits.movil.solicitud.dominio.ResultadoCondiciones
 import com.solventa4bits.movil.solicitud.dominio.ResultadoConsulta
 import com.solventa4bits.movil.solicitud.dominio.ResultadoDocumento
 import com.solventa4bits.movil.solicitud.dominio.ResultadoEnvio
 import com.solventa4bits.movil.solicitud.dominio.ResultadoLista
+import com.solventa4bits.movil.solicitud.dominio.ResultadoRenovacion
 import com.solventa4bits.movil.solicitud.dominio.ServicioDeSolicitudes
 import com.solventa4bits.movil.solicitud.dominio.Solicitud
 import com.solventa4bits.movil.solicitud.dominio.Vigencia
@@ -113,6 +116,21 @@ class AdaptadorSolicitudes(
         }
     }
 
+    override suspend fun responderRenovacion(id: String, aceptar: Boolean): ResultadoRenovacion = pedir(
+        accion = "responder la renovacion",
+        fallo = ResultadoRenovacion.Fallo,
+        sesionVencida = ResultadoRenovacion.SesionVencida,
+        llamada = { autorizacion ->
+            api.responderRenovacion(autorizacion, id, DecisionDeRenovacionDto(if (aceptar) ACEPTAR else RECHAZAR))
+        },
+    ) { respuesta ->
+        when {
+            respuesta.isSuccessful -> ResultadoRenovacion.Respondida
+            respuesta.code() == HTTP_CONFLICT -> ResultadoRenovacion.YaNoSePuede
+            else -> null
+        }
+    }
+
     /**
      * Llama con la sesion y traduce la respuesta con [traducir]. Si [traducir]
      * no la reconoce (null), deja traza con el codigo y devuelve [fallo].
@@ -167,10 +185,18 @@ class AdaptadorSolicitudes(
         primasPorCobertura = coberturas.mapNotNull { cobertura ->
             CodigoCobertura.entries.find { it.name == cobertura.codigo }?.let { it to cobertura.primaTotal }
         }.toMap(),
+        renovacion = renovacion?.aDominio(),
     )
+
+    // Una renovacion en un estado que la app no conoce no se muestra.
+    private fun RenovacionDto.aDominio() = EstadoDeRenovacion.entries.find { it.name == estado }?.let {
+        Renovacion(it, primaActual, primaNueva, ipc, fechaRenovacion, decidirHasta, avisoBanco?.registradoEn)
+    }
 
     private companion object {
         const val ORIGEN = "AdaptadorSolicitudes"
+        const val ACEPTAR = "ACEPTAR"
+        const val RECHAZAR = "RECHAZAR"
         const val TIPO_POLIZA = "poliza"
         const val MERCADO = "CO"
     }

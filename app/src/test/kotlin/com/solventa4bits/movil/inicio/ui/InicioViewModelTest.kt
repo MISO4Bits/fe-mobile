@@ -14,6 +14,7 @@ import com.solventa4bits.movil.solicitud.dominio.ResultadoConsulta
 import com.solventa4bits.movil.solicitud.dominio.ResultadoDocumento
 import com.solventa4bits.movil.solicitud.dominio.ResultadoEnvio
 import com.solventa4bits.movil.solicitud.dominio.ResultadoLista
+import com.solventa4bits.movil.solicitud.dominio.ResultadoRenovacion
 import com.solventa4bits.movil.solicitud.dominio.ServicioDeSolicitudes
 import com.solventa4bits.movil.solicitud.dominio.Solicitud
 import kotlinx.coroutines.Dispatchers
@@ -77,6 +78,7 @@ class InicioViewModelTest {
             override suspend fun consultar(id: String) = ResultadoConsulta.Fallo
             override suspend fun listar() = lista
             override suspend fun documento(id: String) = ResultadoDocumento.Fallo
+            override suspend fun responderRenovacion(id: String, aceptar: Boolean) = ResultadoRenovacion.Fallo
         }
         return InicioViewModel(cotizaciones, solicitudes, guardados) { ahora }.apply { consultar() }
     }
@@ -153,6 +155,23 @@ class InicioViewModelTest {
 
         assertEquals(listOf("emitida", "otra"), estado.seguros.map { it.id })
         assertNull(estado.solicitudReciente)
+    }
+
+    @Test
+    @DisplayName("BITS-307, AC-1: una poliza desactivada va en Mis seguros, no como solicitud en revision")
+    fun desactivadaEnMisSeguros() {
+        val lista = ResultadoLista.Exito(
+            listOf(
+                solicitud("desactivada", EstadoDeSolicitud.DESACTIVADA),
+                solicitud("vigente", EstadoDeSolicitud.EMITIDA),
+            ),
+        )
+
+        val estado = inicioQueRecibe(ResultadoCotizacion.SinCotizacion, lista).estado
+
+        assertEquals(listOf("desactivada", "vigente"), estado.seguros.map { it.id })
+        assertNull(estado.solicitudReciente)
+        assertEquals(listOf("vigente"), guardados.guardado?.seguros?.map { it.id })
     }
 
     @Test
