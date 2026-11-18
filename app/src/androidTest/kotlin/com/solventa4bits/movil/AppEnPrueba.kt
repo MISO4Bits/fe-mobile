@@ -1,5 +1,7 @@
 package com.solventa4bits.movil
 
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -7,6 +9,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.room.Room
 import androidx.test.platform.app.InstrumentationRegistry
+import com.solventa4bits.movil.avisos.dominio.DestinoDeAviso
 import com.solventa4bits.movil.cotizacion.datos.AdaptadorCotizaciones
 import com.solventa4bits.movil.cotizacion.datos.AdaptadorCreditos
 import com.solventa4bits.movil.cotizacion.datos.crearCotizacionesApi
@@ -63,6 +66,8 @@ fun ComposeContentTestRule.abrirApp(
     abrirEnlace: (String) -> Unit = {},
     // Por defecto el telefono tiene red. SinConexionTest se la quita.
     conexion: Conexion = Conexion { true },
+    // El aviso que el cliente toca. AvisoConLaAppAbiertaTest lo cambia con la app ya abierta.
+    aviso: MutableState<DestinoDeAviso?> = mutableStateOf(null),
 ): AlmacenDeSeguros {
     // Por defecto el cliente no tiene cotizacion en curso. Una prueba que la
     // necesite responde otra cosa en la misma ruta.
@@ -71,7 +76,7 @@ fun ComposeContentTestRule.abrirApp(
     bff.responderSiempreEn("/v1/cuenta/polizas", 200, "[]", metodo = "GET")
     // Ni siniestros: "Mi seguro" los consulta cada vez que se abre (BITS-111).
     bff.responderSiempreEn("/v1/cuenta/siniestros", 200, "[]", metodo = "GET")
-    return abrirApp(bff.url, almacen, autenticador, preferencias, abrirEnlace, conexion)
+    return abrirApp(bff.url, almacen, autenticador, preferencias, abrirEnlace, conexion, aviso)
 }
 
 /** La misma app contra un BFF de verdad, como el de dev (BITS-146). */
@@ -84,6 +89,7 @@ fun ComposeContentTestRule.abrirApp(
     // Por defecto no abre el navegador: la prueba solo mira que enlace pidio abrir.
     abrirEnlace: (String) -> Unit = {},
     conexion: Conexion = Conexion { true },
+    aviso: MutableState<DestinoDeAviso?> = mutableStateOf(null),
 ): AlmacenDeSeguros {
     val sesion = AdaptadorSesion(crearSesionApi(urlBff), sinTraza)
     val conSesion = ConSesion(almacen, sesion)
@@ -113,6 +119,8 @@ fun ComposeContentTestRule.abrirApp(
                 conexion,
                 camaraDePrueba,
                 abrirEnlace,
+                destinoDeAviso = aviso.value,
+                alAtenderElDestino = { aviso.value = null },
             )
         }
     }
