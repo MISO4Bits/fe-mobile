@@ -49,6 +49,8 @@ fun TuSeguro(
     alInicio: () -> Unit,
     alCerrarSesion: () -> Unit,
     modifier: Modifier,
+    // La poliza desactivada ofrece cotizar un seguro nuevo (BITS-237, AC-6).
+    alCotizar: () -> Unit = {},
     siniestros: @Composable () -> Unit = {},
 ) {
     val enlaces = LocalUriHandler.current
@@ -73,8 +75,15 @@ fun TuSeguro(
         alInicio = alInicio,
         alCerrarSesion = alCerrarSesion,
         modifier = modifier,
+        alQuererRenovar = seguro::verPropuesta,
+        alCotizar = alCotizar,
         siniestros = siniestros,
     )
+    val renovacion = estado.seguro?.renovacion
+    val paso = estado.renovando
+    if (renovacion != null && paso != null) {
+        PanelDeRenovacion(paso, renovacion, estado.seguro.credito?.banco.orEmpty(), estado, seguro)
+    }
 }
 
 /** Figma 11: el detalle de una poliza emitida y su documento (BITS-104, AC-1). */
@@ -85,10 +94,13 @@ fun PantallaSeguro(
     alInicio: () -> Unit,
     alCerrarSesion: () -> Unit,
     modifier: Modifier = Modifier,
+    alQuererRenovar: () -> Unit = {},
+    alCotizar: () -> Unit = {},
     // Los siniestros de la poliza por cobertura (BITS-111, M01).
     siniestros: @Composable () -> Unit = {},
 ) {
     val seguro = estado.seguro ?: return
+    val etiqueta = etiquetaDe(seguro)
     Column(modifier = modifier.fillMaxSize()) {
         BarraSolventa(stringResource(R.string.seguro_titulo), alCerrarSesion)
         Column(
@@ -105,15 +117,28 @@ fun PantallaSeguro(
             Column {
                 Text(nombreDelSeguro(seguro), style = MaterialTheme.typography.headlineSmall)
                 Text(
-                    text = stringResource(R.string.seguro_numero, seguro.numero.orEmpty()),
+                    text = stringResource(R.string.seguro_numero, seguro.numero.orEmpty(), textoDeEtiqueta(seguro)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            // AC-5: antes del dia limite puede cambiar de opinion.
+            if (etiqueta == EtiquetaDelSeguro.NO_SE_RENUEVA && estado.puedeDecidir) {
+                TextButton(onClick = alQuererRenovar) { Text(stringResource(R.string.seguro_quiero_renovarla)) }
+            }
             Recuadro(stringResource(R.string.seguro_condiciones)) {
                 Fila(stringResource(R.string.seguro_pagas), seguro.primaMensual?.let(::enPesos).orEmpty())
                 HorizontalDivider()
-                Fila(stringResource(R.string.seguro_te_cubre), seguro.vigencia?.let { textoDeVigencia(it) }.orEmpty())
+                val vigencia = if (etiqueta == EtiquetaDelSeguro.DESACTIVADA) {
+                    R.string.seguro_estuvo_vigente
+                } else {
+                    R.string.seguro_te_cubre
+                }
+                Fila(
+                    stringResource(vigencia),
+                    seguro.vigencia?.let { textoDeVigencia(it) }.orEmpty(),
+                )
+                FilasDeLaRenovacion(seguro, etiqueta)
             }
             seguro.credito?.let { credito ->
                 Recuadro(stringResource(R.string.seguro_tu_credito)) {
@@ -145,8 +170,12 @@ fun PantallaSeguro(
             modifier = Modifier.fillMaxWidth().padding(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Button(onClick = alVerDocumento, enabled = estado.aviso != AvisoDeDocumento.PIDIENDO) {
-                Text(stringResource(R.string.seguro_ver_documento))
+            if (etiqueta == EtiquetaDelSeguro.DESACTIVADA) {
+                Button(onClick = alCotizar) { Text(stringResource(R.string.seguro_cotizar_nuevo)) }
+            } else {
+                Button(onClick = alVerDocumento, enabled = estado.aviso != AvisoDeDocumento.PIDIENDO) {
+                    Text(stringResource(R.string.seguro_ver_documento))
+                }
             }
             TextButton(onClick = alInicio) { Text(stringResource(R.string.resultado_inicio)) }
         }
@@ -157,6 +186,43 @@ fun PantallaSeguro(
 @Composable
 fun nombreDelSeguro(seguro: Solicitud): String =
     stringResource(if (seguro.conTuCasa) R.string.seguro_vida_y_casa else R.string.inicio_vida_para_tu_credito)
+
+/** La etiqueta de la poliza: Vigente, Por renovar, No se renueva o Desactivada (BITS-237). */
+@Composable
+fun textoDeEtiqueta(seguro: Solicitud): String = stringResource(
+    when (etiquetaDe(seguro)) {
+        EtiquetaDelSeguro.VIGENTE -> R.string.seguro_vigente
+        EtiquetaDelSeguro.POR_RENOVAR -> R.string.seguro_por_renovar
+        EtiquetaDelSeguro.NO_SE_RENUEVA -> R.string.seguro_no_se_renueva
+        EtiquetaDelSeguro.DESACTIVADA -> R.string.seguro_desactivada
+    },
+)
+
+/**
+ * AC-5 y AC-6: si no se renueva, cuando termina; si ademas ya se le aviso al banco, o si quedo
+ * desactivada, a quien y cuando se le aviso.
+ */
+@Composable
+private fun FilasDeLaRenovacion(seguro: Solicitud, etiqueta: EtiquetaDelSeguro) {
+    val renovacion = seguro.renovacion ?: return
+    if (etiqueta == EtiquetaDelSeguro.NO_SE_RENUEVA) {
+        HorizontalDivider()
+        Fila(stringResource(R.string.seguro_termina), fechaCorta(renovacion.fechaRenovacion).orEmpty())
+    }
+    val aviso = renovacion.avisoAlBancoEn
+    if (aviso != null && etiqueta in setOf(EtiquetaDelSeguro.NO_SE_RENUEVA, EtiquetaDelSeguro.DESACTIVADA)) {
+        HorizontalDivider()
+        val aQuien = if (etiqueta == EtiquetaDelSeguro.DESACTIVADA) {
+            R.string.seguro_le_avisamos_a
+        } else {
+            R.string.seguro_avisamos_a
+        }
+        Fila(
+            stringResource(aQuien),
+            stringResource(R.string.seguro_banco_el, seguro.credito?.banco.orEmpty(), fechaCorta(aviso).orEmpty()),
+        )
+    }
+}
 
 @Composable
 private fun textoDeVigencia(vigencia: Vigencia): String =

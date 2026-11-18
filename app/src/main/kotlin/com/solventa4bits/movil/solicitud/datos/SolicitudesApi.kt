@@ -44,6 +44,14 @@ interface SolicitudesApi {
         @Header("Authorization") autorizacion: String,
         @Path("polizaId") polizaId: String,
     ): Response<DocumentoPolizaDto>
+
+    /** 409 si no hay propuesta o ya paso el dia limite para decidir (BITS-237). */
+    @POST("v1/cuenta/polizas/{polizaId}/renovacion")
+    suspend fun responderRenovacion(
+        @Header("Authorization") autorizacion: String,
+        @Path("polizaId") polizaId: String,
+        @Body decision: DecisionDeRenovacionDto,
+    ): Response<Unit>
 }
 
 /** Los nombres de los campos son los del contrato. */
@@ -80,7 +88,26 @@ data class PolizaDto(
     val primaTotalMensual: Double? = null,
     val datosCredito: CreditoPolizaDto? = null,
     val coberturas: List<CoberturaPolizaDto> = emptyList(),
+    val renovacion: RenovacionDto? = null,
 )
+
+@Serializable
+data class RenovacionDto(
+    val estado: String,
+    val primaActual: Double,
+    val primaNueva: Double,
+    val ipc: Double,
+    val fechaRenovacion: String,
+    val decidirHasta: String,
+    val avisoBanco: AvisoBancoDto? = null,
+)
+
+@Serializable
+data class AvisoBancoDto(val registradoEn: String)
+
+/** ACEPTAR o RECHAZAR. */
+@Serializable
+data class DecisionDeRenovacionDto(val decision: String)
 
 @Serializable
 data class VigenciaDto(val desde: String, val hasta: String)

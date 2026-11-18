@@ -7,6 +7,7 @@ import com.solventa4bits.movil.solicitud.dominio.ResultadoConsulta
 import com.solventa4bits.movil.solicitud.dominio.ResultadoDocumento
 import com.solventa4bits.movil.solicitud.dominio.ResultadoEnvio
 import com.solventa4bits.movil.solicitud.dominio.ResultadoLista
+import com.solventa4bits.movil.solicitud.dominio.ResultadoRenovacion
 import com.solventa4bits.movil.solicitud.dominio.ServicioDeSolicitudes
 import com.solventa4bits.movil.solicitud.dominio.Solicitud
 import kotlinx.coroutines.Dispatchers
@@ -45,6 +46,8 @@ class SeguroDelAvisoTest {
         override suspend fun listar() = ResultadoLista.Fallo
 
         override suspend fun documento(id: String) = ResultadoDocumento.Fallo
+
+        override suspend fun responderRenovacion(id: String, aceptar: Boolean) = ResultadoRenovacion.Fallo
     }
 
     @BeforeEach
@@ -69,6 +72,18 @@ class SeguroDelAvisoTest {
         assertEquals(listOf("poliza-1"), solicitudes.consultadas)
         assertEquals(emitida, seguro.estado.seguro)
         assertFalse(seguro.estado.cargando)
+        assertFalse(seguro.estado.noDisponible)
+    }
+
+    @Test
+    @DisplayName("BITS-307, AC-1: una poliza desactivada tambien se muestra")
+    fun desactivada() {
+        val desactivada = solicitud(EstadoDeSolicitud.DESACTIVADA)
+        val seguro = SeguroViewModel(SolicitudesFalsas(ResultadoConsulta.Exito(desactivada)))
+
+        seguro.abrir("poliza-1")
+
+        assertEquals(desactivada, seguro.estado.seguro)
         assertFalse(seguro.estado.noDisponible)
     }
 

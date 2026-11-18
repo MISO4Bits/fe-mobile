@@ -272,7 +272,7 @@
     <string name="seguro_titulo">Detalle de tu seguro</string>
     <string name="seguro_vida_y_casa">Vida y tu casa</string>
     <string name="seguro_vigente">Vigente</string>
-    <string name="seguro_numero">Seguro N.º %1$s · Vigente</string>
+    <string name="seguro_numero">Seguro N.º %1$s · %2$s</string>
     <string name="seguro_condiciones">Condiciones</string>
     <string name="seguro_pagas">Pagas cada mes</string>
     <string name="seguro_te_cubre">Te cubre</string>
@@ -287,6 +287,29 @@
     <string name="seguro_generando">Estamos preparando tu documento. Inténtalo en un momento.</string>
     <string name="seguro_fallo_documento">No pudimos abrir tu documento. Inténtalo de nuevo.</string>
     <string name="seguro_documento_sin_conexion">Para ver el documento necesitas conexión.</string>
+    <string name="seguro_por_renovar">Por renovar</string>
+    <string name="seguro_no_se_renueva">No se renueva</string>
+    <string name="seguro_desactivada">Desactivada</string>
+    <string name="seguro_termina">Termina el</string>
+    <string name="seguro_estuvo_vigente">Estuvo vigente</string>
+    <string name="seguro_avisamos_a">Avisamos a</string>
+    <string name="seguro_le_avisamos_a">Le avisamos a</string>
+    <string name="seguro_banco_el">%1$s, el %2$s</string>
+    <string name="seguro_quiero_renovarla">Quiero renovarla</string>
+    <string name="seguro_cotizar_nuevo">Cotizar un seguro nuevo</string>
+    <string name="renovacion_etiqueta">RENOVACIÓN</string>
+    <string name="renovacion_titulo">Tu póliza se renueva el %1$s</string>
+    <string name="renovacion_cuerpo">Hoy pagas %1$s al mes dentro de la cuota de tu crédito. Desde el %2$s pagarás %3$s. Tu tarifa sube con el IPC de %4$s, %5$s. Lo que cubrimos sigue siendo el saldo de tu crédito.</string>
+    <string name="renovacion_hoy">Hoy</string>
+    <string name="renovacion_desde">Desde el %1$s</string>
+    <string name="renovacion_al_mes">%1$s al mes</string>
+    <string name="renovacion_nota">Si no respondes, la renovamos sola por un año más. Puedes decidir hasta el %1$s.</string>
+    <string name="renovacion_aceptar">Aceptar la renovación</string>
+    <string name="renovacion_no_renovar">No renovar</string>
+    <string name="renovacion_fallo">No pudimos guardar tu respuesta. Inténtalo de nuevo.</string>
+    <string name="no_renovar_titulo">¿Seguro que no quieres renovar?</string>
+    <string name="no_renovar_cuerpo">Tu póliza sigue activa hasta el %1$s. Ese día queda desactivada. Tu crédito necesita un seguro de vida: si no le presentas otro, %2$s te incluirá en el suyo y te lo cobrará en la cuota. Puedes cambiar de opinión hasta el %3$s. Ese día le avisamos a %2$s que tu póliza termina el %1$s.</string>
+    <string name="no_renovar_volver">Volver</string>
 
     <!-- Sin conexion (BITS-217) -->
     <string name="sin_conexion_aviso">Sin conexión. Ves lo que guardamos en el teléfono.</string>

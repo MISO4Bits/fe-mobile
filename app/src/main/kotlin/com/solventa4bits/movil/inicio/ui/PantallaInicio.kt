@@ -196,7 +196,7 @@ private fun TarjetaSolicitud(solicitud: Solicitud, alVer: () -> Unit) {
             Text(
                 text = stringResource(
                     when (solicitud.estado) {
-                        EstadoDeSolicitud.EMITIDA -> R.string.inicio_solicitud_aprobada
+                        EstadoDeSolicitud.EMITIDA, EstadoDeSolicitud.DESACTIVADA -> R.string.inicio_solicitud_aprobada
                         EstadoDeSolicitud.RECHAZADA -> R.string.inicio_solicitud_no_aprobada
                         EstadoDeSolicitud.PENDIENTE, EstadoDeSolicitud.VENCIDA -> R.string.inicio_solicitud_en_revision
                     },

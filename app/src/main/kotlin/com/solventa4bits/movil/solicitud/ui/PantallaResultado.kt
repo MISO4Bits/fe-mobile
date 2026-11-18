@@ -165,7 +165,7 @@ private fun PasoDeActivacion(estado: EstadoDeSolicitud) {
 @Composable
 private fun Encabezado(solicitud: Solicitud) {
     val (titulo, detalle) = when (solicitud.estado) {
-        EstadoDeSolicitud.EMITIDA ->
+        EstadoDeSolicitud.EMITIDA, EstadoDeSolicitud.DESACTIVADA ->
             stringResource(R.string.resultado_aprobada_titulo) to stringResource(R.string.resultado_aprobada_detalle)
         EstadoDeSolicitud.RECHAZADA -> stringResource(R.string.resultado_rechazada_titulo) to
             stringResource(R.string.resultado_motivo, solicitud.motivosDeRechazo.joinToString(" "))
@@ -182,7 +182,7 @@ private fun Encabezado(solicitud: Solicitud) {
         contentAlignment = Alignment.Center,
     ) {
         when (solicitud.estado) {
-            EstadoDeSolicitud.EMITIDA -> IconoListo(tamano = 44.dp)
+            EstadoDeSolicitud.EMITIDA, EstadoDeSolicitud.DESACTIVADA -> IconoListo(tamano = 44.dp)
             EstadoDeSolicitud.RECHAZADA -> IconoRechazo(tamano = 44.dp)
             EstadoDeSolicitud.PENDIENTE, EstadoDeSolicitud.VENCIDA -> Icon(
                 painterResource(R.drawable.ic_reloj_de_arena),
