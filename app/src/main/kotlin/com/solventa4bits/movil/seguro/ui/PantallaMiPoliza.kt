@@ -23,7 +23,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.solventa4bits.movil.R
-import com.solventa4bits.movil.inicio.ui.EtiquetaVigente
+import com.solventa4bits.movil.inicio.ui.Etiqueta
 import com.solventa4bits.movil.solicitud.dominio.EstadoDeSolicitud
 import com.solventa4bits.movil.solicitud.dominio.Solicitud
 import com.solventa4bits.movil.solicitud.ui.IconoListo
@@ -116,7 +116,7 @@ private fun TarjetaGuardada(seguro: Solicitud, alVer: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            EtiquetaVigente()
+            Etiqueta()
         }
     }
 }

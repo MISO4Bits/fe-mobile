@@ -18,6 +18,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.solventa4bits.movil.R
 import com.solventa4bits.movil.seguro.ui.nombreDelSeguro
+import com.solventa4bits.movil.seguro.ui.textoDeEtiqueta
 import com.solventa4bits.movil.solicitud.dominio.Solicitud
 
 /** "Mis seguros" del Figma 10: las polizas emitidas de dos en dos, o el texto si aun no hay. */
@@ -49,7 +50,7 @@ private fun TarjetaSeguro(seguro: Solicitud, modifier: Modifier, alVer: () -> Un
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
             )
-            EtiquetaVigente()
+            Etiqueta(textoDeEtiqueta(seguro))
             Text(nombreDelSeguro(seguro), style = MaterialTheme.typography.titleSmall)
             Text(
                 text = seguro.numero.orEmpty(),
@@ -65,12 +66,12 @@ private fun TarjetaSeguro(seguro: Solicitud, modifier: Modifier, alVer: () -> Un
     }
 }
 
-/** La etiqueta "Vigente" de una poliza emitida. */
+/** La etiqueta de la poliza: por defecto "Vigente" (BITS-104); con la renovacion, la de BITS-237 (M00R). */
 @Composable
-internal fun EtiquetaVigente() {
+internal fun Etiqueta(texto: String = stringResource(R.string.seguro_vigente)) {
     Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.secondaryContainer) {
         Text(
-            text = stringResource(R.string.seguro_vigente),
+            text = texto,
             style = MaterialTheme.typography.labelSmall,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
         )

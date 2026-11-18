@@ -298,6 +298,14 @@ fun AppSolventa(
                     alInicio = { viendoSeguro = false },
                     alCerrarSesion = cerrarSesion,
                     modifier = conRelleno,
+                    alCotizar = {
+                        red.conRed {
+                            cotizacion.empezar()
+                            retomada = false
+                            viendoSeguro = false
+                            cotizando = true
+                        }
+                    },
                 )
 
                 cotizando && enCedula -> TuCedula(

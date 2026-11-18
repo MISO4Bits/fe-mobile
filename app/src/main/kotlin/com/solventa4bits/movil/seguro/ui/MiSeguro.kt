@@ -85,6 +85,7 @@ fun MiSeguro(
     alInicio: () -> Unit,
     alCerrarSesion: () -> Unit,
     modifier: Modifier,
+    alCotizar: () -> Unit = {},
 ) {
     val misSiniestros = piezas.misSiniestros
     val reporte = piezas.reporte
@@ -106,7 +107,7 @@ fun MiSeguro(
         }
     }
     if (poliza == null || enLaPoliza) {
-        TuSeguro(seguro, abrirEnlace, alInicio, alCerrarSesion, modifier) {
+        TuSeguro(seguro, abrirEnlace, alInicio, alCerrarSesion, modifier, alCotizar) {
             if (poliza != null && conConexion) {
                 SiniestrosDelSeguro(
                     poliza = poliza,
