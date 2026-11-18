@@ -13,6 +13,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
@@ -234,6 +236,8 @@ fun AppSolventa(
     var viendoSolicitud by rememberSaveable { mutableStateOf(false) }
     // La cotizacion se retomo desde el Home: "Atras" vuelve al Home.
     var retomada by rememberSaveable { mutableStateOf(false) }
+    // Cada aviso abre "Mi seguro" desde la poliza, aunque ya estuviera abierto en otro paso (BITS-356).
+    var abiertoPorAviso by rememberSaveable { mutableIntStateOf(0) }
     val alcance = rememberCoroutineScope()
     val cerrarSesion: () -> Unit = {
         cotizando = false
@@ -259,6 +263,7 @@ fun AppSolventa(
             enCedula = false
             viendoSolicitud = false
             viendoSeguro = true
+            abiertoPorAviso++
         },
         alNoPoderMostrarlo = { viendoSeguro = false },
         alAtenderElDestino = alAtenderElDestino,
@@ -291,22 +296,24 @@ fun AppSolventa(
                     modifier = conRelleno,
                 )
 
-                viendoSeguro -> MiSeguro(
-                    seguro = seguro,
-                    piezas = PiezasDelSiniestro(misSiniestros, reporte, camara, red, oficinas, ayuda),
-                    abrirEnlace = abrirEnlace,
-                    alInicio = { viendoSeguro = false },
-                    alCerrarSesion = cerrarSesion,
-                    modifier = conRelleno,
-                    alCotizar = {
-                        red.conRed {
-                            cotizacion.empezar()
-                            retomada = false
-                            viendoSeguro = false
-                            cotizando = true
-                        }
-                    },
-                )
+                viendoSeguro -> key(abiertoPorAviso) {
+                    MiSeguro(
+                        seguro = seguro,
+                        piezas = PiezasDelSiniestro(misSiniestros, reporte, camara, red, oficinas, ayuda),
+                        abrirEnlace = abrirEnlace,
+                        alInicio = { viendoSeguro = false },
+                        alCerrarSesion = cerrarSesion,
+                        modifier = conRelleno,
+                        alCotizar = {
+                            red.conRed {
+                                cotizacion.empezar()
+                                retomada = false
+                                viendoSeguro = false
+                                cotizando = true
+                            }
+                        },
+                    )
+                }
 
                 cotizando && enCedula -> TuCedula(
                     cedula = cedula,
