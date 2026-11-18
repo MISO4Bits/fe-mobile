@@ -32,7 +32,7 @@ import java.time.Instant
 class RenovacionTest {
 
     private val propuesta = Renovacion(
-        estado = EstadoDeRenovacion.PROPUESTA,
+        estado = EstadoDeRenovacion.SIN_RESPUESTA,
         primaActual = 77_374.0,
         primaNueva = 81_397.0,
         ipc = 0.052,

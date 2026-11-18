@@ -28,7 +28,7 @@ enum class EtiquetaDelSeguro { VIGENTE, POR_RENOVAR, NO_SE_RENUEVA, DESACTIVADA 
 
 fun etiquetaDe(seguro: Solicitud): EtiquetaDelSeguro = when {
     seguro.estado == EstadoDeSolicitud.DESACTIVADA -> EtiquetaDelSeguro.DESACTIVADA
-    seguro.renovacion?.estado == EstadoDeRenovacion.PROPUESTA -> EtiquetaDelSeguro.POR_RENOVAR
+    seguro.renovacion?.estado == EstadoDeRenovacion.SIN_RESPUESTA -> EtiquetaDelSeguro.POR_RENOVAR
     seguro.renovacion?.estado == EstadoDeRenovacion.RECHAZADA -> EtiquetaDelSeguro.NO_SE_RENUEVA
     else -> EtiquetaDelSeguro.VIGENTE
 }
@@ -146,7 +146,7 @@ class SeguroViewModel(
     private fun conLaPoliza(seguro: Solicitud, guardadoEn: String?): EstadoSeguro {
         val limite = seguro.renovacion?.decidirHasta?.let { runCatching { OffsetDateTime.parse(it) }.getOrNull() }
         val puedeDecidir = guardadoEn == null && limite != null && !ahora().isAfter(limite.toInstant())
-        val abierta = puedeDecidir && seguro.renovacion?.estado == EstadoDeRenovacion.PROPUESTA
+        val abierta = puedeDecidir && seguro.renovacion?.estado == EstadoDeRenovacion.SIN_RESPUESTA
         return EstadoSeguro(
             seguro = seguro,
             guardadoEn = guardadoEn,

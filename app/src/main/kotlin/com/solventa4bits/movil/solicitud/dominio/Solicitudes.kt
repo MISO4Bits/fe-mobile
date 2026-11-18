@@ -44,7 +44,7 @@ enum class EstadoDeSolicitud {
 }
 
 /** Lo que el cliente hizo con la propuesta de renovacion (BITS-237). */
-enum class EstadoDeRenovacion { PROPUESTA, ACEPTADA, RECHAZADA }
+enum class EstadoDeRenovacion { SIN_RESPUESTA, ACEPTADA, RECHAZADA }
 
 /** La renovacion con el aumento por IPC. Llega desde 45 dias antes del aniversario. Fechas en ISO 8601. */
 data class Renovacion(

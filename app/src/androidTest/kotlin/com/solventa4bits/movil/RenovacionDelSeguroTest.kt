@@ -31,7 +31,7 @@ class RenovacionDelSeguroTest {
 
     @Test
     fun noRenuevaYPuedeCambiarDeOpinion() {
-        entrar(conRenovacion("EMITIDA", "PROPUESTA"))
+        entrar(conRenovacion("EMITIDA", "SIN_RESPUESTA"))
 
         // AC-2: la etiqueta en Mis seguros y el modal al abrir el detalle.
         composeRule.onNodeWithText("Por renovar").assertIsDisplayed()
