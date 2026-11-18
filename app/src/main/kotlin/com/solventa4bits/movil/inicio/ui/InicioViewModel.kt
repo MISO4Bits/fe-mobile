@@ -21,8 +21,8 @@ data class EstadoInicio(
     /** La cotizacion en curso del cliente, para retomarla (BITS-95, AC-6). Null si no hay. */
     val cotizacionEnCurso: Cotizacion? = null,
     /**
-     * La solicitud mas reciente, para volver a verla (BITS-97, AC-2). Null si
-     * no hay, si vencio o si ya se emitio: emitida, va en [seguros].
+     * La solicitud para volver a verla (BITS-97, AC-2): la pendiente, aunque haya una poliza mas
+     * reciente (BITS-305, AC-1); si no hay, la mas reciente si fue rechazada. Emitida, va en [seguros].
      */
     val solicitudReciente: Solicitud? = null,
     /** Las polizas emitidas, para "Mis seguros" (BITS-104, AC-3). */
@@ -96,8 +96,8 @@ class InicioViewModel(
             .mapNotNull { it.cotizacionCreadaEn }
         return EstadoInicio(
             cotizacionEnCurso = cotizacion?.takeIf { it.vigente && it.creadaEn !in usadas },
-            solicitudReciente = enviadas.firstOrNull()
-                ?.takeIf { it.estado == EstadoDeSolicitud.PENDIENTE || it.estado == EstadoDeSolicitud.RECHAZADA },
+            solicitudReciente = enviadas.firstOrNull { it.estado == EstadoDeSolicitud.PENDIENTE }
+                ?: enviadas.firstOrNull()?.takeIf { it.estado == EstadoDeSolicitud.RECHAZADA },
             seguros = enviadas.filter { it.estado == EstadoDeSolicitud.EMITIDA },
         )
     }

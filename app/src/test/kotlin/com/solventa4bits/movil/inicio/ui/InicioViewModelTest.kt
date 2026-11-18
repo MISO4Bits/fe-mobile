@@ -156,6 +156,23 @@ class InicioViewModelTest {
     }
 
     @Test
+    @DisplayName("BITS-305, AC-1: con una poliza vendida mas reciente, se ven la solicitud pendiente y la poliza")
+    fun pendienteYPolizaVendida() {
+        val lista = ResultadoLista.Exito(
+            listOf(
+                solicitud("vendida", EstadoDeSolicitud.EMITIDA),
+                solicitud("pendiente", EstadoDeSolicitud.PENDIENTE),
+            ),
+        )
+
+        val estado = inicioQueRecibe(ResultadoCotizacion.Exito(vigente), lista).estado
+
+        assertEquals("pendiente", estado.solicitudReciente?.id)
+        assertEquals(listOf("vendida"), estado.seguros.map { it.id })
+        assertEquals(vigente, estado.cotizacionEnCurso)
+    }
+
+    @Test
     @DisplayName("una cotizacion que ya va en una solicitud pendiente o emitida no se muestra")
     fun cotizacionYaUsada() {
         val usada = vigente.copy(creadaEn = "2026-10-27T14:00:00Z")
