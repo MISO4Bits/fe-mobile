@@ -508,10 +508,11 @@
     <string name="oficina_nombre">%1$s · %2$s</string>
     <string name="oficina_fallo">No pudimos traer las oficinas. Revisa tu conexión.</string>
     <string name="ayuda_barra">Ayuda en sitio</string>
-    <string name="ayuda_tipo_titulo">¿Qué ayuda necesitas?</string>
+    <string name="ayuda_tipo_titulo">¿Qué ayuda necesitas en tu casa?</string>
     <string name="ayuda_tipo_subtitulo">Un prestador aliado va a tu casa para atender la urgencia.</string>
     <string name="ayuda_va_a">La ayuda va a</string>
     <string name="ayuda_otra_direccion">Escribir otra dirección</string>
+    <string name="ayuda_va_a_las_fotos">Enviaremos la ayuda a donde tomaste las fotos. ¿Es otra dirección? Escríbela.</string>
     <string name="ayuda_fallo">No pudimos traer las ayudas. Revisa tu conexión.</string>
     <string name="ayuda_donde_titulo">¿Estás en tu casa?</string>
     <string name="ayuda_donde_subtitulo">Así sabemos a dónde enviar la ayuda.</string>
@@ -526,7 +527,7 @@
     <string name="ayuda_prestador_titulo">Elige quién te ayuda</string>
     <string name="ayuda_prestador_subtitulo">Los más cercanos a donde va la ayuda.</string>
     <string name="ayuda_km_llega">%1$s km · llega en %2$d min</string>
-    <string name="ayuda_factura">Pide la factura al prestador y guárdala.</string>
+    <string name="ayuda_costo">El costo lo acuerdas con el prestador. Guarda la factura: puede servir como soporte de tu siniestro.</string>
     <string name="ayuda_sin_prestadores">No tenemos prestadores de %1$s cerca. Elige otra ayuda.</string>
     <string name="ayuda_otra_ayuda">Elegir otra ayuda</string>
     <string name="ayuda_pedir">Pedir la ayuda</string>
