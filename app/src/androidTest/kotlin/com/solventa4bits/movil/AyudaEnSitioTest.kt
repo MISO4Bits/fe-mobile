@@ -39,8 +39,9 @@ class AyudaEnSitioTest {
         composeRule.onNodeWithText("Pedir ayuda en sitio").performScrollTo().performClick()
 
         // AC-2 y AC-3: el tipo; la ayuda va a donde se tomaron las fotos.
-        composeRule.esperarTexto("¿Qué ayuda necesitas?")
-        composeRule.onNodeWithText("Donde tomaste las fotos").assertIsDisplayed()
+        composeRule.esperarTexto("¿Qué ayuda necesitas en tu casa?")
+        composeRule.onNodeWithText("Enviaremos la ayuda a donde tomaste las fotos. ¿Es otra dirección? Escríbela.")
+            .assertIsDisplayed()
         composeRule.onNodeWithText("Continuar").assertIsNotEnabled()
         composeRule.onNodeWithText("Plomería").performClick()
         composeRule.onNodeWithText("Continuar").performClick()
@@ -49,6 +50,7 @@ class AyudaEnSitioTest {
         composeRule.esperarTexto("Elige quién te ayuda")
         composeRule.onNodeWithText("Plomería Rápida Chapinero").assertIsDisplayed()
         composeRule.onNodeWithText("0,1 km · llega en 35 min").assertIsDisplayed()
+        composeRule.onNodeWithText(COSTO).performScrollTo().assertIsDisplayed()
         bff.responderSiempreEn("$RUTA_SINIESTROS/$ID_DE_SINIESTRO/asistencias", 201, ASISTENCIA, metodo = "POST")
         composeRule.onNodeWithText("Pedir la ayuda").performClick()
 
@@ -58,6 +60,7 @@ class AyudaEnSitioTest {
         composeRule.onNodeWithText("35 min").assertIsDisplayed()
         composeRule.onNodeWithText("Donde tomaste las fotos").assertIsDisplayed()
         composeRule.onNodeWithText("SIN-2026-00042").assertIsDisplayed()
+        composeRule.onNodeWithText(COSTO).assertIsDisplayed()
         assertTrue(bff.recibidas.contains("POST $RUTA_SINIESTROS/$ID_DE_SINIESTRO/asistencias"))
 
         // AC-7: "Tu siniestro" ya la muestra.
@@ -70,7 +73,7 @@ class AyudaEnSitioTest {
     fun sinFotosConUbicacionSeEscribeLaDireccion() {
         abrirElSiniestro(FOTO_SIN_UBICACION)
         composeRule.onNodeWithText("Pedir ayuda en sitio").performScrollTo().performClick()
-        composeRule.esperarTexto("¿Qué ayuda necesitas?")
+        composeRule.esperarTexto("¿Qué ayuda necesitas en tu casa?")
         composeRule.onNodeWithText("Plomería").performClick()
         composeRule.onNodeWithText("Continuar").performClick()
 
@@ -115,6 +118,8 @@ class AyudaEnSitioTest {
 
     private companion object {
         const val RUTA_SINIESTROS = "/v1/cuenta/siniestros"
+        const val COSTO =
+            "El costo lo acuerdas con el prestador. Guarda la factura: puede servir como soporte de tu siniestro."
         const val ID_DE_SINIESTRO = "3f6b8a1c-2d4e-4f70-9a81-b2c3d4e5f607"
 
         const val FOTO_CON_UBICACION = """{"id": "a1", "clase": "FOTO", "latitud": 4.6497, "longitud": -74.0631,

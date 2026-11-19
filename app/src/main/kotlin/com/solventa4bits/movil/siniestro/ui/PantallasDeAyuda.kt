@@ -135,7 +135,7 @@ private fun CuadroDeTipo(tipo: TipoDeAyuda, elegido: Boolean, modifier: Modifier
     }
 }
 
-/** A donde va la ayuda, con la opcion de escribir otra direccion. */
+/** A donde va la ayuda (AC-3), con la opcion de escribir otra direccion. */
 @Composable
 private fun VaA(punto: PuntoDeAyuda, alOtraDireccion: () -> Unit) {
     Surface(
@@ -145,19 +145,21 @@ private fun VaA(punto: PuntoDeAyuda, alOtraDireccion: () -> Unit) {
     ) {
         Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Column {
-                TextoTenue(stringResource(R.string.ayuda_va_a))
-                Text(
-                    text = textoDelPunto(punto),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                TextButton(onClick = alOtraDireccion, modifier = Modifier.padding(top = 4.dp)) {
-                    Text(stringResource(R.string.ayuda_otra_direccion))
+            if (punto is PuntoDeAyuda.DondeTomoLasFotos) {
+                Text(stringResource(R.string.ayuda_va_a_las_fotos), style = MaterialTheme.typography.bodyMedium)
+            } else {
+                Column {
+                    TextoTenue(stringResource(R.string.ayuda_va_a))
+                    Text(
+                        text = textoDelPunto(punto),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 }
             }
         }
     }
+    TextButton(onClick = alOtraDireccion) { Text(stringResource(R.string.ayuda_otra_direccion)) }
 }
 
 /**
@@ -306,13 +308,17 @@ fun PantallaPrestadores(
                     FilaDePrestador(opcion, opcion.prestador.id == marcado) { marcado = opcion.prestador.id }
                 }
             }
-            LaFacturaYElError(estado)
+            ElCostoYElError(estado)
         }
     }
 }
 
+/**
+ * AC-6: el costo no lo paga Solventa; la factura puede servir de soporte del siniestro. En M14,
+ * debajo, el error al pedir.
+ */
 @Composable
-private fun LaFacturaYElError(estado: EstadoAyuda) {
+private fun ElCostoYElError(estado: EstadoAyuda) {
     Surface(
         color = MaterialTheme.colorScheme.secondaryContainer,
         shape = MaterialTheme.shapes.medium,
@@ -320,7 +326,7 @@ private fun LaFacturaYElError(estado: EstadoAyuda) {
     ) {
         Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Icon(Icons.Outlined.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Text(stringResource(R.string.ayuda_factura), style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.ayuda_costo), style = MaterialTheme.typography.bodyMedium)
         }
     }
     val error = when {
@@ -389,6 +395,7 @@ fun PantallaAyudaPedida(
                 estado.punto?.let { FilaDeDato(stringResource(R.string.ayuda_va_a), textoDelPunto(it)) }
                 estado.siniestro?.let { FilaDeDato(stringResource(R.string.ayuda_siniestro), it.resumen.numero) }
             }
+            ElCostoYElError(estado)
         }
         Button(onClick = alVerSiniestro, modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             Text(stringResource(R.string.enviado_ver))
