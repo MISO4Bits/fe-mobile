@@ -141,7 +141,7 @@ class InicioViewModelTest {
     }
 
     @Test
-    @DisplayName("BITS-104, AC-3: las polizas emitidas van en Mis seguros y no como solicitud")
+    @DisplayName("BITS-104, AC-3 y BITS-305: las polizas van en Mis seguros; la rechazada sigue como solicitud")
     fun segurosEmitidos() {
         val lista = ResultadoLista.Exito(
             listOf(
@@ -154,7 +154,41 @@ class InicioViewModelTest {
         val estado = inicioQueRecibe(ResultadoCotizacion.SinCotizacion, lista).estado
 
         assertEquals(listOf("emitida", "otra"), estado.seguros.map { it.id })
+        assertEquals("rechazada", estado.solicitudReciente?.id)
+    }
+
+    @Test
+    @DisplayName("BITS-305: con una poliza vendida mas reciente, la rechazada se ve junto a su cotizacion")
+    fun rechazadaYPolizaVendida() {
+        val cotizada = vigente.copy(creadaEn = "2026-11-10T14:00:00Z")
+        val lista = ResultadoLista.Exito(
+            listOf(
+                solicitud("vendida", EstadoDeSolicitud.EMITIDA),
+                solicitud("rechazada", EstadoDeSolicitud.RECHAZADA).copy(cotizacionCreadaEn = cotizada.creadaEn),
+            ),
+        )
+
+        val estado = inicioQueRecibe(ResultadoCotizacion.Exito(cotizada), lista).estado
+
+        assertEquals("rechazada", estado.solicitudReciente?.id)
+        assertEquals(listOf("vendida"), estado.seguros.map { it.id })
+    }
+
+    @Test
+    @DisplayName("BITS-305: si volvio a cotizar despues de la rechazada, ya no se muestra")
+    fun cotizoDespuesDelRechazo() {
+        val nueva = vigente.copy(creadaEn = "2026-11-12T09:00:00Z")
+        val lista = ResultadoLista.Exito(
+            listOf(
+                solicitud("vendida", EstadoDeSolicitud.EMITIDA),
+                solicitud("rechazada", EstadoDeSolicitud.RECHAZADA).copy(cotizacionCreadaEn = "2026-11-10T14:00:00Z"),
+            ),
+        )
+
+        val estado = inicioQueRecibe(ResultadoCotizacion.Exito(nueva), lista).estado
+
         assertNull(estado.solicitudReciente)
+        assertEquals(nueva, estado.cotizacionEnCurso)
     }
 
     @Test
