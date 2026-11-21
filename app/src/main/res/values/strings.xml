@@ -258,6 +258,7 @@
     <string name="inicio_solicitud_no_aprobada">No aprobada</string>
     <string name="inicio_solicitud_aprobada">Aprobada</string>
     <string name="inicio_ver_solicitud">Ver mi solicitud</string>
+    <string name="inicio_no_aprobada_titulo">Tu solicitud no fue aprobada</string>
     <string name="inicio_revision_titulo">Tu solicitud está en revisión</string>
     <string name="inicio_seccion_cotizacion">TU COTIZACIÓN</string>
     <string name="inicio_seccion_seguros">MIS SEGUROS</string>

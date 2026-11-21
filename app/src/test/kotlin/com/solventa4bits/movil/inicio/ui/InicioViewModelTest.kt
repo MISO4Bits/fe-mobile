@@ -172,6 +172,8 @@ class InicioViewModelTest {
 
         assertEquals("rechazada", estado.solicitudReciente?.id)
         assertEquals(listOf("vendida"), estado.seguros.map { it.id })
+        // BITS-402: como en la web, su cotizacion no vuelve a salir como lista.
+        assertNull(estado.cotizacionEnCurso)
     }
 
     @Test
@@ -236,7 +238,8 @@ class InicioViewModelTest {
 
         assertNull(conUna(EstadoDeSolicitud.EMITIDA))
         assertNull(conUna(EstadoDeSolicitud.PENDIENTE))
-        assertEquals(usada, conUna(EstadoDeSolicitud.RECHAZADA))
+        // BITS-402: con la rechazada a la vista tampoco, como en la web.
+        assertNull(conUna(EstadoDeSolicitud.RECHAZADA))
     }
 
     @Test

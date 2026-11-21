@@ -99,9 +99,13 @@ class InicioViewModel(
         val usadas = enviadas
             .filter { it.estado == EstadoDeSolicitud.PENDIENTE || it.estado == EstadoDeSolicitud.EMITIDA }
             .mapNotNull { it.cotizacionCreadaEn }
+        val solicitud = solicitudVisible(cotizacion, enviadas)
+        // Como la web: con la rechazada a la vista, su cotizacion no se ofrece (BITS-402). La pendiente
+        // ya la reemplaza en la pantalla.
+        val rechazada = solicitud?.estado == EstadoDeSolicitud.RECHAZADA
         return EstadoInicio(
-            cotizacionEnCurso = cotizacion?.takeIf { it.vigente && it.creadaEn !in usadas },
-            solicitudReciente = solicitudVisible(cotizacion, enviadas),
+            cotizacionEnCurso = cotizacion?.takeIf { it.vigente && it.creadaEn !in usadas && !rechazada },
+            solicitudReciente = solicitud,
             seguros = enviadas.filter { it.estado in DE_MIS_SEGUROS },
         )
     }
