@@ -83,6 +83,8 @@ fun PantallaInicio(
                     text = stringResource(
                         when {
                             enRevision != null -> R.string.inicio_revision_titulo
+                            solicitudReciente?.estado == EstadoDeSolicitud.RECHAZADA ->
+                                R.string.inicio_no_aprobada_titulo
                             cotizacionEnCurso != null -> R.string.inicio_en_curso
                             seguros.isNotEmpty() -> R.string.inicio_tus_seguros
                             else -> R.string.inicio_sin_seguros

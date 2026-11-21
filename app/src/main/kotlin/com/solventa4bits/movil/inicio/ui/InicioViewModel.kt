@@ -16,13 +16,15 @@ import com.solventa4bits.movil.solicitud.dominio.Solicitud
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import java.time.Instant
+import java.time.OffsetDateTime
 
 data class EstadoInicio(
     /** La cotizacion en curso del cliente, para retomarla (BITS-95, AC-6). Null si no hay. */
     val cotizacionEnCurso: Cotizacion? = null,
     /**
      * La solicitud para volver a verla (BITS-97, AC-2): la pendiente, aunque haya una poliza mas
-     * reciente (BITS-305, AC-1); si no hay, la mas reciente si fue rechazada. Emitida, va en [seguros].
+     * reciente (BITS-305, AC-1); si no hay, la rechazada mas reciente, si no volvio a cotizar despues.
+     * Emitida, va en [seguros].
      */
     val solicitudReciente: Solicitud? = null,
     /** Las polizas emitidas, para "Mis seguros" (BITS-104, AC-3), y las desactivadas (BITS-307, AC-1). */
@@ -97,11 +99,31 @@ class InicioViewModel(
         val usadas = enviadas
             .filter { it.estado == EstadoDeSolicitud.PENDIENTE || it.estado == EstadoDeSolicitud.EMITIDA }
             .mapNotNull { it.cotizacionCreadaEn }
+        val solicitud = solicitudVisible(cotizacion, enviadas)
+        // Como la web: con la rechazada a la vista, su cotizacion no se ofrece (BITS-402). La pendiente
+        // ya la reemplaza en la pantalla.
+        val rechazada = solicitud?.estado == EstadoDeSolicitud.RECHAZADA
         return EstadoInicio(
-            cotizacionEnCurso = cotizacion?.takeIf { it.vigente && it.creadaEn !in usadas },
-            solicitudReciente = enviadas.firstOrNull { it.estado == EstadoDeSolicitud.PENDIENTE }
-                ?: enviadas.firstOrNull()?.takeIf { it.estado == EstadoDeSolicitud.RECHAZADA },
+            cotizacionEnCurso = cotizacion?.takeIf { it.vigente && it.creadaEn !in usadas && !rechazada },
+            solicitudReciente = solicitud,
             seguros = enviadas.filter { it.estado in DE_MIS_SEGUROS },
         )
     }
+
+    /**
+     * Como la web: la pendiente; si no hay, la rechazada mas reciente, aunque haya una poliza mas
+     * nueva (BITS-305), salvo que el cliente ya haya cotizado de nuevo despues de enviarla.
+     */
+    private fun solicitudVisible(cotizacion: Cotizacion?, enviadas: List<Solicitud>): Solicitud? {
+        val cotizadaEn = instante(cotizacion?.creadaEn)
+        return enviadas.firstOrNull { it.estado == EstadoDeSolicitud.PENDIENTE }
+            ?: enviadas.firstOrNull { solicitud ->
+                val suCotizacion = instante(solicitud.cotizacionCreadaEn)
+                solicitud.estado == EstadoDeSolicitud.RECHAZADA &&
+                    !(cotizadaEn != null && suCotizacion != null && cotizadaEn.isAfter(suCotizacion))
+            }
+    }
+
+    private fun instante(iso: String?): Instant? =
+        iso?.let { runCatching { OffsetDateTime.parse(it).toInstant() }.getOrNull() }
 }
